@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vexara AI Assistant</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <link rel="manifest" href="/manifest.json">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <link
+      rel="icon"
+      href="/static/images/vexara-new1-removebg-preview.png"
+      type="image/png"
+    />
+    <!-- In your HTML head -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cascadia+Code&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdn-uicons.flaticon.com/uicons-regular-rounded/css/uicons-regular-rounded.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css"
+    />
+    <link rel="stylesheet" href="/static/style.css">
+
+  </head>
+  <body>
+    <div id="talking-animation">
+      Talking
+      <div class="talking-animation-bars">
+        <span class="talking-bar"></span>
+        <span class="talking-bar"></span>
+        <span class="talking-bar"></span>
+        <span class="talking-bar"></span>
+        <span class="talking-bar"></span>
+      </div>
+    </div>
+
+    <div id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <!-- <i class="fas fa-robot"></i> -->
+          <img src="/static/images/vexara-new1-removebg-preview.png" alt="V" />
+          <span style="font-family: 'Baskerville'"><h3>Vexara</h3></span>
+        </div>
+        <!-- Renamed hideSidebarBtn to sidebarToggleButton for general use -->
+        <!-- In your HTML -->
+        <button
+          id="sidebarToggleButton"
+          class="sidebar-toggle"
+          title="Toggle Sidebar"
+          aria-label="Toggle Sidebar"
+        >
+          <i class="bx bx-layout"></i>
+        </button>
+      </div>
+
+      <button
+        class="new-chat-btn"
+        onclick="startNewChat()"
+        \
+        aria-label="Start New Chat"
+      >
+        <i class="fa-solid fa-plus"></i>
+        <span>New Chat</span>
+      </button>
+
+      <div
+        id="chat-history-list"
+        role="navigation"
+        aria-label="Chat History"
+      ></div>
+
+      <div class="sidebar-footer">
+        <div
+          id="user-info"
+          class="user-info"
+          style="display: none"
+          role="contentinfo"
+        >
+          <i class="fas fa-user-circle" aria-hidden="true"></i>
+          <span id="user-email" class="user-email"></span>
+        </div>
+        <button
+          class="sidebar-btn"
+          onclick="toggleDarkMode()"
+          title="Toggle Dark Mode"
+          aria-label="Toggle Dark Mode"
+        >
+          <i class="fas fa-moon" aria-hidden="true"></i>
+          <span>Dark Theme</span>
+        </button>
+        <button
+          class="sidebar-btn"
+          id="clearAllChatsBtn"
+          title="Clear All Chat History"
+          aria-label="Clear All Chat History"
+        >
+          <i class="fas fa-trash" aria-hidden="true"></i>
+          <span>Clear All Chats</span>
+        </button>
+        <a
+          href="/logout"
+          class="sidebar-btn"
+          style="color: #ff6b6b"
+          title="Logout"
+          aria-label="Logout"
+        >
+          <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+          <span>Logout</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Floating button to show sidebar on mobile or in full screen mode -->
+    <button
+      id="showSidebarBtn"
+      class="sidebar-show-btn"
+      title="Show Sidebar"
+      aria-label="Toggle Sidebar"
+    >
+      <i class="fi fi-rr-sidebar"></i>
+    </button>
+
+    <div class="main">
+      <div
+        class="top-bar"
+        style="display: flex; align-items: center; justify-content: left"
+      >
+        <h2 style="font-weight: 450; font-style: 'Baskerville'">Vexara</h2>
+        <div class="top-bar-title">
+          <i class="fa-solid fa-plus new-chat-btn" onclick="startNewChat()"></i>
+        </div>
+      </div>
+
+      <div class="chat-container" id="chatbox" role="log" aria-live="polite">
+        <!-- Initial New Chat Placeholder -->
+        <div
+        class="loader"
+        id="loader"
+        aria-live="polite"
+        aria-atomic="true"
+        style="display: none"
+      >
+        <div class="typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+        <div
+          id="new-chat-placeholder"
+          style="
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Segoe UI', 'Inter', sans-serif;
+            font-size: 24px;
+            font-weight: 600;
+            color: #e5e5e5;
+          "
+        >
+          <img
+            src="/static/images/vexara-new1-removebg-preview.png"
+            alt="V"
+            style="width: 40px; height: 40px; object-fit: contain"
+          />
+          <span>How can I help you?</span>
+        </div>
+
+        <div
+          class="loader"
+          id="loader"
+          aria-live="polite"
+          aria-atomic="true"
+          style="display: none"
+        >
+          <div class="typing-indicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area at the bottom -->
+      <div class="input-area">
+        <!-- Image Preview Container -->
+        <div
+          id="image-preview-container"
+          class="image-preview-container"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <img
+            id="image-preview"
+            src="#"
+            alt="Image Preview"
+            style="display: none"
+          />
+          <button
+            id="clear-image-btn"
+            class="clear-image-btn"
+            title="Clear Image"
+            aria-label="Clear Image Preview"
+          >
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <form id="multi-action-form" enctype="multipart/form-data">
+          <!-- Model Selection Buttons -->
+
+          <div class="input-container" id="input-container">
+            <textarea
+              id="text-input"
+              name="instruction"
+              placeholder="Ask Vexara"
+              rows="1"
+              required
+              aria-label="Type your message here"
+            ></textarea>
+
+            <div class="input-icons-row">
+              <div class="input-icons-left">
+                <!-- Attachment button with proper file input -->
+                <div class="file-input-wrapper">
+                  <button
+                    type="button"
+                    class="input-icon-btn"
+                    id="attach-file-btn"
+                    title="Attach File"
+                    aria-label="Attach File"
+                  >
+                    <svg
+                      width="22"
+                      height="26"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M5.5498 9.75006V5.00006H6.9502V9.75006C6.9502 10.33 7.4201 10.7999 8 10.7999C8.5799 10.7999 9.0498 10.33 9.0498 9.75006V4.50006C9.0498 2.95366 7.7964 1.70026 6.25 1.70026C4.7036 1.70026 3.4502 2.95366 3.4502 4.50006V9.75006C3.4502 12.263 5.4871 14.2999 8 14.2999C10.5129 14.2999 12.5498 12.263 12.5498 9.75006V4.00006H13.9502V9.75006C13.9502 13.0362 11.2861 15.7003 8 15.7003C4.71391 15.7003 2.0498 13.0362 2.0498 9.75006V4.50006C2.04981 2.18047 3.9304 0.299867 6.25 0.299866C8.5696 0.299866 10.4502 2.18046 10.4502 4.50006V9.75006C10.4502 11.1032 9.3531 12.2003 8 12.2003C6.6469 12.2003 5.5498 11.1032 5.5498 9.75006Z"
+                        fill="currentColor"
+                      ></path>
+                    </svg>
+                  </button>
+                  <!-- Hidden file input, now outside the button for precise control -->
+                  <input
+                    type="file"
+                    id="desktop-file-input"
+                    name="image"
+                    accept="image/*"
+                    style="display: none"
+                    aria-label="Upload image file"
+                  />
+                </div>
+                <div
+                  class="model-select-group"
+                  aria-label="Toggle DeepThink Mode"
+                >
+                  <!-- Hidden General Option (keeps backend happy) -->
+                  <input
+                    type="radio"
+                    id="modelGeneral"
+                    name="modelChoice"
+                    value="general"
+                    checked
+                    aria-checked="true"
+                    style="display: none"
+                  />
+
+                  <!-- Visible DeepThink Toggle -->
+                  <div
+                    class="model-option"
+                    id="deepthink-toggle"
+                    data-active="false"
+                  >
+                    <svg
+                      width="20"
+                      height="24"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="icon"
+                      aria-label=""
+                    >
+                      <path
+                        d="M14.3352 10.0257C14.3352 7.6143 12.391 5.66554 10.0002 5.66537C7.60929 5.66537 5.66528 7.61419 5.66528 10.0257C5.66531 11.5493 6.44221 12.8881 7.61938 13.6683H12.3811C13.558 12.8881 14.3352 11.5491 14.3352 10.0257ZM8.84399 16.9984C9.07459 17.3983 9.50543 17.6683 10.0002 17.6683C10.495 17.6682 10.926 17.3984 11.1565 16.9984H8.84399ZM8.08813 15.6683H11.9114V14.9984H8.08813V15.6683ZM1.66626 9.33529L1.80103 9.34896C2.10381 9.41116 2.3313 9.67914 2.3313 10.0003C2.33115 10.3214 2.10377 10.5896 1.80103 10.6517L1.66626 10.6654H0.833252C0.466091 10.6654 0.168389 10.3674 0.168213 10.0003C0.168213 9.63306 0.465983 9.33529 0.833252 9.33529H1.66626ZM19.1663 9.33529L19.301 9.34896C19.6038 9.41116 19.8313 9.67914 19.8313 10.0003C19.8311 10.3214 19.6038 10.5896 19.301 10.6517L19.1663 10.6654H18.3333C17.9661 10.6654 17.6684 10.3674 17.6682 10.0003C17.6682 9.63306 17.966 9.33529 18.3333 9.33529H19.1663ZM3.0481 3.04818C3.2753 2.82099 3.62593 2.79189 3.88403 2.96224L3.98853 3.04818L4.57739 3.63705L4.66235 3.74154C4.83285 3.99966 4.80464 4.35021 4.57739 4.57748C4.35013 4.80474 3.99958 4.83293 3.74146 4.66244L3.63696 4.57748L3.0481 3.98861L2.96216 3.88412C2.79181 3.62601 2.82089 3.27538 3.0481 3.04818ZM16.012 3.04818C16.2717 2.7886 16.6927 2.78852 16.9524 3.04818C17.2117 3.30786 17.2119 3.72901 16.9524 3.98861L16.3625 4.57748C16.1028 4.83717 15.6818 4.83718 15.4221 4.57748C15.1626 4.31776 15.1625 3.89669 15.4221 3.63705L16.012 3.04818ZM9.33521 1.66634V0.833336C9.33521 0.466067 9.63297 0.168297 10.0002 0.168297C10.3674 0.168472 10.6653 0.466175 10.6653 0.833336V1.66634C10.6653 2.0335 10.3674 2.33121 10.0002 2.33138C9.63297 2.33138 9.33521 2.03361 9.33521 1.66634ZM15.6653 10.0257C15.6653 11.9571 14.7058 13.6634 13.2415 14.6917V16.3333C13.2415 16.7004 12.9444 16.9971 12.5774 16.9974C12.282 18.1473 11.2423 18.9982 10.0002 18.9984C8.75792 18.9984 7.71646 18.1476 7.42114 16.9974C7.05476 16.9964 6.75806 16.7 6.75806 16.3333V14.6917C5.29383 13.6634 4.33523 11.957 4.33521 10.0257C4.33521 6.88608 6.86835 4.33529 10.0002 4.33529C13.132 4.33547 15.6653 6.88618 15.6653 10.0257Z"
+                      ></path>
+                    </svg>
+                    <span >Solve</span>
+                  </div>
+                </div>
+                <!-- ===== Web Search Toggle (replace your old button with this) ===== -->
+                <label
+                  id="web-search-toggle"
+                  class="web-search-toggle"
+                  title="Enable web search"
+                  role="switch"
+                  aria-checked="false"
+                >
+                  <input
+                    id="web-search-checkbox"
+                    type="checkbox"
+                    aria-label="Enable web search"
+                  />
+                  <!-- Keep your SVG icon for visual match -->
+                  <span class="web-search-icon" aria-hidden="true">
+                    <svg
+                      width="20"
+                      height="24"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style="color: currentColor"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M7.00003 0.150452C10.7832 0.150452 13.8496 3.21691 13.8496 7.00006C13.8496 10.7832 10.7832 13.8497 7.00003 13.8497C3.21688 13.8497 0.150421 10.7832 0.150421 7.00006C0.150421 3.21691 3.21688 0.150452 7.00003 0.150452ZM5.37796 7.59967C5.4267 9.0321 5.64754 10.2966 5.97366 11.2198C6.15996 11.7471 6.36946 12.1302 6.57327 12.3702C6.77751 12.6106 6.92343 12.6505 7.00003 12.6505C7.07663 12.6505 7.22255 12.6106 7.42679 12.3702C7.6306 12.1302 7.8401 11.7471 8.0264 11.2198C8.35252 10.2966 8.57336 9.0321 8.6221 7.59967H5.37796ZM1.38187 7.59967C1.61456 9.80498 3.11593 11.6305 5.14261 12.336C5.03268 12.1129 4.93227 11.8725 4.8428 11.6192C4.46342 10.5452 4.22775 9.13994 4.17874 7.59967H1.38187ZM9.82132 7.59967C9.77232 9.13994 9.53664 10.5452 9.15726 11.6192C9.06774 11.8726 8.96648 12.1127 8.85648 12.336C10.8836 11.6307 12.3855 9.8053 12.6182 7.59967H9.82132ZM7.00003 1.34967C6.92343 1.34967 6.77751 1.38955 6.57327 1.62994C6.36946 1.86994 6.15996 2.25297 5.97366 2.78033C5.64754 3.70357 5.4267 4.96802 5.37796 6.40045H8.6221C8.57336 4.96802 8.35252 3.70357 8.0264 2.78033C7.8401 2.25297 7.6306 1.86994 7.42679 1.62994C7.22255 1.38955 7.07663 1.34967 7.00003 1.34967ZM8.85648 1.66315C8.96663 1.88662 9.06763 2.12721 9.15726 2.38092C9.53664 3.45494 9.77232 4.86018 9.82132 6.40045H12.6182C12.3855 4.19471 10.8837 2.36834 8.85648 1.66315ZM5.14261 1.66315C3.11578 2.36856 1.61457 4.19503 1.38187 6.40045H4.17874C4.22775 4.86018 4.46342 3.45494 4.8428 2.38092C4.93237 2.12736 5.03253 1.88651 5.14261 1.66315Z"
+                        fill="currentColor"
+                      ></path>
+                    </svg>
+                  </span>
+                  <span class="web-search-label">Search</span>
+                </label>
+
+                <!-- ===== Styles (paste into your stylesheet or <head>) ===== -->
+                <style>
+                  .web-search-toggle {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 6px 10px;
+                    font-size: 0.9rem; /* slightly smaller text */
+                    font-weight: 500;
+                    border-radius: 30px;
+                    border: 1px solid var(--web-search);
+                    cursor: pointer;
+                    user-select: none;
+                    font-size: 14px;
+                    transition: transform 0.12s ease, box-shadow 0.12s ease,
+                      background 0.12s ease, color 0.12s ease;
+                    background: transparent;
+                    color: var(--text-color, #111);
+                  }
+                  .web-search-toggle .web-search-icon {
+                    display: inline-flex;
+                    width: 20px;
+                    height: 20px;
+                    align-items: center;
+                    justify-content: center;
+                  }
+                  .web-search-toggle input {
+                    display: none;
+                  } /* hide native checkbox */
+                  /* Selected state */
+                  .web-search-toggle.selected {
+                    background: var(--accent-color, #6a0dad);
+                    color: #fff;
+                    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+                    transform: translateY(-1px);
+                    border: none;
+                  }
+                  /* .dark-mode.web-search-toggle.selected{
+    background: black;
+    color: #fff;
+    border: 4px solid rgb(255, 255, 255);
+  } */
+
+                  /* small hover polish */
+                  .web-search-toggle:hover {
+                    transform: translateY(-0.5px);
+                  }
+                  .web-search-label {
+                    line-height: 1;
+                  }
+                  @media (max-width: 600px) {
+                    .web-search-toggle {
+                      font-size: 12px;
+                      padding: 5px 10px;
+                      gap: 6px;
+                    }
+                    .web-search-toggle .web-search-icon {
+                      width: 18px;
+                      height: 18px;
+                    }
+                  }
+                </style>
+
+                <!-- ===== Script (paste near end of body, after other scripts for safety) ===== -->
+                <script>
+                  (function () {
+                    // Robust initialization after DOM ready
+                    function initToggle() {
+                      // 1) replace old button if present (removes any old click handler attached by app.js)
+                      const oldBtn = document.getElementById("web-search-btn");
+                      if (oldBtn) {
+                        // create the new label element from the existing markup (we already placed markup above),
+                        // but if user didn't paste the label HTML, fallback to creating programmatically:
+                        const existingToggle =
+                          document.getElementById("web-search-toggle");
+                        if (existingToggle) {
+                          oldBtn.replaceWith(existingToggle);
+                        } else {
+                          // nothing to replace with; bail (user should include the HTML snippet)
+                          console.warn(
+                            "web-search-toggle markup not found — please paste the provided label HTML into your page."
+                          );
+                        }
+                      }
+
+                      const label =
+                        document.getElementById("web-search-toggle");
+                      const checkbox = document.getElementById(
+                        "web-search-checkbox"
+                      );
+
+                      if (!label || !checkbox) {
+                        console.warn("Web search toggle elements not found.");
+                        return;
+                      }
+
+                      // 2) restore state from localStorage
+                      const saved = localStorage.getItem(
+                        "vexara_web_search_enabled"
+                      );
+                      const initiallyEnabled = saved === "1";
+                      window.isWebSearchEnabled = !!initiallyEnabled;
+                      checkbox.checked = window.isWebSearchEnabled;
+                      label.classList.toggle(
+                        "selected",
+                        window.isWebSearchEnabled
+                      );
+                      label.setAttribute(
+                        "aria-checked",
+                        window.isWebSearchEnabled ? "true" : "false"
+                      );
+
+                      // 3) change handler (update UI + persist)
+                      checkbox.addEventListener("change", (e) => {
+                        const enabled = !!checkbox.checked;
+                        window.isWebSearchEnabled = enabled;
+                        localStorage.setItem(
+                          "vexara_web_search_enabled",
+                          enabled ? "1" : "0"
+                        );
+                        label.classList.toggle("selected", enabled);
+                        label.setAttribute(
+                          "aria-checked",
+                          enabled ? "true" : "false"
+                        );
+                      });
+
+                      // 4) clicking the label toggles the checkbox but prevent accidental form submits / bubbling
+                      label.addEventListener("click", function (e) {
+                        // prevent click from submitting forms or bubbling; checkbox will toggle as normal
+                        e.preventDefault();
+                        e.stopPropagation();
+                        checkbox.checked = !checkbox.checked;
+                        checkbox.dispatchEvent(
+                          new Event("change", { bubbles: true })
+                        );
+                      });
+
+                      // 5) Monkeypatch askAI so existing calls that don't pass performSearch use the checkbox state
+                      //    This is safe: if a caller passes true/false explicitly, it will be honored.
+                      function wrapAskAIWhenReady() {
+                        if (window.askAI && !window._askAIWrapped) {
+                          const orig = window.askAI;
+                          window.askAI = async function (
+                            instruction,
+                            modelChoice,
+                            performSearch
+                          ) {
+                            if (
+                              typeof performSearch === "undefined" ||
+                              performSearch === null
+                            ) {
+                              performSearch = !!window.isWebSearchEnabled;
+                            }
+                            return await orig.call(
+                              this,
+                              instruction,
+                              modelChoice,
+                              performSearch
+                            );
+                          };
+                          window._askAIWrapped = true;
+                          console.log(
+                            "askAI wrapped to use web-search toggle when performSearch is omitted."
+                          );
+                        } else if (!window.askAI) {
+                          // If askAI not defined yet, try a few times (this won't run forever)
+                          let tries = 0;
+                          const t = setInterval(() => {
+                            tries++;
+                            if (window.askAI) {
+                              clearInterval(t);
+                              wrapAskAIWhenReady();
+                            } else if (tries > 30) {
+                              clearInterval(t);
+                              console.warn(
+                                "askAI not found after waiting — web-search toggle wrapper not applied."
+                              );
+                            }
+                          }, 100); // try for ~3s
+                        }
+                      }
+                      wrapAskAIWhenReady();
+
+                      // 6) Expose a global helper (optional) in case other UI wants to show the state
+                      window.setWebSearchUI = function (bool) {
+                        checkbox.checked = !!bool;
+                        checkbox.dispatchEvent(
+                          new Event("change", { bubbles: true })
+                        );
+                      };
+                    }
+
+                    if (document.readyState === "loading") {
+                      document.addEventListener("DOMContentLoaded", initToggle);
+                    } else {
+                      initToggle();
+                    }
+                  })();
+                </script>
+              </div>
+
+              <div class="input-icons-right">
+                <button
+                  style="margin-right: 10px"
+                  type="button"
+                  id="voice-talk-btn"
+                  class="input-icon-btn"
+                  title="Toggle Voice Talk"
+                  aria-label="Toggle Voice Talk"
+                >
+                  <svg
+                    width="40"
+                    height="40"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="icon"
+                  >
+                    <path
+                      d="M7.33496 15.5V4.5C7.33496 4.13275 7.63275 3.83499 8 3.83496C8.36727 3.83496 8.66504 4.13273 8.66504 4.5V15.5C8.66504 15.8673 8.36727 16.165 8 16.165C7.63275 16.165 7.33496 15.8673 7.33496 15.5ZM11.335 13.1309V7.20801C11.335 6.84075 11.6327 6.54298 12 6.54297C12.3673 6.54297 12.665 6.84074 12.665 7.20801V13.1309C12.665 13.4981 12.3672 13.7959 12 13.7959C11.6328 13.7959 11.335 13.4981 11.335 13.1309ZM3.33496 11.3535V8.81543C3.33496 8.44816 3.63273 8.15039 4 8.15039C4.36727 8.15039 4.66504 8.44816 4.66504 8.81543V11.3535C4.66504 11.7208 4.36727 12.0186 4 12.0186C3.63273 12.0186 3.33496 11.7208 3.33496 11.3535ZM15.335 11.3535V8.81543C15.335 8.44816 15.6327 8.15039 16 8.15039C16.3673 8.15039 16.665 8.44816 16.665 8.81543V11.3535C16.665 11.7208 16.3673 12.0186 16 12.0186C15.6327 12.0186 15.335 11.7208 15.335 11.3535Z"
+                    ></path>
+                  </svg>
+                </button>
+
+                <button
+                  type="submit"
+                  class="submit-btn"
+                  id="send-btn"
+                  title="Send Message"
+                  aria-label="Send Message"
+                >
+                  <i class="fa-solid fa-arrow-up"></i>
+                </button>
+
+                <button
+                  type="button"
+                  class="stop-btn"
+                  id="stop-btn"
+                  title="Stop Response"
+                  aria-label="Stop AI Response"
+                >
+                  <i class="fas fa-stop" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Voice indicator area -->
+            <div
+              id="voice-indicator-area"
+              class="voice-indicator-area"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <span id="voice-status-text"></span>
+            </div>
+          </div>
+          <div
+            style="
+              display: flex;
+              justify-content: center;
+              width: 100%;
+              position: relative;
+              top: 5px;
+            "
+          >
+            <p
+              style="
+                font-size: 0.6rem;
+                color: var(--text-color);
+                text-align: center;
+                margin: 0;
+                opacity: 0.9;
+              "
+            >
+              Top priority to privacy, feel free to chat
+            </p>
+          </div>
+        </form>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div
+        class="loader"
+        id="loader"
+        aria-live="polite"
+        aria-atomic="true"
+        style="display: none"
+      >
+        <div class="typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW: Voice Mode Full-Screen Overlay -->
+    <div
+      id="voice-mode-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Voice Interaction Mode"
+    >
+      <div class="status-text">Standard voice</div>
+      <canvas
+        id="voice-circle-canvas"
+        role="img"
+        aria-label="Voice Activity Visualizer"
+      ></canvas>
+      <div class="control-buttons">
+        <button
+          id="mic-control-btn"
+          class="control-button"
+          aria-label="Toggle Microphone"
+        >
+          <i class="fas fa-microphone" aria-hidden="true"></i>
+        </button>
+        <button
+          id="screen-share-btn"
+          class="control-button"
+          title="Toggle Screen Share"
+          aria-label="Toggle Screen Share"
+        >
+          <i class="fas fa-desktop" aria-hidden="true"></i>
+        </button>
+        <button
+          id="close-voice-mode-btn"
+          class="control-button"
+          aria-label="Close Voice Mode"
+        >
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- NEW: Screen Share Preview Container -->
+    <div
+      id="screen-share-preview-container"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Screen Share Preview"
+    >
+      <video
+        id="screen-share-preview-video"
+        autoplay
+        aria-label="Screen Share Video Feed"
+      ></video>
+    </div>
+
+    <!-- Confirmation Modal for Clear All Chats -->
+    <div
+      id="confirmModal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalTitle"
+      aria-describedby="modalDescription"
+    >
+      <div class="modal-content">
+        <h3 id="modalTitle">Clear All Chats?</h3>
+        <p id="modalDescription">
+          Are you sure you want to clear all chat history? This action cannot be
+          undone.
+        </p>
+        <div class="modal-buttons">
+          <button
+            class="modal-btn cancel"
+            onclick="hideModal()"
+            aria-label="Cancel"
+          >
+            Cancel
+          </button>
+          <button
+            class="modal-btn confirm"
+            id="confirmClearBtn"
+            aria-label="Confirm Clear All"
+          >
+            Clear All
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW: Code Update Modal -->
+    <div
+      id="codeUpdateModal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="codeUpdateModalTitle"
+    >
+      <div class="modal-content">
+        <h3 id="codeUpdateModalTitle">Update Code File</h3>
+        <p>
+          Paste the updated code below. Select the file to update (e.g.,
+          `index.html` or `test.py`).
+        </p>
+        <select id="fileToUpdateSelect" aria-label="Select file to update">
+          <option value="index.html">index.html (Frontend HTML/JS)</option>
+          <option value="test.py">test.py (Backend Python)</option>
+          <option value="script.py">
+            script.py (Backend Python - if applicable)
+          </option>
+        </select>
+        <textarea
+          id="codeUpdateTextarea"
+          placeholder="Paste your updated code here..."
+          aria-label="Code to update"
+        ></textarea>
+        <div class="modal-buttons">
+          <button
+            class="modal-btn cancel"
+            onclick="document.getElementById('codeUpdateModal').style.display='none';"
+            aria-label="Cancel"
+          >
+            Cancel
+          </button>
+          <button
+            class="modal-btn confirm"
+            id="applyCodeUpdateBtn"
+            aria-label="Apply Code Update"
+          >
+            Apply Update
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera Options (for mobile file upload) -->
+    <div
+      class="camera-options"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choose Image Source"
+    >
+      <div
+        class="camera-option"
+        id="take-photo"
+        tabindex="0"
+        role="button"
+        aria-label="Take Photo"
+      >
+        <i class="fas fa-camera" aria-hidden="true"></i>
+        <span>Take Photo</span>
+        <!-- Hidden input directly inside the clickable area -->
+        <input
+          type="file"
+          id="take-photo-input"
+          name="image"
+          accept="image/*"
+          capture="environment"
+          style="
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 1;
+          "
+        />
+      </div>
+      <div
+        class="camera-option"
+        id="upload-photo"
+        tabindex="0"
+        role="button"
+        aria-label="Choose from Gallery"
+      >
+        <i class="fas fa-images" aria-hidden="true"></i>
+        <span>Choose from Gallery</span>
+        <!-- Hidden input directly inside the clickable area -->
+        <input
+          type="file"
+          id="upload-photo-input"
+          name="image"
+          accept="image/*"
+          style="
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 1;
+          "
+        />
+      </div>
+      <div
+        class="camera-option cancel"
+        id="cancel-camera"
+        tabindex="0"
+        role="button"
+        aria-label="Cancel"
+      >
+        <i class="fas fa-times" aria-hidden="true"></i>
+        <span>Cancel</span>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.0/marked.min.js"></script>  
+    <script src="/static/bott.js"></script>                  
+    <script src="/static/local-voice-module.js?v=3"></script>
+<!-- SECOND -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const inputContainer = document.querySelector(".input-container");
+        const textInput = document.getElementById("text-input");
+        const sendBtn = document.getElementById("send-btn");
+        const stopBtn = document.getElementById("stop-btn");
+        const fileInput = document.getElementById("file-input");
+        const attachBtn = document.getElementById("attach-file-btn");
+
+        // Focus textarea when clicking anywhere in the container
+        inputContainer.addEventListener("click", function (e) {
+          if (
+            !e.target.closest(".input-icon-btn") &&
+            !e.target.closest(".submit-btn") &&
+            !e.target.closest(".stop-btn") &&
+            e.target !== fileInput
+          ) {
+            textInput.focus();
+          }
+        });
+
+        // Auto-resize textarea
+        textInput.addEventListener("input", function () {
+          this.style.height = "auto";
+          this.style.height = this.scrollHeight + "px";
+        });
+
+        // File input
+        attachBtn.addEventListener("click", function () {
+          fileInput.click();
+        });
+
+        fileInput.addEventListener("change", function () {
+          if (this.files && this.files[0]) {
+            console.log("File selected:", this.files[0].name);
+          }
+        });
+
+        // ✅ Show and hide stop button explicitly
+        function showStopButton() {
+          stopBtn.style.display = "inline-flex";
+          sendBtn.style.display = "none";
+        }
+
+        function hideStopButton() {
+          stopBtn.style.display = "none";
+          sendBtn.style.display = "inline-flex";
+        }
+
+        // When send is clicked
+        sendBtn.addEventListener("click", function () {
+          if (textInput.value.trim() !== "") {
+            showStopButton();
+
+            // Simulate AI response completion
+            setTimeout(function () {
+              hideStopButton();
+            }, 3000);
+          }
+        });
+
+        // Stop button click
+        stopBtn.addEventListener("click", function () {
+          hideStopButton();
+          console.log("AI response stopped");
+        });
+
+        // Initially hide stop button
+        hideStopButton();
+      });
+    </script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const inputContainer = document.querySelector(".input-container");
+        const textInput = document.getElementById("text-input");
+        const sendBtn = document.getElementById("send-btn");
+        const stopBtn = document.getElementById("stop-btn");
+        const fileInput = document.getElementById("file-input");
+        const attachBtn = document.getElementById("attach-file-btn");
+
+        // Focus textarea when clicking anywhere in the container
+        inputContainer.addEventListener("click", function (e) {
+          // Don't focus if clicking on a button or file input
+          if (
+            !e.target.closest(".input-icon-btn") &&
+            !e.target.closest(".submit-btn") &&
+            !e.target.closest(".stop-btn") &&
+            e.target !== fileInput
+          ) {
+            textInput.focus();
+          }
+        });
+
+        // Auto-resize textarea as user types
+        textInput.addEventListener("input", function () {
+          this.style.height = "auto";
+          this.style.height = this.scrollHeight + "px";
+        });
+
+        // File input functionality
+        attachBtn.addEventListener("click", function () {
+          fileInput.click();
+        });
+
+        fileInput.addEventListener("change", function (e) {
+          if (this.files && this.files[0]) {
+            // Handle file selection here
+            console.log("File selected:", this.files[0].name);
+            // You can show a preview or process the file
+          }
+        });
+
+        // Function to show stop button (when AI is responding)
+        function showStopButton() {
+          stopBtn.style.display = "inline-flex";
+          sendBtn.style.display = "none";
+        }
+
+        // Function to hide stop button (when AI is done responding)
+        function hideStopButton() {
+          stopBtn.style.display = "none";
+          sendBtn.style.display = "inline-flex";
+        }
+
+        // Example usage - call these functions when AI starts/stops responding
+        sendBtn.addEventListener("click", function () {
+          if (textInput.value.trim() !== "") {
+            showStopButton();
+
+            // Simulate AI response (remove this in your actual implementation)
+            setTimeout(function () {
+              hideStopButton();
+            }, 3000);
+          }
+        });
+
+        // Stop button functionality
+        stopBtn.addEventListener("click", function () {
+          // Stop AI response logic here
+          hideStopButton();
+          console.log("AI response stopped");
+        });
+
+        // ✅ FIX: Hide the stop button when the page loads
+        hideStopButton();
+      });
+    </script>
+    <script>
+      // Function to show loader at the response position
+      function showLoader() {
+        const loader = document.getElementById("loader");
+        loader.style.display = "block";
+        // Scroll to the loader position
+        loader.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      // Function to hide loader
+      function hideLoader() {
+        document.getElementById("loader").style.display = "none";
+      }
+    </script>
+    <script>
+      function copyToClipboard(button) {
+        // Find the <code> element inside the same code block
+        const codeBlock = button.closest('.code-block');
+        const codeElement = codeBlock.querySelector('code');
+        const text = codeElement.innerText;
+      
+        // Copy to clipboard using Clipboard API
+        navigator.clipboard.writeText(text).then(() => {
+          // Change button text temporarily to "Copied!"
+          const originalText = button.innerHTML;
+          button.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Copied!';
+          button.classList.add('copied');
+      
+          // Restore after 2 seconds
+          setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('copied');
+          }, 2000);
+        }).catch(err => {
+          console.error('Failed to copy code: ', err);
+          alert('Failed to copy code.');
+        });
+      }
+      </script>
+      
+    <script>
+      const deepthinkToggle = document.getElementById("deepthink-toggle");
+      const generalInput = document.getElementById("modelGeneral");
+
+      deepthinkToggle.addEventListener("click", () => {
+        const isActive = deepthinkToggle.getAttribute("data-active") === "true";
+
+        if (isActive) {
+          // Switch OFF DeepThink -> select general input
+          deepthinkToggle.setAttribute("data-active", "false");
+          generalInput.checked = true;
+          console.log("🔄 Switched back to General Mode");
+        } else {
+          // Switch ON DeepThink -> create & check a hidden input dynamically
+          deepthinkToggle.setAttribute("data-active", "true");
+
+          // remove old hidden deepthink if exists
+          let deepthinkInput = document.getElementById("modelDeepThink");
+          if (!deepthinkInput) {
+            deepthinkInput = document.createElement("input");
+            deepthinkInput.type = "radio";
+            deepthinkInput.name = "modelChoice";
+            deepthinkInput.value = "deep_think";
+            deepthinkInput.id = "modelDeepThink";
+            deepthinkInput.style.display = "none";
+            deepthinkToggle.parentElement.appendChild(deepthinkInput);
+          }
+          deepthinkInput.checked = true;
+
+          console.log("🧠 DeepThink Mode Activated");
+        }
+      });
+    </script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const webSearchBtn = document.getElementById("web-search-btn");
+        const multiActionForm = document.getElementById("multi-action-form");
+        let isWebSearchEnabled = false;
+
+        // ✅ Toggle Web Search Mode
+        webSearchBtn.addEventListener("click", () => {
+          isWebSearchEnabled = !isWebSearchEnabled;
+          webSearchBtn.classList.toggle("selected", isWebSearchEnabled);
+        });
+
+        // ✅ Intercept form submit to include web search flag
+        multiActionForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const textInput = document.getElementById("text-input");
+          const userText = textInput.value.trim();
+          if (!userText) return;
+
+          // Detect selected model choice
+          const selectedModelRadio = document.querySelector(
+            "input[name='modelChoice']:checked"
+          );
+          const modelChoice = selectedModelRadio
+            ? selectedModelRadio.value
+            : "general";
+
+          // Show user message
+          addMessage(userText, "user", null, new Date());
+
+          // ✅ Perform AI request with web search if enabled
+          if (isWebSearchEnabled) {
+            await askAI(userText, modelChoice, true);
+          } else {
+            await askAI(userText, modelChoice, false);
+          }
+        });
+      });
+    </script>
+
+    <style>
+      /* ✅ Web Search Button Active State */
+      #web-search-btn.selected {
+        background: var(--accent-color);
+        color: white;
+        border-radius: 10px;
+        box-shadow: 0 0 10px var(--accent-color);
+      }
+      /* Thinking Process Styles */
+
+      .thinking {
+        font-size: 0.8rem;
+        color: rgba(128, 128, 128, 0.8); /* greyed out */
+        margin-top: 6px;
+        padding-left: 8px;
+        border-left: 2px dashed #ccc;
+        display: none; /* hidden by default */
+      }
+
+      .thinking.show {
+        display: block;
+      }
+
+      .toggle-thinking {
+        font-size: 0.75rem;
+        background: none;
+        border: none;
+        color: #888;
+        cursor: pointer;
+        margin-top: 4px;
+      }
+    </style>
+
+    <script>
+      function addBotMessage(content, thinking = null) {
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("bot-message");
+
+        // Main AI answer
+        const answerDiv = document.createElement("div");
+        answerDiv.classList.add("answer");
+        answerDiv.innerHTML = content;
+        messageDiv.appendChild(answerDiv);
+
+        // Optional reasoning trace
+        if (thinking) {
+          const thinkingDiv = document.createElement("div");
+          thinkingDiv.classList.add("thinking");
+          thinkingDiv.innerHTML = thinking;
+
+          const toggleBtn = document.createElement("button");
+          toggleBtn.classList.add("toggle-thinking");
+          toggleBtn.textContent = "Show Thinking";
+          toggleBtn.onclick = function () {
+            thinkingDiv.classList.toggle("show");
+            toggleBtn.textContent = thinkingDiv.classList.contains("show")
+              ? "Hide Thinking"
+              : "Show Thinking";
+          };
+
+          messageDiv.appendChild(toggleBtn);
+          messageDiv.appendChild(thinkingDiv);
+        }
+
+        document.querySelector("#chat-container").appendChild(messageDiv);
+        document.querySelector("#chat-container").scrollTop =
+          document.querySelector("#chat-container").scrollHeight;
+      }
+    </script>
+  </body>
+</html>
