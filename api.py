@@ -77,24 +77,6 @@ def increment_daily_message_count(user_id):
             del user_message_counts[user_id][d_str]
 
 # OAuth configuration
-google_bp = make_google_blueprint(
-    client_id="978102306464-qdjll3uos10m1nd5gcnr9iql9688db58.apps.googleusercontent.com",
-    client_secret="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",
-    redirect_url="/google_login/authorized",
-    scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
-)
-app.register_blueprint(google_bp, url_prefix="/google_login")
-
-oauth = OAuth(app)
-microsoft = oauth.register(
-    name='microsoft',
-    client_id="your_microsoft_client_id",
-    client_secret="your_microsoft_client_secret",
-    access_token_url='https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    authorize_url='https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    api_base_url='https://graph.microsoft.com/v1.0/',
-    client_kwargs={'scope': 'User.Read'}
-)
 
 # --- SEE SYSTEM PROMPT (CRITICAL FOR EXAM-FOCUSED ANSWERS) ---
 SEE_SYSTEM_PROMPT = """You are Vexara, a Math tutor for Class 10 SEE students in Nepal.
