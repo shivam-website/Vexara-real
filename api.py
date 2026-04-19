@@ -23,11 +23,13 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
 
 # --- API KEYS ---
-GOOGLE_GEMINI_API_KEY = os.environ.get("GOOGLE_GEMINI_API_KEY")
-AWAN_API_KEY = os.environ.get("AWAN_API_KEY")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-SERPER_API_KEY = os.environ.get("SERPER_API_KEY")
+import os
+
+GOOGLE_GEMINI_API_KEY = os.getenv("GOOGLE_GEMINI_API_KEY") or "AIzaSyBcU4ohI19DbrpXboOP4eooFqOBqSCQilI"
+AWAN_API_KEY = os.getenv("AWAN_API_KEY") or "21f7fbb7-1209-4039-a7cc-dd0a6de383c3"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY") or "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"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or "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"
+SERPER_API_KEY = os.getenv("SERPER_API_KEY") or "bb48b607349e5e050312a72459a8886e24a0edbc"
 
 # --- API Endpoints ---
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
