@@ -13,13 +13,26 @@ import tempfile
 from datetime import datetime, date, timedelta
 from flask_cors import CORS
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+template_path = os.path.join(current_dir, 'templates')
+static_path = os.path.join(current_dir, 'static')
+
 app_name = '__main__'
 if '__app_id__' in globals():
     app_name = globals()['__app_id__']
-app = Flask(app_name)
 
+# ✅ Tell Flask where to find templates + static
+app = Flask(
+    app_name,
+    template_folder=template_path,
+    static_folder=static_path
+)
+ # Using the determined app_name
+
+# ✅ Enable CORS (Allowing frontend calls from any domain for now)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# Use an environment variable for the secret key for better security
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
 
 # --- API KEYS ---
