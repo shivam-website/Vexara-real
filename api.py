@@ -621,14 +621,22 @@ def google_login_authorized():
 def index():
     """Main index route."""
     return render_template('index.html')
-    
-@app.route('/sitemap.xml')
-def sitemap():
-    return send_from_directory('static', 'sitemap.xml')
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 @app.route('/robots.txt')
 def robots():
-    return send_from_directory('static', 'robots.txt')
+    return send_from_directory(
+        os.path.join(BASE_DIR, 'static'),
+        'robots.txt'
+    )
+
+@app.route('/sitemap.xml')
+def sitemap():
+    return send_from_directory(
+        os.path.join(BASE_DIR, 'static'),
+        'sitemap.xml'
+    )
 
 @app.route('/debug/test-gemini', methods=['GET'])
 def debug_test_gemini():
