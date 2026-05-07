@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, jsonify, redirect, session, u
 from flask_dance.contrib.google import make_google_blueprint, google
 from authlib.integrations.flask_client import OAuth
 from PIL import Image
+from flask import send_from_directory
 
 import tempfile
 from datetime import datetime, date, timedelta
@@ -620,6 +621,14 @@ def google_login_authorized():
 def index():
     """Main index route."""
     return render_template('index.html')
+    
+@app.route('/sitemap.xml')
+def sitemap():
+    return send_from_directory('static', 'sitemap.xml')
+
+@app.route('/robots.txt')
+def robots():
+    return send_from_directory('static', 'robots.txt')
 
 @app.route('/debug/test-gemini', methods=['GET'])
 def debug_test_gemini():
