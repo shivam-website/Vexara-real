@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Science Learning Assistant – Physics, Chemistry, Biology Help for SEE</title>
+    <meta name="description" content="Vexara AI Science Helper for SEE students. Get instant explanations for physics, chemistry, and biology concepts. AI-powered science learning for Nepal students with step-by-step guidance on difficult topics.">
+    <meta name="keywords" content="science helper AI, physics help, chemistry help, biology help, SEE science, science tutor, physics solver, chemistry solver, science learning AI">
+    <link rel="canonical" href="https://aivexara.xyz/science-helper">
+    <meta property="og:title" content="Science Learning Assistant – Physics, Chemistry, Biology Help">
+    <meta property="og:description" content="Free AI science learning assistant for SEE students. Get help with physics, chemistry, biology, and science concepts.">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --primary-light: #3b82f6;
+            --accent: #0ea5e9;
+            --dark: #0f172a;
+            --gray: #64748b;
+            --light: #f8fafc;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #ffffff;
+            color: var(--dark);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', sans-serif;
+            letter-spacing: -0.02em;
+        }
+        
+        a, button {
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 0.875rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            display: inline-block;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9375rem;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-outline {
+            border: 1.5px solid var(--dark);
+            color: var(--dark);
+            padding: 0.875rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            display: inline-block;
+            text-decoration: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.9375rem;
+        }
+        
+        .btn-outline:hover {
+            background: var(--dark);
+            color: white;
+        }
+        
+        .feature-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+            transform: translateY(-4px);
+        }
+        
+        .feature-icon {
+            width: 3rem;
+            height: 3rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        
+        .hero-section {
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1400px;
+            height: 1400px;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .nav-link {
+            position: relative;
+            color: var(--gray);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9375rem;
+        }
+        
+        .nav-link:hover {
+            color: var(--dark);
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        .testimonial-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .testimonial-card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-backdrop.active {
+            display: flex;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 3rem;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        
+        .close-button {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--gray);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .close-button:hover {
+            color: var(--dark);
+        }
+        
+        .login-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 1rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 0.5rem;
+            background: white;
+            color: var(--dark);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        
+        .login-btn:hover {
+            border-color: var(--primary);
+            background: #f8fafc;
+        }
+        
+        .faq-item {
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+        }
+        
+        .faq-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .faq-question {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: none;
+            border: none;
+            padding: 0.5rem 0;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--dark);
+            text-align: left;
+        }
+        
+        .faq-question:hover {
+            color: var(--primary);
+        }
+        
+        .faq-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .faq-icon.rotate {
+            transform: rotate(180deg);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            color: var(--gray);
+            line-height: 1.8;
+        }
+        
+        .faq-answer.active {
+            max-height: 500px;
+            opacity: 1;
+            padding-top: 1rem;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .section-padding {
+            padding-top: 5rem;
+            padding-bottom: 5rem;
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100 shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center max-w-7xl">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-graduation-cap text-2xl gradient-text"></i>
+                <span class="text-xl font-bold font-display">Vexara AI</span>
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="/" class="nav-link">Home</a>
+                <a href="#features" class="nav-link">Topics</a>
+                <a href="#faq" class="nav-link">FAQ</a>
+            </div>
+            <button id="login-link" class="btn-primary">Learn Science Now</button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section pt-40 pb-24 px-4 mt-12">
+        <div class="container mx-auto text-center max-w-4xl">
+            <h1 class="text-5xl md:text-6xl font-bold mb-6 font-display text-slate-900">Science Learning Assistant for SEE Students</h1>
+            <h2 class="text-2xl md:text-3xl font-semibold mb-4 text-gray-700">Easy Explanations for Physics, Chemistry & Biology</h2>
+            <p class="text-xl md:text-2xl text-gray-700 mb-8 leading-relaxed">Understand difficult science concepts instantly. Get clear explanations for physics laws, chemistry reactions, and biology processes with AI-powered guidance.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button id="get-started-link" class="btn-primary text-lg px-8 py-4">Understand Science Now</button>
+                <button id="demo-link" class="btn-outline text-lg px-8 py-4">See Explanations</button>
+            </div>
+            <p class="text-gray-600 mt-6 text-sm">Free • Clear Explanations • 24/7 Available</p>
+        </div>
+    </section>
+
+    <!-- Trust Section -->
+    <section class="py-16 px-4 bg-slate-50">
+        <div class="container mx-auto max-w-7xl">
+            <div class="text-center">
+                <p class="text-gray-600 font-semibold uppercase tracking-wider mb-4">Trusted by Students</p>
+                <h2 class="text-3xl font-bold mb-12 font-display">Excellence in Science Learning</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div>
+                    <div class="text-4xl font-bold gradient-text mb-2">50K+</div>
+                    <p class="text-gray-600">Science Concepts Explained</p>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold gradient-text mb-2">50K+</div>
+                    <p class="text-gray-600">Students Learning Better</p>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold gradient-text mb-2">100%</div>
+                    <p class="text-gray-600">Completely Free</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Science Topics Section -->
+    <section id="features" class="section-padding px-4">
+        <div class="container mx-auto max-w-7xl">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4 font-display">All Science Topics Explained</h2>
+                <p class="text-xl text-gray-600">Master every science concept required for SEE exam success</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Physics Section -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-magnet"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Physics Help</h3>
+                    <p class="text-gray-600 mb-4">Master mechanics, electricity, magnetism, waves, optics, modern physics, and thermodynamics. Get clear explanations for physics laws and principles.</p>
+                    <p class="text-sm text-gray-500">✓ Mechanics ✓ Electricity ✓ Waves & Light</p>
+                </div>
+                
+                <!-- Chemistry Section -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-flask-vial"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Chemistry Explanations</h3>
+                    <p class="text-gray-600 mb-4">Understand chemical reactions, atomic structure, periodic table, bonding, acids & bases, and organic chemistry with clear AI guidance.</p>
+                    <p class="text-sm text-gray-500">✓ Reactions ✓ Bonding ✓ Organic Chemistry</p>
+                </div>
+                
+                <!-- Biology Section -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-dna"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Biology Learning</h3>
+                    <p class="text-gray-600 mb-4">Learn cell biology, genetics, ecology, human systems, photosynthesis, and evolution. Understand biological processes with simple explanations.</p>
+                    <p class="text-sm text-gray-500">✓ Cell Biology ✓ Genetics ✓ Ecology</p>
+                </div>
+                
+                <!-- Laboratory Experiments -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-microscope"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Lab Experiments</h3>
+                    <p class="text-gray-600 mb-4">Get help understanding scientific experiments and practical work. Learn experimental procedures, safety, and how to interpret results.</p>
+                    <p class="text-sm text-gray-500">✓ Procedures ✓ Analysis ✓ Safety</p>
+                </div>
+                
+                <!-- Concept Diagrams -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-diagram-project"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Visual Concepts</h3>
+                    <p class="text-gray-600 mb-4">Understand complex science concepts through visual explanations. Get diagrams and step-by-step visual guides for difficult topics.</p>
+                    <p class="text-sm text-gray-500">✓ Diagrams ✓ Visual Guides ✓ Models</p>
+                </div>
+                
+                <!-- Exam Prep -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">SEE Science Exam Prep</h3>
+                    <p class="text-gray-600 mb-4">Prepare for SEE science exams with topic-wise explanations and practice questions. Build strong fundamentals for exam success.</p>
+                    <p class="text-sm text-gray-500">✓ Exam Focus ✓ Practice ✓ Revision</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="section-padding px-4 bg-slate-50">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-4xl font-bold mb-12 font-display text-center">How Vexara Helps You Learn Science</h2>
+            
+            <div class="space-y-12">
+                <div class="flex gap-8">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">1</div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-3">Ask About Any Concept</h3>
+                        <p class="text-gray-700 leading-relaxed">Confused about photosynthesis? Don't understand electricity? Ask Vexara any science question, no matter how basic or complex.</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-8">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">2</div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-3">Get Clear Explanations</h3>
+                        <p class="text-gray-700 leading-relaxed">Receive easy-to-understand explanations that break down complex science concepts into simple parts. Learn the "why" behind each concept.</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-8">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">3</div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-3">Connect Related Topics</h3>
+                        <p class="text-gray-700 leading-relaxed">Vexara shows how concepts connect to related topics, helping you build a complete understanding of science subjects.</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-8">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">4</div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-3">Master Science Topics</h3>
+                        <p class="text-gray-700 leading-relaxed">With repeated use and deep understanding, you'll develop true mastery of science concepts needed for SEE exams.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Vexara Section -->
+    <section class="section-padding px-4">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-4xl font-bold mb-4 font-display text-center">Why Choose Vexara for Science</h2>
+            <p class="text-xl text-gray-600 text-center mb-12">The best AI science tutor for SEE students in Nepal</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
+                    <h3 class="text-xl font-bold mb-4">✓ Simple Explanations</h3>
+                    <p class="text-gray-700">Complex science concepts explained in simple language that makes sense. No confusing jargon.</p>
+                </div>
+                
+                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
+                    <h3 class="text-xl font-bold mb-4">✓ All Subjects Covered</h3>
+                    <p class="text-gray-700">Physics, chemistry, biology—all science subjects from the SEE curriculum are fully covered.</p>
+                </div>
+                
+                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
+                    <h3 class="text-xl font-bold mb-4">✓ Instant Help Anytime</h3>
+                    <p class="text-gray-700">Get science help 24/7. No waiting for teachers or classmates. Instant answers whenever you need them.</p>
+                </div>
+                
+                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
+                    <h3 class="text-xl font-bold mb-4">✓ Completely Free</h3>
+                    <p class="text-gray-700">No hidden fees. No credit card. All science learning features are completely free for all students.</p>
+                </div>
+                
+                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
+                    <h3 class="text-xl font-bold mb-4">✓ Mobile Friendly</h3>
+                    <p class="text-gray-700">Learn science on any device—phone, tablet, or laptop. Study wherever is convenient for you.</p>
+                </div>
+                
+                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
+                    <h3 class="text-xl font-bold mb-4">✓ Built for SEE Students</h3>
+                    <p class="text-gray-700">Content aligned with Nepal's SEE curriculum. Help focused on exam success and deep learning.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Student Testimonials -->
+    <section class="section-padding px-4 bg-slate-50">
+        <div class="container mx-auto max-w-7xl">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4 font-display">What Science Students Say</h2>
+                <p class="text-xl text-gray-600">Real feedback from students mastering science with Vexara</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="testimonial-card">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full mr-4"></div>
+                        <div>
+                            <p class="font-bold">Sneha Gupta</p>
+                            <p class="text-sm text-gray-500">SEE Student, Bhaktapur</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-4">"Physics was terrifying until I found Vexara. The explanations are so clear! I actually understand concepts now instead of just memorizing. My science grades have jumped from 45 to 78!"</p>
+                    <div class="flex text-yellow-400">★★★★★</div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-400 rounded-full mr-4"></div>
+                        <div>
+                            <p class="font-bold">Arjun Thapa</p>
+                            <p class="text-sm text-gray-500">Biology Learner</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-4">"Cell biology and genetics were nightmares. Vexara explained everything so simply. Now I can explain these concepts to my friends! Highly recommend for any science student."</p>
+                    <div class="flex text-yellow-400">★★★★★</div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mr-4"></div>
+                        <div>
+                            <p class="font-bold">Kavya Nair</p>
+                            <p class="text-sm text-gray-500">Class 10 Student</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-4">"Chemistry reactions confused me so much. Vexara broke them down and now I understand why reactions happen. Science is actually interesting now!"</p>
+                    <div class="flex text-yellow-400">★★★★★</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="section-padding px-4">
+        <div class="container mx-auto max-w-3xl">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4 font-display">FAQ About Science Learning AI</h2>
+                <p class="text-xl text-gray-600">Common questions about Vexara's science learning</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Can Vexara explain complex science concepts?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Absolutely! Vexara specializes in explaining complex science concepts in simple language. From quantum mechanics to ecology, genetic engineering to electromagnetism—all can be explained clearly. The AI breaks down difficult topics into understandable parts.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Does Vexara cover physics, chemistry, and biology?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! Vexara covers all three major science subjects. Physics (mechanics, electricity, waves, optics), Chemistry (reactions, bonding, organic chemistry), and Biology (cells, genetics, ecology, human systems)—all comprehensively covered with clear explanations.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Is science learning help free on Vexara?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Completely free! Science learning with Vexara is 100% free. No subscriptions, no credit cards, no hidden charges. We believe all students deserve access to quality science education.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Can Vexara help with SEE science exam preparation?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! Use Vexara to understand all science concepts in the SEE curriculum. Ask questions about difficult topics, practice explaining concepts, and build deep understanding. This thorough learning prepares you excellently for SEE science exams.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Does Vexara explain lab experiments and procedures?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! Ask about any lab experiment or procedure. Vexara can explain experimental setups, procedures, safety measures, how to interpret results, and why certain steps are important in scientific work.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Can I use Vexara on my mobile phone?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Absolutely! Vexara works seamlessly on all devices—smartphones, tablets, and laptops. Study science anytime, anywhere. Perfect for learning on the go or during study breaks.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24 px-4 bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
+        <div class="container mx-auto text-center max-w-4xl">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">Ready to Master Science?</h2>
+            <p class="text-xl mb-10 opacity-95">Start learning science concepts easily with Vexara AI. Get clear explanations instantly. Free forever, no sign-up needed.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="#" id="call-to-action-link" class="bg-white text-blue-600 hover:bg-gray-50 py-4 px-10 rounded-lg text-lg font-semibold inline-block">Understand Science Now</a>
+                <a href="#" class="bg-white/10 hover:bg-white/20 py-4 px-10 rounded-lg text-lg font-semibold border border-white/30 inline-block">Explore Topics</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-16 px-4">
+        <div class="container mx-auto max-w-7xl">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                <div>
+                    <h3 class="text-xl font-bold mb-4 flex items-center font-display">
+                        <i class="fas fa-graduation-cap mr-2 gradient-text"></i> Vexara AI
+                    </h3>
+                    <p class="text-gray-400 mb-6">The AI science learning assistant for SEE students in Nepal.</p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Products</h4>
+                    <ul class="space-y-3">
+                        <li><a href="/" class="text-gray-400 hover:text-white">Vexara AI</a></li>
+                        <li><a href="/see-maths-ai" class="text-gray-400 hover:text-white">Maths Solver</a></li>
+                        <li><a href="/science-helper" class="text-gray-400 hover:text-white">Science Helper</a></li>
+                        <li><a href="/homework-ai" class="text-gray-400 hover:text-white">Homework AI</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Resources</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-gray-400 hover:text-white">Study Guide</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Blog</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Support</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Legal</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="pt-8 border-t border-gray-800 text-center text-gray-400">
+                <p>&copy; 2025 Vexara AI. All rights reserved. Built for SEE students in Nepal.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-backdrop">
+        <div class="login-container">
+            <button class="close-button" id="close-modal">&times;</button>
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-2 font-display">Welcome to Vexara AI</h2>
+                <p class="text-gray-600">Start learning science now</p>
+            </div>
+            
+            <div class="space-y-3">
+                <a href="/guest_login" class="login-btn" id="guest-login-btn">
+                    <i class="fas fa-user-secret mr-3"></i> Continue as Guest
+                </a>
+            </div>
+            
+            <div class="text-center mt-6 text-sm text-gray-500">
+                By continuing, you agree to our <a href="#" class="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" class="text-blue-600 hover:underline">Privacy Policy</a>.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginModal = document.getElementById('login-modal');
+            const loginLinks = ['login-link', 'get-started-link', 'demo-link', 'call-to-action-link'];
+            const closeModalButton = document.getElementById('close-modal');
+            const guestLoginBtn = document.getElementById('guest-login-btn');
+            
+            const openModal = () => {
+                loginModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            };
+            
+            const closeModal = () => {
+                loginModal.classList.remove('active');
+                document.body.style.overflow = '';
+            };
+            
+            loginLinks.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        openModal();
+                    });
+                }
+            });
+            
+            if (closeModalButton) closeModalButton.addEventListener('click', closeModal);
+            
+            loginModal.addEventListener('click', (e) => {
+                if (e.target === loginModal) closeModal();
+            });
+            
+            if (guestLoginBtn) {
+                guestLoginBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.location.href = 'guest_login';
+                });
+            }
+            
+            // FAQ functionality
+            const faqQuestions = document.querySelectorAll('.faq-question');
+            faqQuestions.forEach(question => {
+                question.addEventListener('click', () => {
+                    const answer = question.nextElementSibling;
+                    const icon = question.querySelector('.faq-icon');
+                    const isActive = answer.classList.contains('active');
+                    
+                    document.querySelectorAll('.faq-answer').forEach(a => a.classList.remove('active'));
+                    document.querySelectorAll('.faq-icon').forEach(i => i.classList.remove('rotate'));
+                    
+                    if (!isActive) {
+                        answer.classList.add('active');
+                        icon.classList.add('rotate');
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
