@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vexara AI - Your Revolutionary AI Assistant</title>
+    <title>Vexara AI – Free AI Study Assistant for SEE Students</title>
+    <meta name="description" content="Vexara AI is a free AI study assistant for SEE students offering maths solving, science explanations, homework help, coding support, and exam preparation. Get instant help with algebra, geometry, trigonometry, physics, chemistry, biology, and more.">
+    <meta name="keywords" content="SEE AI assistant, AI for students Nepal, homework AI, maths solver AI, science AI, Vexara AI, SEE exam preparation, AI study helper, free homework help">
+    <link rel="canonical" href="https://aivexara.xyz/">
+    <meta property="og:title" content="Vexara AI – Free AI Study Assistant for SEE Students">
+    <meta property="og:description" content="Free AI homework help, maths solving, science explanations, and exam preparation for students.">
+    <meta property="og:type" content="website">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for icons -->
@@ -193,145 +199,125 @@
             box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
         }
         
+        .pricing-card.featured::before {
+            content: 'RECOMMENDED FOR STUDENTS';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+        
         /* Modal styles */
         .modal-backdrop {
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(8px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
             z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
+            align-items: center;
+            justify-content: center;
         }
         
         .modal-backdrop.active {
-            opacity: 1;
-            visibility: visible;
+            display: flex;
         }
         
         .login-container {
             background: white;
+            border-radius: 1rem;
             padding: 3rem;
-            border-radius: 1.25rem;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 440px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
             position: relative;
-            transform: scale(0.95);
-            transition: all 0.3s ease;
         }
         
-        .modal-backdrop.active .login-container {
-            transform: scale(1);
+        .close-button {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--gray);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .close-button:hover {
+            color: var(--dark);
         }
         
         .login-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0.875rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            margin-bottom: 0.75rem;
-            text-decoration: none;
+            width: 100%;
+            padding: 1rem;
             border: 1.5px solid #e2e8f0;
+            border-radius: 0.5rem;
             background: white;
             color: var(--dark);
+            font-weight: 600;
             cursor: pointer;
-            font-size: 0.9375rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-size: 0.95rem;
         }
         
         .login-btn:hover {
             border-color: var(--primary);
             background: #f8fafc;
-            transform: translateY(-1px);
         }
         
         .login-btn.google {
-            border-color: #4285F4;
-            color: #4285F4;
-        }
-        
-        .login-btn.google:hover {
-            background: #4285F4;
-            color: white;
+            color: #1f2937;
         }
         
         .login-btn.microsoft {
-            border-color: #2F2F2F;
-            color: #2F2F2F;
-        }
-        
-        .login-btn.microsoft:hover {
-            background: #2F2F2F;
-            color: white;
-        }
-        
-        .close-button {
-            position: absolute;
-            top: 1.25rem;
-            right: 1.25rem;
-            background: transparent;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--gray);
-            cursor: pointer;
-            width: 2rem;
-            height: 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 0.375rem;
-        }
-        
-        .close-button:hover {
-            background: #f1f5f9;
-            color: var(--dark);
+            color: #0078d4;
         }
         
         /* FAQ */
         .faq-item {
-            border: 1px solid #e2e8f0;
-            border-radius: 0.75rem;
-            overflow: hidden;
-            margin-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+        }
+        
+        .faq-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
         }
         
         .faq-question {
             width: 100%;
-            text-align: left;
-            padding: 1.5rem;
-            background: white;
-            border: none;
-            cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: none;
+            border: none;
+            padding: 0.5rem 0;
+            cursor: pointer;
+            font-size: 1rem;
             font-weight: 600;
             color: var(--dark);
-            transition: all 0.2s ease;
+            text-align: left;
         }
         
         .faq-question:hover {
-            background: #f8fafc;
-        }
-        
-        .faq-answer {
-            padding: 0 1.5rem 1.5rem;
-            color: var(--gray);
-            display: none;
-        }
-        
-        .faq-answer.active {
-            display: block;
+            color: var(--primary);
         }
         
         .faq-icon {
@@ -342,484 +328,402 @@
             transform: rotate(180deg);
         }
         
-        /* Stats */
-        .stat-item {
-            text-align: center;
-            padding: 2rem;
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            color: var(--gray);
+            line-height: 1.8;
         }
         
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 0.5rem;
-            font-family: 'Space Grotesk', sans-serif;
-        }
-        
-        .stat-label {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 0.9375rem;
+        .faq-answer.active {
+            max-height: 500px;
+            opacity: 1;
+            padding-top: 1rem;
         }
         
         /* Gradient text */
         .gradient-text {
             background: linear-gradient(135deg, var(--primary), var(--accent));
             -webkit-background-clip: text;
-            background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
-        /* Badge */
-        .badge {
-            display: inline-block;
-            padding: 0.375rem 0.875rem;
-            background: #eff6ff;
-            color: var(--primary);
-            border-radius: 2rem;
-            font-size: 0.8125rem;
-            font-weight: 600;
-            letter-spacing: 0.025em;
-            text-transform: uppercase;
+        /* Section spacing */
+        .section-padding {
+            padding-top: 5rem;
+            padding-bottom: 5rem;
         }
         
-        /* Smooth scroll */
-        html {
-            scroll-behavior: smooth;
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 5px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--primary-dark);
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .login-container {
-                padding: 2rem;
-                margin: 1rem;
-            }
-            
-            .stat-number {
-                font-size: 2rem;
-            }
+        /* Container */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
         }
     </style>
 </head>
-<body>
 
-    <!-- Header Section -->
-    <header class="bg-white/80 backdrop-blur-md border-b border-gray-100 py-4 sticky top-0 z-50">
-        <div class="container mx-auto px-4 flex justify-between items-center max-w-7xl">
-            <a href="/" class="text-2xl font-bold flex items-center font-display">
-                <i class="fas fa-robot mr-2 gradient-text"></i>
-                <span class="gradient-text">Vexara AI</span>
-            </a>
-            <nav class="hidden md:block">
-                <ul class="flex items-center space-x-8">
-                    <li><a href="#features" class="nav-link">Features</a></li>
-                    <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
-                    <li><a href="#testimonials" class="nav-link">Testimonials</a></li>
-                    <li><a href="#pricing" class="nav-link">Pricing</a></li>
-                    <li><a href="#" id="login-link" class="btn-primary">Get Started</a></li>
-                </ul>
-            </nav>
-            <button class="md:hidden text-gray-600 hover:text-primary text-xl">
-                <i class="fas fa-bars"></i>
-            </button>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100 shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center max-w-7xl">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-graduation-cap text-2xl gradient-text"></i>
+                <span class="text-xl font-bold font-display">Vexara AI</span>
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#subjects" class="nav-link">Study Subjects</a>
+                <a href="#faq" class="nav-link">FAQ</a>
+            </div>
+            <button id="login-link" class="btn-primary">Start Studying Free</button>
         </div>
-    </header>
+    </nav>
 
     <!-- Hero Section -->
-    <section class="hero-section text-dark py-24 px-4 relative">
-        <div class="container mx-auto max-w-7xl relative z-10">
-            <div class="max-w-4xl mx-auto text-center">
-                <h1 class="text-5xl md:text-7xl font-bold leading-tight mb-6 font-display">
-                    Revolutionize Your Workflow With <span class="gradient-text">AI</span>
-                </h1>
-                <p class="text-xl md:text-2xl mb-10 text-gray-600 max-w-2xl mx-auto font-light">
-                    Vexara AI harnesses the power of Google Gemini to provide intelligent assistance that adapts to your unique needs.
-                </p>
-                <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-                    <a href="#" id="get-started-link" class="btn-primary">Start Free Trial</a>
-                    <a href="#how-it-works" class="btn-outline">See How It Works</a>
-                </div>
-                <div class="flex items-center justify-center gap-6 text-sm text-gray-600">
-                    <div class="flex -space-x-2">
-                        <img src="https://randomuser.me/api/portraits/women/44.jpg" class="w-10 h-10 rounded-full border-2 border-white" alt="User">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" class="w-10 h-10 rounded-full border-2 border-white" alt="User">
-                        <img src="https://randomuser.me/api/portraits/women/68.jpg" class="w-10 h-10 rounded-full border-2 border-white" alt="User">
-                    </div>
-                    <p>Trusted by <span class="font-semibold text-dark">25,000+</span> users worldwide</p>
-                </div>
+    <section class="hero-section pt-40 pb-24 px-4 mt-12">
+        <div class="container mx-auto text-center max-w-4xl">
+            <h1 class="text-5xl md:text-6xl font-bold mb-6 font-display text-slate-900">Vexara AI – The Smart AI Study Assistant for SEE Students</h1>
+            <p class="text-xl md:text-2xl text-gray-700 mb-8 leading-relaxed">Get instant help with maths, science, homework, coding, exam preparation, notes, and difficult concepts using AI. Perfect for Nepal SEE students.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button id="get-started-link" class="btn-primary text-lg px-8 py-4">Start Studying Free</button>
+                <button id="demo-link" class="btn-outline text-lg px-8 py-4">Try AI Homework Help</button>
             </div>
+            <p class="text-gray-600 mt-6 text-sm">No credit card needed • Free forever • Built for students</p>
         </div>
     </section>
 
-    <!-- Stats Section -->
-    <section class="py-16 bg-gradient-to-br from-blue-600 to-cyan-500">
-        <div class="container mx-auto px-4 max-w-7xl">
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-8">
-                <div class="stat-item">
-                    <div class="stat-number" id="stat1">25,000</div>
-                    <p class="stat-label">Active Students</p>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="stat3">350,000</div>
-                    <p class="stat-label">Questions Answered</p>
-                </div>
-                <div class="stat-item col-span-2 md:col-span-1">
-                    <div class="stat-number" id="stat4">4,800</div>
-                    <p class="stat-label">5-Star Reviews</p>
-                </div>
+    <!-- Trust Section -->
+    <section class="py-16 px-4 bg-slate-50">
+        <div class="container mx-auto max-w-7xl">
+            <div class="text-center">
+                <p class="text-gray-600 font-semibold uppercase tracking-wider mb-4">Built for Students</p>
+                <h2 class="text-3xl font-bold mb-12 font-display">Trusted by SEE Aspirants Nepal</h2>
             </div>
-        </div>
-    </section>
-
-    <!-- Clients Section -->
-    <section class="py-16 bg-white border-b border-gray-100">
-        <div class="container mx-auto px-4 max-w-7xl">
-            <p class="text-center text-gray-500 mb-10 text-sm font-semibold tracking-wide uppercase">Trusted by innovative companies</p>
-            <div class="flex flex-wrap justify-center items-center gap-12 opacity-50">
-                <img src="https://logo.clearbit.com/google.com" alt="Google" class="h-8">
-                <img src="https://logo.clearbit.com/microsoft.com" alt="Microsoft" class="h-8">
-                <img src="https://logo.clearbit.com/spotify.com" alt="Spotify" class="h-8">
-                <img src="https://logo.clearbit.com/airbnb.com" alt="Airbnb" class="h-8">
-                <img src="https://logo.clearbit.com/slack.com" alt="Slack" class="h-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div>
+                    <div class="text-4xl font-bold gradient-text mb-2">50K+</div>
+                    <p class="text-gray-600">Students Learning Faster</p>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold gradient-text mb-2">10M+</div>
+                    <p class="text-gray-600">Questions Solved</p>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold gradient-text mb-2">100%</div>
+                    <p class="text-gray-600">Free to Use</p>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- Features Section -->
-    <section id="features" class="py-24 px-4 bg-gray-50">
+    <section id="features" class="section-padding px-4">
         <div class="container mx-auto max-w-7xl">
-            <div class="text-center mb-16 max-w-3xl mx-auto">
-                <span class="badge mb-4">Features</span>
-                <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">AI-Powered Solutions That Transform Work</h2>
-                <p class="text-lg text-gray-600">Vexara AI adapts to your workflow with powerful features designed to enhance productivity and creativity.</p>
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4 font-display">Why Students Use Vexara</h2>
+                <p class="text-xl text-gray-600 mb-4">Everything you need to study smarter and prepare for SEE exams</p>
+                <p class="text-gray-600">Vexara AI is designed to help Nepal SEE students learn faster, solve difficult questions, and prepare better for exams using AI technology.</p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1: Maths Solver -->
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="fas fa-comment-dots"></i>
+                        <i class="fas fa-calculator"></i>
                     </div>
-                    <h3 class="text-xl font-semibold mb-3">Natural Conversations</h3>
-                    <p class="text-gray-600">Engage in human-like dialogue with context-aware responses that understand your needs.</p>
+                    <h3 class="text-xl font-bold mb-3">AI Maths Solver</h3>
+                    <p class="text-gray-600 mb-4">Get instant help with algebra, geometry, trigonometry, statistics, and all SEE mathematics topics with step-by-step solutions.</p>
+                    <p class="text-sm text-gray-500">Perfect for: Algebra, Geometry, Trigonometry, Calculus</p>
                 </div>
                 
+                <!-- Feature 2: Science Explanations -->
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="fas fa-lightbulb"></i>
+                        <i class="fas fa-flask"></i>
                     </div>
-                    <h3 class="text-xl font-semibold mb-3">Creative Ideation</h3>
-                    <p class="text-gray-600">Generate innovative ideas, content, and solutions tailored to your specific requirements.</p>
+                    <h3 class="text-xl font-bold mb-3">Science Explanations</h3>
+                    <p class="text-gray-600 mb-4">Easy explanations for physics, chemistry, and biology concepts. Understand complex topics with simplified AI guidance.</p>
+                    <p class="text-sm text-gray-500">Covers: Physics, Chemistry, Biology</p>
                 </div>
                 
+                <!-- Feature 3: Homework Help -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Homework Help</h3>
+                    <p class="text-gray-600 mb-4">Instant answers with step-by-step guidance for all your homework. Get help whenever you're stuck on a problem.</p>
+                    <p class="text-sm text-gray-500">Available 24/7 • All subjects • Detailed explanations</p>
+                </div>
+                
+                <!-- Feature 4: Exam Preparation -->
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-chart-line"></i>
                     </div>
-                    <h3 class="text-xl font-semibold mb-3">Data Analysis</h3>
-                    <p class="text-gray-600">Process and visualize complex data sets to uncover valuable insights and trends.</p>
+                    <h3 class="text-xl font-bold mb-3">Exam Preparation</h3>
+                    <p class="text-gray-600 mb-4">Practice questions, study summaries, and revision support for SEE exams. Get ready with AI-powered study materials.</p>
+                    <p class="text-sm text-gray-500">SEE exam focus • Practice tests • Revision notes</p>
                 </div>
                 
+                <!-- Feature 5: Coding Help -->
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-code"></i>
                     </div>
-                    <h3 class="text-xl font-semibold mb-3">Code Generation</h3>
-                    <p class="text-gray-600">Write, debug, and explain code in multiple programming languages with AI assistance.</p>
+                    <h3 class="text-xl font-bold mb-3">Coding Help</h3>
+                    <p class="text-gray-600 mb-4">Learn HTML, Python, JavaScript, and programming concepts. Debug code and understand computer science with AI assistance.</p>
+                    <p class="text-sm text-gray-500">Languages: Python, HTML, JavaScript, C++</p>
                 </div>
                 
+                <!-- Feature 6: Nepali Student Focused -->
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="fas fa-language"></i>
+                        <i class="fas fa-globe"></i>
                     </div>
-                    <h3 class="text-xl font-semibold mb-3">Multilingual Support</h3>
-                    <p class="text-gray-600">Communicate and create content in dozens of languages with native-level fluency.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <h3 class="text-xl font-semibold mb-3">Enterprise Security</h3>
-                    <p class="text-gray-600">Military-grade encryption and privacy controls to protect your sensitive data.</p>
+                    <h3 class="text-xl font-bold mb-3">Built for Nepal Students</h3>
+                    <p class="text-gray-600 mb-4">Specifically designed for SEE and academic students in Nepal. Content aligned with Nepal's education curriculum and exam patterns.</p>
+                    <p class="text-sm text-gray-500">Nepal focused • SEE aligned • Local support</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- How It Works Section -->
-    <section id="how-it-works" class="py-24 px-4 bg-white">
+    <!-- Subject Sections for SEO -->
+    <section id="subjects" class="section-padding px-4 bg-slate-50">
         <div class="container mx-auto max-w-7xl">
-            <div class="text-center mb-16 max-w-3xl mx-auto">
-                <span class="badge mb-4">How It Works</span>
-                <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">Simple Integration, Powerful Results</h2>
-                <p class="text-lg text-gray-600">Get started with Vexara AI in minutes and experience the difference immediately.</p>
-            </div>
+            <h2 class="text-4xl font-bold mb-4 font-display text-center">Study Subjects Supported</h2>
+            <p class="text-xl text-gray-600 text-center mb-16">Vexara AI helps students across all major subjects required for SEE examination</p>
             
-            <div class="max-w-3xl mx-auto space-y-8">
-                <div class="flex items-start gap-6">
-                    <div class="flex-shrink-0 w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-xl font-display">
-                        1
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold mb-2">Sign Up in Seconds</h3>
-                        <p class="text-gray-600">Create your account using your preferred method - Google, Microsoft, or email.</p>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <!-- Mathematics Section -->
+                <div class="bg-white p-8 rounded-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4 font-display">SEE Mathematics AI Helper</h3>
+                    <p class="text-gray-600 mb-6">Master algebra, geometry, trigonometry, and calculus with AI-powered step-by-step solutions. Our maths solver explains concepts clearly and helps you prepare for SEE mathematics exams.</p>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>✓ Algebra solutions and explanations</li>
+                        <li>✓ Geometry problem solving</li>
+                        <li>✓ Trigonometry help and formulas</li>
+                        <li>✓ Statistics and probability</li>
+                        <li>✓ SEE exam practice questions</li>
+                    </ul>
                 </div>
                 
-                <div class="flex items-start gap-6">
-                    <div class="flex-shrink-0 w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-xl font-display">
-                        2
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold mb-2">Customize Your Experience</h3>
-                        <p class="text-gray-600">Tell us about your needs and preferences to personalize your AI assistant.</p>
-                    </div>
+                <!-- Science Section -->
+                <div class="bg-white p-8 rounded-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4 font-display">Science Learning Assistant</h3>
+                    <p class="text-gray-600 mb-6">Understand physics, chemistry, and biology easily with AI explanations. Get help with difficult science concepts and prepare for your SEE science exams.</p>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>✓ Physics concepts and formulas</li>
+                        <li>✓ Chemistry reactions and equations</li>
+                        <li>✓ Biology processes and systems</li>
+                        <li>✓ Lab experiment guidance</li>
+                        <li>✓ Science exam preparation</li>
+                    </ul>
                 </div>
                 
-                <div class="flex items-start gap-6">
-                    <div class="flex-shrink-0 w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-xl font-display">
-                        3
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold mb-2">Start Interacting</h3>
-                        <p class="text-gray-600">Begin chatting with Vexara AI and discover how it can transform your workflow.</p>
-                    </div>
+                <!-- Homework Section -->
+                <div class="bg-white p-8 rounded-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4 font-display">AI Homework Solver</h3>
+                    <p class="text-gray-600 mb-6">Get instant help with any homework assignment. Our AI provides detailed solutions and explanations to help you understand and complete your work.</p>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>✓ Instant homework solutions</li>
+                        <li>✓ Step-by-step explanations</li>
+                        <li>✓ All subject support</li>
+                        <li>✓ 24/7 availability</li>
+                        <li>✓ Learn while solving</li>
+                    </ul>
+                </div>
+                
+                <!-- Notes Section -->
+                <div class="bg-white p-8 rounded-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4 font-display">Study Notes Generator</h3>
+                    <p class="text-gray-600 mb-6">Generate comprehensive study notes on any topic. Vexara creates well-organized, revision-friendly notes to help you prepare for exams efficiently.</p>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>✓ Topic-wise notes generation</li>
+                        <li>✓ Summary and key points</li>
+                        <li>✓ Exam-focused content</li>
+                        <li>✓ Easy-to-review format</li>
+                        <li>✓ All subjects covered</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SEO Content Section -->
+    <section class="section-padding px-4">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-4xl font-bold mb-8 font-display">How AI Helps SEE Students Learn Better</h2>
+            
+            <div class="prose prose-lg text-gray-700 space-y-6">
+                <div>
+                    <h3 class="text-2xl font-bold mb-3">Study Faster with AI</h3>
+                    <p>Vexara AI reduces the time you spend understanding difficult topics. Instead of struggling alone, get instant explanations and solutions that help you grasp concepts quickly. Our AI is available 24/7 to support your learning journey.</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-2xl font-bold mb-3">Learn Difficult Concepts Easily</h3>
+                    <p>Complex maths problems, challenging science theories, or tricky coding concepts—Vexara breaks everything down into simple, understandable explanations. Each answer includes step-by-step guidance so you truly understand the "why" behind solutions.</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-2xl font-bold mb-3">AI Study Assistant Benefits</h3>
+                    <p>Using Vexara AI as your study companion gives you several advantages: instant homework help, personalized learning pace, no judgment when asking questions, and comprehensive coverage of all subjects. Learn on your own schedule, wherever you are.</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-2xl font-bold mb-3">Perfect for SEE Exam Preparation</h3>
+                    <p>SEE exams require strong fundamentals across multiple subjects. Vexara helps you practice, understand concepts deeply, and review efficiently. With AI-powered suggestions and exam-focused content, you'll be well-prepared when exam day arrives.</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Testimonials Section -->
-    <section id="testimonials" class="py-24 px-4 bg-gray-50">
+    <section class="section-padding px-4 bg-slate-50">
         <div class="container mx-auto max-w-7xl">
-            <div class="text-center mb-16 max-w-3xl mx-auto">
-                <span class="badge mb-4">Testimonials</span>
-                <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">What Our Users Say</h2>
-                <p class="text-lg text-gray-600">Don't just take our word for it - hear from people who use Vexara AI every day.</p>
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4 font-display">Student Success Stories</h2>
+                <p class="text-xl text-gray-600">Hear from real SEE students who are learning faster with Vexara AI</p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="testimonial-card">
                     <div class="flex items-center mb-4">
-                        <img src="https://randomuser.me/api/portraits/women/44.jpg" class="w-12 h-12 rounded-full mr-4" alt="Sarah Johnson">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full mr-4"></div>
                         <div>
-                            <h4 class="font-semibold">Sarah Johnson</h4>
-                            <p class="text-gray-500 text-sm">Marketing Director</p>
+                            <p class="font-bold">Raj Sharma</p>
+                            <p class="text-sm text-gray-500">SEE Student, Kathmandu</p>
                         </div>
                     </div>
-                    <p class="text-gray-700 mb-4">"Vexara AI has transformed how we create content. It's like having an entire creative team at my fingertips. Our engagement rates have doubled since we started using it."</p>
-                    <div class="text-yellow-400 text-sm">
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                    </div>
+                    <p class="text-gray-700">"Vexara helped me understand trigonometry before my SEE exam. The step-by-step solutions made complex problems so much easier to understand. I scored well thanks to this AI!"</p>
+                    <div class="flex text-yellow-400 mt-4">★★★★★</div>
                 </div>
                 
                 <div class="testimonial-card">
                     <div class="flex items-center mb-4">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" class="w-12 h-12 rounded-full mr-4" alt="Michael Chen">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-400 rounded-full mr-4"></div>
                         <div>
-                            <h4 class="font-semibold">Michael Chen</h4>
-                            <p class="text-gray-500 text-sm">Software Engineer</p>
+                            <p class="font-bold">Priya Poudel</p>
+                            <p class="text-sm text-gray-500">Class 10 Student</p>
                         </div>
                     </div>
-                    <p class="text-gray-700 mb-4">"As a developer, I use Vexara daily for code reviews and debugging. It catches errors I miss and explains complex concepts in simple terms. An indispensable tool."</p>
-                    <div class="text-yellow-400 text-sm">
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star-half-alt"></i>
-                    </div>
+                    <p class="text-gray-700">"I was really struggling with chemistry reactions, but Vexara explained everything so clearly. Now I can solve homework problems independently without getting frustrated."</p>
+                    <div class="flex text-yellow-400 mt-4">★★★★★</div>
                 </div>
                 
                 <div class="testimonial-card">
                     <div class="flex items-center mb-4">
-                        <img src="https://randomuser.me/api/portraits/women/68.jpg" class="w-12 h-12 rounded-full mr-4" alt="Emma Rodriguez">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mr-4"></div>
                         <div>
-                            <h4 class="font-semibold">Emma Rodriguez</h4>
-                            <p class="text-gray-500 text-sm">Small Business Owner</p>
+                            <p class="font-bold">Anish Gupta</p>
+                            <p class="text-sm text-gray-500">Coding Learner</p>
                         </div>
                     </div>
-                    <p class="text-gray-700 mb-4">"Running a business alone was overwhelming until I found Vexara. It handles customer inquiries, writes emails, and even helps with accounting questions. Game changer!"</p>
-                    <div class="text-yellow-400 text-sm">
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                    </div>
+                    <p class="text-gray-700">"Learning Python seemed impossible at first, but Vexara's explanations and code examples made it so practical. I'm now able to write my own programs!"</p>
+                    <div class="flex text-yellow-400 mt-4">★★★★★</div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Pricing Section -->
-    <section id="pricing" class="py-24 px-4 bg-white">
-        <div class="container mx-auto max-w-7xl">
-            <div class="text-center mb-16 max-w-3xl mx-auto">
-                <span class="badge mb-4">Pricing</span>
-                <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">Flexible Plans for Every Need</h2>
-                <p class="text-lg text-gray-600">Choose the perfect plan for your requirements, with options to scale as you grow.</p>
+    <!-- Simple Pricing Section -->
+    <section class="section-padding px-4">
+        <div class="container mx-auto max-w-4xl">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4 font-display">Free to Start. No Credit Card Needed.</h2>
+                <p class="text-xl text-gray-600">Vexara AI is built for students. That's why it's free and always will be for basic features.</p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                <div class="pricing-card">
-                    <h3 class="text-2xl font-bold mb-2 font-display">Starter</h3>
-                    <p class="text-gray-600 mb-6">Perfect for individuals getting started with AI</p>
-                    <div class="mb-6">
-                        <span class="text-5xl font-bold font-display">$0</span>
-                        <span class="text-gray-500">/month</span>
-                    </div>
-                    <ul class="space-y-3 mb-8">
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>20 requests per day</span>
-                        </li>
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>Basic AI capabilities</span>
-                        </li>
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>Email support</span>
-                        </li>
-                    </ul>
-                    <a href="#" class="btn-outline block text-center">Get Started</a>
-                </div>
-                
-                <div class="pricing-card featured">
-                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                        MOST POPULAR
-                    </div>
-                    <h3 class="text-2xl font-bold mb-2 font-display">Professional</h3>
-                    <p class="text-gray-600 mb-6">For professionals and small teams</p>
-                    <div class="mb-6">
-                        <span class="text-5xl font-bold font-display">$29</span>
-                        <span class="text-gray-500">/month</span>
-                    </div>
-                    <ul class="space-y-3 mb-8">
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>500 requests per month</span>
-                        </li>
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>Advanced AI capabilities</span>
-                        </li>
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>Priority support</span>
-                        </li>
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>API access</span>
-                        </li>
-                    </ul>
-                    <a href="#" class="btn-primary block text-center">Start Free Trial</a>
-                </div>
-                
-                <div class="pricing-card">
-                    <h3 class="text-2xl font-bold mb-2 font-display">Enterprise</h3>
-                    <p class="text-gray-600 mb-6">For organizations with advanced needs</p>
-                    <div class="mb-6">
-                        <span class="text-5xl font-bold font-display">$99</span>
-                        <span class="text-gray-500">/month</span>
-                    </div>
-                    <ul class="space-y-3 mb-8">
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>Unlimited requests</span>
-                        </li>
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>Premium AI capabilities</span>
-                        </li>
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>24/7 dedicated support</span>
-                        </li>
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>Custom integrations</span>
-                        </li>
-                        <li class="flex items-center text-gray-700">
-                            <i class="fas fa-check text-green-500 mr-3"></i>
-                            <span>Team management</span>
-                        </li>
-                    </ul>
-                    <a href="#" class="btn-outline block text-center">Contact Sales</a>
-                </div>
+            <div class="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-lg p-12 text-center">
+                <h3 class="text-3xl font-bold mb-4 font-display">Vexara Student Plan</h3>
+                <div class="text-5xl font-bold gradient-text mb-2">Free</div>
+                <p class="text-gray-600 mb-8">Forever free for all essential study features</p>
+                <ul class="text-left max-w-md mx-auto space-y-3 mb-8 text-gray-700">
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i>Unlimited homework help</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i>Maths solver with explanations</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i>Science concepts explained</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i>Coding help and tutorials</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i>Study notes generator</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i>Exam preparation resources</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i>24/7 availability</li>
+                </ul>
+                <button id="pricing-cta-link" class="btn-primary text-lg px-8 py-4">Start Studying Free</button>
+                <p class="text-gray-500 text-sm mt-6">No credit card. No commitment. Cancel anytime.</p>
             </div>
         </div>
     </section>
 
     <!-- FAQ Section -->
-    <section class="py-24 px-4 bg-gray-50">
-        <div class="container mx-auto max-w-4xl">
+    <section id="faq" class="section-padding px-4 bg-slate-50">
+        <div class="container mx-auto max-w-3xl">
             <div class="text-center mb-16">
-                <span class="badge mb-4">FAQ</span>
-                <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">Frequently Asked Questions</h2>
-                <p class="text-lg text-gray-600">Find answers to common questions about Vexara AI.</p>
+                <h2 class="text-4xl font-bold mb-4 font-display">Frequently Asked Questions</h2>
+                <p class="text-xl text-gray-600">Common questions about Vexara AI for students</p>
             </div>
             
             <div class="space-y-4">
-                <div class="faq-item">
+                <div class="faq-item bg-white rounded-lg p-6">
                     <button class="faq-question">
-                        <span>What makes Vexara AI different from other AI assistants?</span>
+                        <span>Can Vexara help with SEE maths?</span>
                         <i class="fas fa-chevron-down faq-icon"></i>
                     </button>
                     <div class="faq-answer">
-                        <p>Vexara AI leverages Google Gemini's cutting-edge technology combined with our proprietary customization layer to provide more accurate, context-aware responses. Unlike generic AI assistants, Vexara learns your preferences and adapts to your specific needs over time.</p>
+                        <p>Absolutely! Vexara AI is specifically designed to help with SEE mathematics. Our maths solver can help with algebra, geometry, trigonometry, statistics, and all topics covered in the SEE exam curriculum. Get step-by-step solutions and clear explanations for any maths problem you're struggling with.</p>
                     </div>
                 </div>
                 
-                <div class="faq-item">
+                <div class="faq-item bg-white rounded-lg p-6">
                     <button class="faq-question">
-                        <span>Is my data secure with Vexara AI?</span>
+                        <span>Is Vexara free for students?</span>
                         <i class="fas fa-chevron-down faq-icon"></i>
                     </button>
                     <div class="faq-answer">
-                        <p>Absolutely. We implement enterprise-grade security measures including end-to-end encryption, regular security audits, and strict data access controls. Your conversations are never used to train public models without your explicit consent.</p>
+                        <p>Yes! Vexara AI is completely free for students. There's no credit card required, and no hidden charges. We're built specifically for students in Nepal, which is why we keep all essential features free. You can start using Vexara immediately without paying anything.</p>
                     </div>
                 </div>
                 
-                <div class="faq-item">
+                <div class="faq-item bg-white rounded-lg p-6">
                     <button class="faq-question">
-                        <span>Can I integrate Vexara AI with other tools I use?</span>
+                        <span>Can it explain science concepts?</span>
                         <i class="fas fa-chevron-down faq-icon"></i>
                     </button>
                     <div class="faq-answer">
-                        <p>Yes! Vexara offers API access for Professional and Enterprise plans, allowing integration with popular productivity tools like Slack, Microsoft Teams, and Google Workspace. We also provide documentation for custom integrations.</p>
+                        <p>Yes! Vexara provides clear explanations for physics, chemistry, and biology concepts. Whether you're struggling with Newton's laws, chemical reactions, or biological processes, our AI breaks down complex science topics into easy-to-understand explanations. Perfect for SEE science exam preparation.</p>
                     </div>
                 </div>
                 
-                <div class="faq-item">
+                <div class="faq-item bg-white rounded-lg p-6">
                     <button class="faq-question">
-                        <span>What happens if I exceed my monthly request limit?</span>
+                        <span>Does it help with homework?</span>
                         <i class="fas fa-chevron-down faq-icon"></i>
                     </button>
                     <div class="faq-answer">
-                        <p>If you exceed your plan's request limit, you'll have the option to purchase additional requests or upgrade your plan. We'll notify you before you reach your limit so you can make adjustments as needed.</p>
+                        <p>Absolutely! That's one of Vexara's main features. Simply ask your homework question, and get instant solutions with step-by-step guidance. Our AI helps you understand the concepts while solving your homework, so you learn while you work. Available 24/7 for all subjects.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Can I use it on mobile?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! Vexara AI works seamlessly on mobile devices. Our platform is fully responsive, so you can access all features from your smartphone or tablet. Study on the go, ask questions anytime, and get help whenever you need it.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Is Vexara useful for exam preparation?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! Vexara is excellent for SEE exam preparation. You can use it to practice questions, clarify difficult concepts, generate study notes, and review weak areas. Our AI helps you prepare efficiently by providing personalized support in whatever subject or topic you need help with.</p>
                     </div>
                 </div>
             </div>
@@ -829,11 +733,11 @@
     <!-- Final CTA Section -->
     <section class="py-24 px-4 bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
         <div class="container mx-auto text-center max-w-4xl">
-            <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">Ready to Experience the Future of AI?</h2>
-            <p class="text-xl mb-10 opacity-95">Join thousands of professionals already boosting their productivity with Vexara AI.</p>
+            <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">Ready to Study Smarter?</h2>
+            <p class="text-xl mb-10 opacity-95">Join thousands of SEE students already learning faster with Vexara AI. Start for free today.</p>
             <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="#" id="call-to-action-link" class="bg-white text-blue-600 hover:bg-gray-50 py-4 px-10 rounded-lg text-lg font-semibold inline-block">Start Your Free Trial</a>
-                <a href="#" class="bg-white/10 hover:bg-white/20 py-4 px-10 rounded-lg text-lg font-semibold border border-white/30 inline-block">Schedule a Demo</a>
+                <a href="#" id="call-to-action-link" class="bg-white text-blue-600 hover:bg-gray-50 py-4 px-10 rounded-lg text-lg font-semibold inline-block">Start Studying Free</a>
+                <a href="#" class="bg-white/10 hover:bg-white/20 py-4 px-10 rounded-lg text-lg font-semibold border border-white/30 inline-block">Solve Maths Now</a>
             </div>
         </div>
     </section>
@@ -844,9 +748,9 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                 <div>
                     <h3 class="text-xl font-bold mb-4 flex items-center font-display">
-                        <i class="fas fa-robot mr-2 gradient-text"></i> Vexara AI
+                        <i class="fas fa-graduation-cap mr-2 gradient-text"></i> Vexara AI
                     </h3>
-                    <p class="text-gray-400 mb-6">Your personal AI assistant, powered by Google Gemini.</p>
+                    <p class="text-gray-400 mb-6">The AI study assistant for SEE students in Nepal, powered by Google Gemini.</p>
                     <div class="flex space-x-4">
                         <a href="#" class="text-gray-400 hover:text-white text-lg">
                             <i class="fab fa-twitter"></i>
@@ -861,38 +765,38 @@
                 </div>
                 
                 <div>
-                    <h4 class="font-semibold mb-4">Product</h4>
-                    <ul class="space-y-3">
-                        <li><a href="#" class="text-gray-400 hover:text-white">Features</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Pricing</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">API</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Integrations</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h4 class="font-semibold mb-4">Resources</h4>
-                    <ul class="space-y-3">
-                        <li><a href="#" class="text-gray-400 hover:text-white">Documentation</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Guides</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Blog</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Support</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h4 class="font-semibold mb-4">Company</h4>
+                    <h4 class="font-semibold mb-4">About Vexara</h4>
                     <ul class="space-y-3">
                         <li><a href="#" class="text-gray-400 hover:text-white">About Us</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Careers</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">How It Works</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">For Students</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Student Resources</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-gray-400 hover:text-white">SEE Study Help</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">AI Learning Tools</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Blog</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Study Guide</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Legal</h4>
+                    <ul class="space-y-3">
                         <li><a href="#" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
                         <li><a href="#" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Cookie Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Support</a></li>
                     </ul>
                 </div>
             </div>
             
             <div class="pt-8 border-t border-gray-800 text-center text-gray-400">
-                <p>&copy; 2025 Vexara AI. All rights reserved.</p>
+                <p>&copy; 2025 Vexara AI. All rights reserved. Built for SEE students in Nepal.</p>
             </div>
         </div>
     </footer>
@@ -903,17 +807,11 @@
             <button class="close-button" id="close-modal">&times;</button>
             <div class="text-center mb-8">
                 <h2 class="text-3xl font-bold mb-2 font-display">Welcome to Vexara AI</h2>
-                <p class="text-gray-600">Sign in to access your personal AI assistant</p>
+                <p class="text-gray-600">Start your free AI study journey now</p>
             </div>
             
             <div class="space-y-3">
-                <!-- <a href="{{ url_for('google.login') }}" class="login-btn google" id="google-login-btn">
-                    <i class="fab fa-google mr-3"></i> Continue with Google
-                </a>
-                <a href="#" class="login-btn microsoft" id="microsoft-login-btn">
-                    <i class="fab fa-microsoft mr-3"></i> Continue with Microsoft
-                </a> -->
-                <a href="#" class="login-btn" id="guest-login-btn">
+                <a href="/guest_login" class="login-btn" id="guest-login-btn">
                     <i class="fas fa-user-secret mr-3"></i> Continue as Guest
                 </a>
             </div>
@@ -928,7 +826,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Modal functionality
             const loginModal = document.getElementById('login-modal');
-            const loginLinks = ['login-link', 'get-started-link', 'call-to-action-link'];
+            const loginLinks = ['login-link', 'get-started-link', 'pricing-cta-link', 'call-to-action-link'];
             const closeModalButton = document.getElementById('close-modal');
             const guestLoginBtn = document.getElementById('guest-login-btn');
             
