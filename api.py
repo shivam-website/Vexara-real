@@ -599,7 +599,7 @@ def guest_login():
     session['is_guest'] = True
 
     return redirect(url_for('chat'))
-    
+
 @app.route('/logout')
 def logout():
     """Logs out the user."""
@@ -632,12 +632,8 @@ def google_login_authorized():
         return redirect(url_for('login'))
 
 @app.route('/')
-def index():
-    """Main index route - redirect to login if not authenticated."""
-    # Check if user is logged in (has user_id in session)
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('index.html')
+def home():
+    return render_template('login.html')
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
