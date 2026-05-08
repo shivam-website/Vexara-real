@@ -571,28 +571,42 @@ def get_chat_messages(chat_id):
     chat_data = load_chat_history_from_file(user_id, chat_id)
     return jsonify(chat_data)
 
+@app.route('/chat')
+def chat():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    return render_template('index.html')
 @app.route('/login')
 def login():
     """Handles user login."""
+
     if 'user_id' in session:
-        return redirect(url_for('index'))
+        return redirect(url_for('chat'))
+
     return render_template('login.html')
 
 @app.route('/guest_login')
 def guest_login():
     """Logs in the user as a guest."""
+
     session.clear()
+
     temp_id = str(uuid.uuid4())
+
     session['temp_user_id'] = temp_id
     session['user_id'] = temp_id
     session['is_guest'] = True
-    return redirect(url_for('index'))
 
+    return redirect(url_for('chat'))
+    
 @app.route('/logout')
 def logout():
     """Logs out the user."""
+
     session.clear()
-    return redirect(url_for('login'))
+
+    return redirect(url_for('home'))
 
 @app.route('/user_info', methods=['GET'])
 def user_info():
