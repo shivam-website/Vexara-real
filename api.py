@@ -91,14 +91,14 @@ def increment_daily_message_count(user_id):
 
 # OAuth configuration
 google_bp = make_google_blueprint(
-    client_id="978102306464-qdjll3uos10m1nd5gcnr9iql9688db58.apps.googleusercontent.com",
-    client_secret="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",
+    client_id="1032731423015-tis6kpcdvm96uni6e7p5cnek2bepnuu6.apps.googleusercontent.com",
+    client_secret="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",
     redirect_url="/google_login/authorized",
     scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
 )
 app.register_blueprint(google_bp, url_prefix="/google_login")
 
-oauth = OAuth(app)
+oauth = OAuth(app)  
 microsoft = oauth.register(
     name='microsoft',
     client_id="your_microsoft_client_id",
