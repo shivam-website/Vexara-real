@@ -628,6 +628,66 @@ def home():
     """Home page redirect to login."""
     return render_template('login.html')
 
+@app.route('/guest_login')
+def guest_login():
+    """Handle guest login."""
+    # Generate a temporary user ID
+    temp_user_id = str(uuid.uuid4())
+    session['user_id'] = temp_user_id
+    session['is_guest'] = True
+    session['temp_user_id'] = temp_user_id
+    
+    # Redirect to the main app
+    return redirect(url_for('see_maths_ai'))
+
+@app.route('/google_login/authorized')
+def google_authorized():
+    """Handle Google OAuth callback."""
+    if not google.authorized:
+        return redirect(url_for('google.login'))
+    
+    try:
+        # Get user info from Google
+        resp = google.get("/oauth2/v2/userinfo")
+        if resp.ok:
+            user_info = resp.json()
+            email = user_info.get('email')
+            name = user_info.get('name')
+            
+            # Store user info in session
+            session['user_id'] = email
+            session['user_name'] = name
+            session['user_email'] = email
+            session['is_authenticated'] = True
+            session['is_guest'] = False
+            
+            logger.info(f"User logged in: {email}")
+            return redirect(url_for('see_maths_ai'))
+        else:
+            logger.error(f"Failed to get user info: {resp.text}")
+            return redirect(url_for('home'))
+            
+    except Exception as e:
+        logger.error(f"Google auth error: {e}")
+        return redirect(url_for('home'))
+
+@app.route('/logout')
+def logout():
+    """Handle user logout."""
+    session.clear()
+    return redirect(url_for('home'))
+
+@app.route('/check_auth')
+def check_auth():
+    """Check if user is authenticated."""
+    if 'user_id' in session:
+        return jsonify({
+            'authenticated': True,
+            'user_id': session.get('user_id'),
+            'user_name': session.get('user_name'),
+            'is_guest': session.get('is_guest', False)
+        })
+    return jsonify({'authenticated': False})
 
 @app.route("/see-maths-ai")
 def see_maths_ai():
