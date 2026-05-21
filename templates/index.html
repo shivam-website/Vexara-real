@@ -351,8 +351,6 @@
                   title="Enable web search"
                   role="switch"
                   aria-checked="false"
-                  display = none
-                >
                   <input
                     id="web-search-checkbox"
                     type="checkbox"
@@ -440,6 +438,7 @@
                       height: 18px;
                     }
                   }
+                  
                 </style>
 
                 <!-- ===== Script (paste near end of body, after other scripts for safety) ===== -->
@@ -1109,46 +1108,102 @@
         }
       });
     </script>
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const webSearchBtn = document.getElementById("web-search-btn");
-        const multiActionForm = document.getElementById("multi-action-form");
-        let isWebSearchEnabled = false;
+<script>
+  // ═══════════════════════════════════════════════════════════════════
+  //  UPDATED askAI FUNCTION - With Mode Mapping
+  // ═══════════════════════════════════════════════════════════════════
+  
+  async function askAI(instruction, modelChoice, performSearch = false) {
+    const textInput = document.getElementById("text-input");
+    const loader = document.getElementById("loader");
 
-        // ✅ Toggle Web Search Mode
-        webSearchBtn.addEventListener("click", () => {
-          isWebSearchEnabled = !isWebSearchEnabled;
-          webSearchBtn.classList.toggle("selected", isWebSearchEnabled);
-        });
+    loader.style.display = "block";
+    showStopButton();
+    stopSpeaking();
 
-        // ✅ Intercept form submit to include web search flag
-        multiActionForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
+    abortController = new AbortController();
+    const signal = abortController.signal;
 
-          const textInput = document.getElementById("text-input");
-          const userText = textInput.value.trim();
-          if (!userText) return;
+    try {
+      // ===== MAP FRONTEND MODE TO BACKEND MODE =====
+      let backendMode = 'auto';
+      
+      // Check which mode is active
+      const deepthinkToggle = document.getElementById("deepthink-toggle");
+      const isSolveMode = deepthinkToggle && deepthinkToggle.getAttribute("data-active") === "true";
+      
+      if (isSolveMode) {
+        backendMode = 'deepthink';  // → llama-3.3-70b-versatile on Groq
+        console.log("🧠 Using SOLVE mode (llama-3.3-70b)");
+      } else {
+        backendMode = 'normal';     // → llama-3.1-8b-instant on Groq
+        console.log("💬 Using NORMAL mode (llama-3.1-8b)");
+      }
 
-          // Detect selected model choice
-          const selectedModelRadio = document.querySelector(
-            "input[name='modelChoice']:checked"
-          );
-          const modelChoice = selectedModelRadio
-            ? selectedModelRadio.value
-            : "general";
+      const formData = new FormData();
+      formData.append("instruction", instruction);
+      formData.append("chat_id", currentChatId);
+      formData.append("model_choice", backendMode);  // Send 'normal' or 'deepthink'
+      formData.append("web_search", performSearch);
 
-          // Show user message
-          addMessage(userText, "user", null, new Date());
-
-          // ✅ Perform AI request with web search if enabled
-          if (isWebSearchEnabled) {
-            await askAI(userText, modelChoice, true);
-          } else {
-            await askAI(userText, modelChoice, false);
-          }
-        });
+      const response = await fetch(`${window.location.origin}/ask`, {
+        method: "POST",
+        body: formData,
+        signal: signal
       });
-    </script>
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      loader.style.display = "none";
+      createStreamingBotMessage(new Date());
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        const chunk = decoder.decode(value, { stream: true });
+        if (chunk) {
+          await appendToStreamingBotMessage(chunk);
+        }
+      }
+
+      finalizeStreamingBotMessage();
+    } catch (error) {
+      loader.style.display = "none";
+      if (error.name === "AbortError") {
+        console.log("Fetch aborted by user.");
+        if (currentBotMessageContentDiv) {
+          currentBotMessageContentDiv.innerHTML += `<p>*(Response stopped by user)*</p>`;
+        } else {
+          addMessage(`Response stopped by user.`, "bot", null, new Date());
+        }
+      } else {
+        console.error("Error asking AI:", error);
+        if (currentBotMessageContentDiv) {
+          currentBotMessageContentDiv.innerHTML += `<p>Error: ${error.message}</p>`;
+        } else {
+          addMessage(
+            `Sorry, there was an error processing your request: ${error.message}. Please try again.`,
+            "bot", null, new Date()
+          );
+        }
+      }
+      finalizeStreamingBotMessage();
+    } finally {
+      textInput.value = "";
+      textInput.style.height = "auto";
+      textInput.focus();
+      showSendButton();
+      abortController = null;
+    }
+  }
+</script>
 
     <style>
       /* ✅ Web Search Button Active State */
