@@ -59,7 +59,7 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 SERPER_API_KEY = os.environ.get("SERPER_API_KEY")
 
 # API Endpoints
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -491,9 +491,9 @@ class APIProvider:
             'api_key': GOOGLE_GEMINI_API_KEY,
             'type': 'gemini',
             'models': {
-                'normal': 'gemini-2.0-flash',
-                'deepthink': 'gemini-2.0-flash',
-                'vision': 'gemini-2.0-flash'
+                'normal': 'gemini-3.1-flash-lite',
+                'deepthink': 'gemini-3.1-flash-lite',
+                'vision': 'gemini-3.1-flash-lite'
             },
             'supports_vision': True,
             'status': 'active'
