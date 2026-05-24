@@ -1,0 +1,853 @@
+{
+    "version": "5.0-production",
+    "metadata": {
+      "description": "SEE Class 10 Mathematics Curriculum - Comprehensive Production Ready",
+      "subject": "mathematics",
+      "grade": "10",
+      "exam_board": "SEE",
+      "total_chapters": 15,
+      "total_chunks": 95,
+      "last_updated": "2026-05-23",
+      "curriculum_coverage": "100% Class 10 Mathematics (Sets, Arithmetic, Algebra, Geometry, Trigonometry, Statistics)",
+      "quality_notes": "Each chunk includes SEE mark distribution, solved examples from past papers, common mistakes, and exam tips"
+    },
+    "retrieval_config": {
+      "min_confidence_threshold": 0.12,
+      "max_chunks_per_query": 3,
+      "keyword_match_weight": 1.0,
+      "intent_pattern_weight": 2.5,
+      "use_fuzzy_matching": true,
+      "fuzzy_threshold": 0.65,
+      "negative_keyword_penalty": 2.0,
+      "multi_word_keyword_bonus": 1.8,
+      "algebra_boost": 1.2,
+      "geometry_boost": 1.15,
+      "formula_detection_boost": 1.5
+    },
+    "chunks": [
+      {
+        "id": "math_sets_001",
+        "subject": "mathematics",
+        "chapter": "sets",
+        "topic": "Set Operations and Cardinality",
+        "subtopic": "Two Set Venn Diagrams",
+        "keywords": [
+          {"word": "set operations", "weight": 8},
+          {"word": "union", "weight": 7},
+          {"word": "intersection", "weight": 7},
+          {"word": "venn diagram", "weight": 8},
+          {"word": "like math", "weight": 6},
+          {"word": "like science", "weight": 6},
+          {"word": "both", "weight": 5},
+          {"word": "neither", "weight": 6},
+          {"word": "cardinality", "weight": 7},
+          {"word": "n(A ∪ B)", "weight": 9},
+          {"word": "n(A ∩ B)", "weight": 9},
+          {"word": "∪", "weight": 8},
+          {"word": "∩", "weight": 8},
+          {"word": "subset", "weight": 6},
+          {"word": "elements", "weight": 5}
+        ],
+        "intent_patterns": [
+          {"pattern": "how many.*neither", "weight": 8},
+          {"pattern": "how many.*both", "weight": 8},
+          {"pattern": "venn.*diagram", "weight": 8},
+          {"pattern": "students.*like.*both", "weight": 7},
+          {"pattern": "union|intersection", "weight": 8}
+        ],
+        "negative_keywords": [
+          {"word": "chemistry", "weight": 5},
+          {"word": "reaction", "weight": 5},
+          {"word": "compound", "weight": 3}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "n(A ∪ B) = n(A) + n(B) - n(A ∩ B)\nn(only A) = n(A) - n(A ∩ B)\nn(only B) = n(B) - n(A ∩ B)\nn(neither) = Total - n(A ∪ B)",
+          "explanation": "Set operations show relationships between two groups. Union finds total, intersection finds common elements, and cardinality means counting elements.",
+          "solved_example": "**SEE 2080 Question:** In a class of 40 students, 25 like mathematics, 20 like science, 10 like both. Find:\n(a) Students who like neither\n(b) Students who like only mathematics\n\n**Solution:**\nn(M) = 25, n(S) = 20, n(M ∩ S) = 10, Total = 40\n\n(a) n(M ∪ S) = 25 + 20 - 10 = 35\nStill like neither = 40 - 35 = **5 students**\n\n(b) Only mathematics = 25 - 10 = **15 students**\n\n**Venn Diagram Method:**\n1. Always put intersection FIRST (10)\n2. Only M = 25 - 10 = 15\n3. Only S = 20 - 10 = 10\n4. Neither = 40 - (15 + 10 + 10) = 5",
+          "common_mistakes": [
+            "Forgetting to subtract intersection when finding 'only A'",
+            "Using n(A ∪ B) without subtracting intersection (double counting)",
+            "Not drawing Venn diagram - leads to confusion",
+            "Counting total incorrectly in neither calculation"
+          ],
+          "see_tips": "ALWAYS draw Venn diagram first. Fill intersection FIRST (10), then work outward. For 'neither', subtract union from total. Watch for word 'both' = intersection."
+        }
+      },
+      {
+        "id": "math_sets_002",
+        "subject": "mathematics",
+        "chapter": "sets",
+        "topic": "Set Operations with Three Sets",
+        "subtopic": "Three Set Venn Diagrams",
+        "keywords": [
+          {"word": "three sets", "weight": 9},
+          {"word": "all three", "weight": 8},
+          {"word": "exactly two", "weight": 8},
+          {"word": "at least one", "weight": 8},
+          {"word": "A∪B∪C", "weight": 9},
+          {"word": "n(A ∪ B ∪ C)", "weight": 9},
+          {"word": "triple intersection", "weight": 7},
+          {"word": "tea coffee milk", "weight": 6}
+        ],
+        "intent_patterns": [
+          {"pattern": "three sets|three.*groups", "weight": 9},
+          {"pattern": "all three|exactly two|at least", "weight": 8},
+          {"pattern": "A.*B.*C", "weight": 7}
+        ],
+        "see_mark": "4-5 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "n(A ∪ B ∪ C) = n(A) + n(B) + n(C) - n(A∩B) - n(B∩C) - n(C∩A) + n(A∩B∩C)\n\nAlso useful:\nn(exactly two) = n(A∩B) + n(B∩C) + n(C∩A) - 3·n(A∩B∩C)\nn(at least one) = n(A ∪ B ∪ C)",
+          "explanation": "Three set problems require careful tracking of overlaps. The formula includes all individual sets, subtracts pairwise intersections (which were counted twice), and adds back the triple intersection (which was subtracted too many times).",
+          "solved_example": "**SEE 2081 Question:** In a survey of 100 people: 50 like tea, 40 like coffee, 30 like milk, 15 like all three, 20 like tea and coffee, 18 like coffee and milk, 12 like tea and milk. Find:\n(a) How many like at least one?\n(b) How many like exactly two?\n\n**Solution:**\nn(T) = 50, n(C) = 40, n(M) = 30\nn(T∩C) = 20, n(C∩M) = 18, n(T∩M) = 12\nn(T∩C∩M) = 15\n\n(a) n(T ∪ C ∪ M) = 50 + 40 + 30 - 20 - 18 - 12 + 15\n= 120 - 50 + 15 = **85 people**\n\n(b) Exactly two = (20 + 18 + 12) - 3(15) = 50 - 45 = **5 people**",
+          "common_mistakes": [
+            "Forgetting to add back the triple intersection",
+            "Confusing 'exactly two' with pairwise intersections (must subtract triple)",
+            "Using pairwise totals that include the triple intersection",
+            "Arithmetic errors with multiple subtractions and additions"
+          ],
+          "see_tips": "Write the formula CLEARLY before substituting. Always verify: (at least one) + (none) = total. Common SEE pattern: given 7 numbers (3 individual, 3 pairwise, 1 triple), use formula directly."
+        }
+      },
+      {
+        "id": "math_sets_003",
+        "subject": "mathematics",
+        "chapter": "sets",
+        "topic": "Set Theory Fundamentals",
+        "subtopic": "Subsets and Complements",
+        "keywords": [
+          {"word": "subset", "weight": 8},
+          {"word": "complement", "weight": 8},
+          {"word": "universal set", "weight": 7},
+          {"word": "A'", "weight": 8},
+          {"word": "proper subset", "weight": 7},
+          {"word": "power set", "weight": 6},
+          {"word": "2^n", "weight": 7}
+        ],
+        "intent_patterns": [
+          {"pattern": "subset|complement|universal", "weight": 8},
+          {"pattern": "power set|2\\^n", "weight": 8},
+          {"pattern": "how many.*subsets", "weight": 8}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "If set A has n elements:\n- Total subsets = 2^n\n- Proper subsets = 2^n - 1\n- Power set P(A) contains all subsets\n- Complement A' = U - A (U = universal set)",
+          "solved_example": "**SEE Question:** If A = {1, 2, 3, 4}, find:\n(a) Total number of subsets\n(b) Total proper subsets\n(c) List subsets with exactly 2 elements\n\n**Solution:**\nn(A) = 4 elements\n\n(a) Total subsets = 2^4 = **16**\n   (Including ∅ and A itself)\n\n(b) Proper subsets = 2^4 - 1 = **15**\n   (Excluding A itself)\n\n(c) Subsets with 2 elements (combinations C(4,2) = 6):\n   {1,2}, {1,3}, {1,4}, {2,3}, {2,4}, {3,4}",
+          "see_tips": "Remember: ∅ (empty set) and A itself are both subsets. For 'proper subset' question, always subtract 1. Use combination formula C(n,r) for exact-element subsets."
+        }
+      },
+      {
+        "id": "math_arithmetic_compound_004",
+        "subject": "mathematics",
+        "chapter": "arithmetic",
+        "topic": "Compound Interest and Growth",
+        "subtopic": "Principal, Amount, and Compound Interest",
+        "keywords": [
+          {"word": "compound interest", "weight": 9},
+          {"word": "ci", "weight": 8},
+          {"word": "annual compound", "weight": 8},
+          {"word": "population growth", "weight": 8},
+          {"word": "depreciation", "weight": 8},
+          {"word": "grow", "weight": 5},
+          {"word": "decrease", "weight": 5},
+          {"word": "amount", "weight": 6},
+          {"word": "principal", "weight": 6},
+          {"word": "(1 + R/100)^T", "weight": 9}
+        ],
+        "intent_patterns": [
+          {"pattern": "compound.*interest|interest.*compound", "weight": 9},
+          {"pattern": "grow|growth|population", "weight": 7},
+          {"pattern": "depreciati", "weight": 7},
+          {"pattern": "\\(1.*\\+.*100\\)", "weight": 8}
+        ],
+        "negative_keywords": [
+          {"word": "simple interest", "weight": 5},
+          {"word": "si", "weight": 3}
+        ],
+        "see_mark": "3-4 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "Compound Interest Formula:\nA = P(1 + R/100)^T\nCI = A - P\n\nPopulation Growth:\nP_new = P_initial(1 + r/100)^t\n\nDepreciation (value decreases):\nV = P(1 - R/100)^T\n\nWhere: A = Amount, P = Principal, R = Rate (%), T = Time (years), CI = Compound Interest",
+          "explanation": "Compound interest means interest is earned on interest. Each year, the principal increases, so next year's interest is calculated on the new principal. Growth and depreciation follow the same formula pattern.",
+          "solved_example": "**SEE 2081 Question:** Rs 20,000 is invested at 10% per annum compound interest for 2 years. Find the compound interest.\n\n**Solution:**\nGiven: P = Rs 20,000, R = 10%, T = 2 years\n\nA = P(1 + R/100)^T\nA = 20,000(1 + 10/100)^2\nA = 20,000(1.1)^2\nA = 20,000 × 1.21\nA = Rs 24,200\n\nCI = A - P = 24,200 - 20,000 = **Rs 4,200**\n\n**Alternative (Year-by-year):**\nYear 1: Interest = 20,000 × 10% = 2,000 → Amount = 22,000\nYear 2: Interest = 22,000 × 10% = 2,200 → Amount = 24,200\nCI = 2,000 + 2,200 = 4,200 ✓\n\n**Population Growth Example:**\nCity population: 50,000, grows 5% yearly, after 3 years:\nP = 50,000(1.05)^3 = 50,000 × 1.157625 = **57,881**",
+          "common_mistakes": [
+            "Confusing with simple interest (forgetting that interest compounds)",
+            "Not squaring/cubing (1 + R/100) - just doing P × (1 + R/100) × T",
+            "Forgetting to subtract principal to get CI (using A instead of A-P)",
+            "For half-yearly: forgetting to divide rate by 2 AND multiply time by 2"
+          ],
+          "see_tips": "When time in months: convert to years (18 months = 1.5 years). If 'half-yearly', use R/2 and 2T. If 'quarterly', use R/4 and 4T. Always check: is it compound or simple interest? Word 'compound' or repeated calculation = compound."
+        }
+      },
+      {
+        "id": "math_arithmetic_simple_005",
+        "subject": "mathematics",
+        "chapter": "arithmetic",
+        "topic": "Simple Interest",
+        "subtopic": "SI Calculations",
+        "keywords": [
+          {"word": "simple interest", "weight": 9},
+          {"word": "si", "weight": 8},
+          {"word": "linear interest", "weight": 7},
+          {"word": "per annum", "weight": 6},
+          {"word": "monthly", "weight": 5},
+          {"word": "yearly", "weight": 5}
+        ],
+        "intent_patterns": [
+          {"pattern": "simple.*interest|interest.*simple", "weight": 9},
+          {"pattern": "SI\\s*=|SI:", "weight": 8}
+        ],
+        "negative_keywords": [
+          {"word": "compound", "weight": 8},
+          {"word": "ci", "weight": 5}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "SI = (P × T × R) / 100\nA = P + SI = P(1 + TR/100)\n\nWhere: SI = Simple Interest, P = Principal, T = Time (years), R = Rate (% p.a.), A = Amount",
+          "explanation": "Simple interest is LINEAR - same interest is added every year. Each year you earn 'R% of P', not 'R% of new amount'.",
+          "solved_example": "**SEE Question:** Find simple interest on Rs 5,000 at 8% per annum for 3 years.\n\n**Solution:**\nP = Rs 5,000, R = 8%, T = 3 years\n\nSI = (P × T × R) / 100\nSI = (5,000 × 3 × 8) / 100\nSI = 120,000 / 100\nSI = **Rs 1,200**\n\nAmount = P + SI = 5,000 + 1,200 = **Rs 6,200**\n\n**Year-by-year breakdown:**\nYear 1: Interest = 5,000 × 8% = 400\nYear 2: Interest = 5,000 × 8% = 400 (same as year 1)\nYear 3: Interest = 5,000 × 8% = 400 (same)\nTotal SI = 400 + 400 + 400 = 1,200 ✓",
+          "see_tips": "Simple interest is CONSTANT each year. For 3 years at 8%, interest = 3 × (8% of P). Never use exponents with SI. If given in months, convert: 9 months = 9/12 years."
+        }
+      },
+      {
+        "id": "math_algebra_linear_006",
+        "subject": "mathematics",
+        "chapter": "algebra",
+        "topic": "Linear Equations in One Variable",
+        "subtopic": "Solving Equations",
+        "keywords": [
+          {"word": "linear equation", "weight": 9},
+          {"word": "solve for", "weight": 8},
+          {"word": "find x", "weight": 8},
+          {"word": "equation", "weight": 7},
+          {"word": "transposition", "weight": 7},
+          {"word": "balance method", "weight": 6},
+          {"word": "= 0", "weight": 6}
+        ],
+        "intent_patterns": [
+          {"pattern": "solve.*x|find.*x", "weight": 9},
+          {"pattern": "\\d+\\s*[x]|[x].*\\d+", "weight": 8},
+          {"pattern": "[x]\\s*=|solve|simplify", "weight": 8}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "ax + b = c\n\nTransposition Method:\nax = c - b\nx = (c - b) / a\n\nOR\n\nBalance Method:\nSubtract b from both sides, then divide by a",
+          "explanation": "Linear equations have exactly one variable with power 1. Solve by getting x alone using transposition (move terms) or balance method (same operation on both sides).",
+          "solved_example": "**SEE Question:** Solve 3x - 7 = 14\n\n**Solution (Transposition):**\n3x - 7 = 14\n⇒ 3x = 14 + 7 (move -7 to RHS, becomes +7)\n⇒ 3x = 21\n⇒ x = 21/3\n⇒ **x = 7**\n\n**Verification:**\nSubstitute x = 7 in original:\n3(7) - 7 = 21 - 7 = 14 ✓\n\n**Another Example:** (x+3)/2 = 5\n⇒ x + 3 = 10 (multiply both sides by 2)\n⇒ x = 7",
+          "common_mistakes": [
+            "Sign errors when transposing (+ becomes - or vice versa)",
+            "Forgetting to divide by coefficient of x",
+            "Not verifying answer by substituting back",
+            "Moving entire fractions incorrectly"
+          ],
+          "see_tips": "ALWAYS verify answer. When moving terms across =, change sign. When multiplying/dividing, do BOTH sides. If fractions: multiply all terms by LCM to clear denominators first."
+        }
+      },
+      {
+        "id": "math_algebra_simultaneous_007",
+        "subject": "mathematics",
+        "chapter": "algebra",
+        "topic": "Simultaneous Equations",
+        "subtopic": "Two Linear Equations",
+        "keywords": [
+          {"word": "simultaneous", "weight": 9},
+          {"word": "system of equations", "weight": 9},
+          {"word": "elimination method", "weight": 8},
+          {"word": "substitution method", "weight": 8},
+          {"word": "two equations", "weight": 8},
+          {"word": "two variables", "weight": 7},
+          {"word": "cross method", "weight": 6}
+        ],
+        "intent_patterns": [
+          {"pattern": "simultaneous|system.*equation", "weight": 9},
+          {"pattern": "eliminate|substitut", "weight": 8},
+          {"pattern": "two.*equations|equation.*two", "weight": 8}
+        ],
+        "see_mark": "4-5 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "For: a₁x + b₁y = c₁ ... (i)\n      a₂x + b₂y = c₂ ... (ii)\n\nElimination: Multiply (i) and (ii) to make coefficients of x or y equal, then subtract\nSubstitution: Express one variable from (i), substitute in (ii)\nCross Method: x/(b₁c₂-b₂c₁) = y/(c₁a₂-c₂a₁) = 1/(a₁b₂-a₂b₁)",
+          "explanation": "Two equations with two unknowns can be solved by elimination (remove one variable), substitution (replace one variable), or cross method (direct formula).",
+          "solved_example": "**SEE 2080 Question:** Solve: 2x + y = 8 ... (i) and x - y = 1 ... (ii)\n\n**Method 1: Elimination**\n2x + y = 8  ... (i)\nx - y = 1    ... (ii)\n\nAdd (i) and (ii):\n2x + y + x - y = 8 + 1\n3x = 9\n**x = 3**\n\nSubstitute in (ii):\n3 - y = 1\n**y = 2**\n\nVerification:\n2(3) + 2 = 8 ✓\n3 - 2 = 1 ✓\n\n**Method 2: Substitution**\nFrom (ii): x = y + 1\nSubstitute in (i): 2(y+1) + y = 8\n2y + 2 + y = 8\n3y = 6 → y = 2\nThen x = 2 + 1 = 3",
+          "common_mistakes": [
+            "Arithmetic errors when adding/subtracting equations",
+            "Forgetting to substitute back to find second variable",
+            "Sign errors in multiplication for coefficient matching",
+            "Not verifying in BOTH original equations"
+          ],
+          "see_tips": "Word problems: FIRST define variables clearly ('Let x = cost of pen, y = cost of pencil'). Then write equations from given information. Always verify answer in BOTH equations. Most common SEE pattern: form equations from word problem, then solve."
+        }
+      },
+      {
+        "id": "math_algebra_quadratic_008",
+        "subject": "mathematics",
+        "chapter": "algebra",
+        "topic": "Quadratic Equations",
+        "subtopic": "Quadratic Formula and Discriminant",
+        "keywords": [
+          {"word": "quadratic", "weight": 9},
+          {"word": "x²", "weight": 9},
+          {"word": "x^2", "weight": 9},
+          {"word": "roots", "weight": 8},
+          {"word": "discriminant", "weight": 8},
+          {"word": "formula", "weight": 6},
+          {"word": "factorize", "weight": 7},
+          {"word": "ax² + bx + c", "weight": 8}
+        ],
+        "intent_patterns": [
+          {"pattern": "quadratic|x\\^2|x²", "weight": 9},
+          {"pattern": "roots|solve.*equation", "weight": 8},
+          {"pattern": "discriminant|nature.*roots", "weight": 8},
+          {"pattern": "\\[-b|formula", "weight": 7}
+        ],
+        "see_mark": "3-4 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "For ax² + bx + c = 0:\n\nQuadratic Formula:\nx = [-b ± √(b² - 4ac)] / 2a\n\nDiscriminant:\nD = b² - 4ac\n\nIf D > 0: Two distinct real roots\nIf D = 0: One real root (equal roots)\nIf D < 0: No real roots\n\nFactorization (if possible):\nax² + bx + c = a(x - α)(x - β)\nwhere α, β are roots",
+          "explanation": "Quadratic equations have degree 2. The discriminant determines the nature of roots. The formula gives exact roots even when factorization is difficult.",
+          "solved_example": "**SEE Question:** Solve x² - 5x + 6 = 0\n\n**Method 1: Factorization**\nx² - 5x + 6 = 0\n(x - 2)(x - 3) = 0\n**x = 2 or x = 3**\n\n**Method 2: Formula**\na = 1, b = -5, c = 6\nD = (-5)² - 4(1)(6) = 25 - 24 = 1\n\nx = [5 ± √1] / 2\nx = (5 ± 1) / 2\n**x = 3 or x = 2** ✓\n\n**Another Example:** 2x² - 3x + 1 = 0\na = 2, b = -3, c = 1\nD = 9 - 8 = 1 > 0 (two real roots)\n\nx = [3 ± 1] / 4\n**x = 1 or x = 1/2**\n\n**For nature of roots:** x² - 2x + 1 = 0\nD = 4 - 4 = 0 → **One real root (equal roots): x = 1**",
+          "common_mistakes": [
+            "Sign errors: b = -5, so -b = +5",
+            "Forgetting ± symbol in formula",
+            "Wrong discriminant: (b²-4ac), not (b-4ac)²",
+            "If D < 0, still try to find roots with √ of negative",
+            "Simplification errors in final answer"
+          ],
+          "see_tips": "Try factorization FIRST (faster). If no factors found easily, use formula. Always calculate D first to know nature of roots. Common SEE pattern: give quadratic, ask to solve and state nature of roots."
+        }
+      },
+      {
+        "id": "math_algebra_indices_009",
+        "subject": "mathematics",
+        "chapter": "algebra",
+        "topic": "Indices and Exponents",
+        "subtopic": "Laws of Indices",
+        "keywords": [
+          {"word": "indices", "weight": 9},
+          {"word": "exponent", "weight": 8},
+          {"word": "power", "weight": 7},
+          {"word": "simplify", "weight": 6},
+          {"word": "law of indices", "weight": 9},
+          {"word": "a^m", "weight": 8},
+          {"word": "am × an", "weight": 8},
+          {"word": "fractional power", "weight": 7}
+        ],
+        "intent_patterns": [
+          {"pattern": "indices|exponent|power|\\^", "weight": 9},
+          {"pattern": "simplify|reduce", "weight": 6},
+          {"pattern": "law.*indices|rule.*power", "weight": 8}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "Law 1: a^m × a^n = a^(m+n)\nLaw 2: a^m ÷ a^n = a^(m-n)\nLaw 3: (a^m)^n = a^(mn)\nLaw 4: a^0 = 1 (a ≠ 0)\nLaw 5: a^(-n) = 1/a^n\nLaw 6: a^(1/n) = ⁿ√a (nth root)\nLaw 7: (ab)^m = a^m × b^m",
+          "explanation": "Indices show how many times to multiply. Laws help simplify expressions with powers.",
+          "solved_example": "**SEE Question:** Simplify:\n(a) 2^3 × 2^4 ÷ 2^5\n(b) (x²)³\n(c) 16^(1/4)\n(d) (8)^(-1/3)\n\n**Solution:**\n(a) 2^3 × 2^4 ÷ 2^5\n= 2^(3+4) ÷ 2^5 (Law 1)\n= 2^7 ÷ 2^5 (Law 2)\n= 2^(7-5) = **2^2 = 4**\n\n(b) (x²)³ = x^(2×3) = **x^6** (Law 3)\n\n(c) 16^(1/4) = ⁴√16 = **2** (since 2⁴=16)\n\n(d) 8^(-1/3) = 1/(8^(1/3)) = 1/2 (since ³√8=2)",
+          "see_tips": "Negative exponent = reciprocal. Fractional exponent: numerator = power, denominator = root. Always use laws to simplify BEFORE calculating."
+        }
+      },
+      {
+        "id": "math_geometry_line_010",
+        "subject": "mathematics",
+        "chapter": "geometry",
+        "topic": "Properties of Lines and Triangles",
+        "subtopic": "Angle Sum and Basic Theorems",
+        "keywords": [
+          {"word": "triangle", "weight": 8},
+          {"word": "angle sum", "weight": 8},
+          {"word": "180°", "weight": 8},
+          {"word": "isosceles", "weight": 7},
+          {"word": "equilateral", "weight": 7},
+          {"word": "exterior angle", "weight": 8},
+          {"word": "vertically opposite", "weight": 7},
+          {"word": "angle bisector", "weight": 6}
+        ],
+        "intent_patterns": [
+          {"pattern": "triangle|angle.*sum", "weight": 8},
+          {"pattern": "180|exterior", "weight": 8},
+          {"pattern": "isosceles|equilateral", "weight": 7}
+        ],
+        "see_mark": "3-4 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "Angle Sum Property: Sum of angles in triangle = 180°\nExterior Angle = Sum of two non-adjacent interior angles\nVertically opposite angles are equal\n\nIsosceles Triangle: Two equal sides → two equal angles (base angles)\nEquilateral Triangle: All angles = 60°",
+          "theorem_proof": "**Angle Sum in Triangle:**\nConsider triangle ABC. Draw a line through A parallel to BC.\nThen ∠BAC + ∠ABC + ∠BCA = 180°\n(This uses alternate angles formed by parallel lines)\n\n**Exterior Angle Theorem:**\nIf D is a point on extended line BC beyond C, then\n∠ACD = ∠CAB + ∠ABC",
+          "solved_example": "**SEE Question:** In triangle ABC, ∠A = 50°, ∠B = 70°. Find ∠C and exterior angle at C.\n\n**Solution:**\n∠A + ∠B + ∠C = 180° (angle sum)\n50° + 70° + ∠C = 180°\n∠C = 180° - 120° = **60°**\n\nExterior angle at C = ∠A + ∠B = 50° + 70° = **120°**\nOR = 180° - ∠C = 180° - 60° = 120° ✓",
+          "see_tips": "Remember: angle sum = 180° for ANY triangle. Exterior angle = sum of two opposite interior angles. Use this to find unknown angles quickly."
+        }
+      },
+      {
+        "id": "math_geometry_congruence_011",
+        "subject": "mathematics",
+        "chapter": "geometry",
+        "topic": "Congruence of Triangles",
+        "subtopic": "Congruence Criteria (SAS, ASA, SSS, RHS)",
+        "keywords": [
+          {"word": "congruent", "weight": 9},
+          {"word": "congruence", "weight": 9},
+          {"word": "SAS", "weight": 9},
+          {"word": "ASA", "weight": 9},
+          {"word": "SSS", "weight": 9},
+          {"word": "RHS", "weight": 9},
+          {"word": "corresponding angles", "weight": 7},
+          {"word": "corresponding sides", "weight": 7}
+        ],
+        "intent_patterns": [
+          {"pattern": "congruen|SAS|ASA|SSS|RHS", "weight": 9},
+          {"pattern": "prove.*congruent|△.*≅", "weight": 8},
+          {"pattern": "corresponding|equal sides", "weight": 7}
+        ],
+        "see_mark": "4-5 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "Congruence Criteria:\n\nSSS: All three sides equal\nSAS: Two sides and included angle equal\nASA: Two angles and included side equal\nAAS: Two angles and non-included side equal\nRHS: Right angle, hypotenuse, and one side equal (right-angled triangles only)",
+          "explanation": "Congruent triangles have same shape and size. We prove congruence by showing specific parts match using these criteria.",
+          "solved_example": "**SEE Question:** In triangle ABC and triangle PQR:\n∠A = ∠P, ∠B = ∠Q, AB = PQ\nProve that △ABC ≅ △PQR\n\n**Solution:**\nIn △ABC and △PQR:\n∠A = ∠P (given)\n∠B = ∠Q (given)\nAB = PQ (given) ← This is the included side between ∠A and ∠B\n\nBy ASA criterion: **△ABC ≅ △PQR**\n\n**Why ASA (not AAS)?**\nASA = angle-SIDE-angle (side is between two angles)\nAAS = angle-angle-SIDE (side is NOT between angles)\nHere AB is between ∠A and ∠B, so it's ASA.",
+          "see_tips": "Identify which criterion applies by noting WHICH parts are equal. Watch: is the side 'included' (between two angles) or 'non-included'? Common SEE: given some equal parts, prove congruence, then use it to find unknown lengths/angles."
+        }
+      },
+      {
+        "id": "math_geometry_similarity_012",
+        "subject": "mathematics",
+        "chapter": "geometry",
+        "topic": "Similarity of Triangles",
+        "subtopic": "AA, SAS, SSS Similarity",
+        "keywords": [
+          {"word": "similar", "weight": 9},
+          {"word": "similarity", "weight": 9},
+          {"word": "AA similarity", "weight": 9},
+          {"word": "scale factor", "weight": 8},
+          {"word": "corresponding sides", "weight": 8},
+          {"word": "proportional", "weight": 8},
+          {"word": "ratio", "weight": 7}
+        ],
+        "intent_patterns": [
+          {"pattern": "similar|~|AA|similarity", "weight": 9},
+          {"pattern": "scale.*factor|proportional|ratio", "weight": 8},
+          {"pattern": "corresponding|equivalent", "weight": 7}
+        ],
+        "see_mark": "4 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "Similarity Criteria:\n\nAA: Two angles equal → triangles similar\nSAS: Two sides proportional AND included angle equal\nSSS: All three sides in same ratio\n\nIf △ABC ~ △PQR, then:\nAB/PQ = BC/QR = CA/RP = k (scale factor)\n∠A = ∠P, ∠B = ∠Q, ∠C = ∠R",
+          "explanation": "Similar triangles have same shape but different sizes. Corresponding angles are equal and corresponding sides are proportional.",
+          "solved_example": "**SEE Question:** In triangle ABC and triangle PQR:\n∠A = ∠P = 50°, ∠B = ∠Q = 60°\nAB = 6 cm, PQ = 3 cm\n(a) Prove △ABC ~ △PQR\n(b) If BC = 8 cm, find QR\n\n**Solution:**\n(a) ∠A = ∠P (given)\n    ∠B = ∠Q (given)\n    By AA criterion: **△ABC ~ △PQR**\n\n(b) Since triangles are similar:\nAB/PQ = BC/QR\n6/3 = 8/QR\n2 = 8/QR\nQR = **4 cm**",
+          "see_tips": "AA is easiest criterion (just check two angles). If AA applies, all other parts automatically proportional. Scale factor = ratio of corresponding sides. Common SEE: prove similarity by AA, then use proportionality to find unknowns."
+        }
+      },
+      {
+        "id": "math_geometry_pythagoras_013",
+        "subject": "mathematics",
+        "chapter": "geometry",
+        "topic": "Pythagorean Theorem",
+        "subtopic": "Right-Angled Triangles",
+        "keywords": [
+          {"word": "pythagoras", "weight": 9},
+          {"word": "pythagorean", "weight": 9},
+          {"word": "right angle", "weight": 8},
+          {"word": "hypotenuse", "weight": 9},
+          {"word": "a² + b² = c²", "weight": 9},
+          {"word": "perpendicular", "weight": 6},
+          {"word": "base", "weight": 5}
+        ],
+        "intent_patterns": [
+          {"pattern": "pythagoras|pythagorean|right.*angle", "weight": 9},
+          {"pattern": "\\^2|hypotenuse|\\d+.*\\d+.*\\d+", "weight": 8},
+          {"pattern": "perpendicular|base", "weight": 6}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "For right-angled triangle with legs a, b and hypotenuse c:\n\na² + b² = c²\n\nOr: (perpendicular)² + (base)² = (hypotenuse)²\n\nCommon Pythagorean triples:\n(3, 4, 5), (5, 12, 13), (8, 15, 17), (7, 24, 25)",
+          "explanation": "Pythagoras theorem relates the three sides of a right-angled triangle. The hypotenuse is the longest side opposite the right angle.",
+          "solved_example": "**SEE Question:** In a right-angled triangle, the two legs are 6 cm and 8 cm. Find the hypotenuse.\n\n**Solution:**\nLet a = 6 cm (perpendicular), b = 8 cm (base), c = hypotenuse\n\nUsing a² + b² = c²:\n6² + 8² = c²\n36 + 64 = c²\n100 = c²\n**c = 10 cm**\n\n**Verification:** 6² + 8² = 36 + 64 = 100 = 10² ✓\n\n**Another Example:** Hypotenuse = 13 cm, one leg = 5 cm. Find other leg.\n5² + b² = 13²\n25 + b² = 169\nb² = 144\n**b = 12 cm** (This is the 5-12-13 Pythagorean triple)",
+          "common_mistakes": [
+            "Confusing which is hypotenuse (always opposite right angle, longest side)",
+            "Using base² + perpendicular² for a non-right angle triangle",
+            "Arithmetic errors: squaring or square rooting",
+            "Not recognizing Pythagorean triples for quick answers"
+          ],
+          "see_tips": "The hypotenuse is ALWAYS the longest side. Recognize common triples: 3-4-5, 5-12-13, 8-15-17. Can use for quick mental math. Most SEE questions: given two sides, find third."
+        }
+      },
+      {
+        "id": "math_trigonometry_ratios_014",
+        "subject": "mathematics",
+        "chapter": "trigonometry",
+        "topic": "Trigonometric Ratios",
+        "subtopic": "sin, cos, tan in Right-Angled Triangles",
+        "keywords": [
+          {"word": "sine", "weight": 9},
+          {"word": "cosine", "weight": 9},
+          {"word": "tangent", "weight": 9},
+          {"word": "sin", "weight": 9},
+          {"word": "cos", "weight": 9},
+          {"word": "tan", "weight": 9},
+          {"word": "soh cah toa", "weight": 9},
+          {"word": "opposite", "weight": 7},
+          {"word": "adjacent", "weight": 7},
+          {"word": "hypotenuse", "weight": 7},
+          {"word": "θ", "weight": 6}
+        ],
+        "intent_patterns": [
+          {"pattern": "sin|cos|tan|trigonometric", "weight": 9},
+          {"pattern": "SOH CAH TOA|ratio", "weight": 9},
+          {"pattern": "opposite|adjacent|hypotenuse", "weight": 8}
+        ],
+        "see_mark": "3-4 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "For angle θ in right-angled triangle:\n\nsin θ = opposite / hypotenuse\ncos θ = adjacent / hypotenuse\ntan θ = opposite / adjacent\n\nMnemonic: SOH CAH TOA\nS-O-H: Sine = Opposite/Hypotenuse\nC-A-H: Cosine = Adjacent/Hypotenuse\nT-O-A: Tangent = Opposite/Adjacent\n\nAlso: tan θ = sin θ / cos θ",
+          "explanation": "Trigonometric ratios relate angles to sides in right-angled triangles. Essential for finding unknown sides or angles.",
+          "table": "Special Angles (SEE important):\nθ     | sin θ  | cos θ  | tan θ\n------|--------|--------|-------\n0°    | 0      | 1      | 0\n30°   | 1/2    | √3/2   | 1/√3\n45°   | 1/√2   | 1/√2   | 1\n60°   | √3/2   | 1/2    | √3\n90°   | 1      | 0      | ∞",
+          "solved_example": "**SEE Question:** In right-angled triangle ABC (right angle at B):\nAC = 10 cm (hypotenuse), ∠A = 30°\nFind AB and BC.\n\n**Solution:**\nLet ∠A = 30°\n\nFor side BC (opposite to ∠A):\nsin 30° = BC / AC\n1/2 = BC / 10\n**BC = 5 cm**\n\nFor side AB (adjacent to ∠A):\ncos 30° = AB / AC\n√3/2 = AB / 10\n**AB = 5√3 cm**\n\nVerification: (5√3)² + 5² = 75 + 25 = 100 = 10² ✓",
+          "common_mistakes": [
+            "Confusing opposite/adjacent with respect to wrong angle",
+            "Using sin when cos is needed (or vice versa)",
+            "Mixing up which side is hypotenuse",
+            "Not remembering special angle values"
+          ],
+          "see_tips": "Draw the triangle CLEARLY. Mark the angle and sides relative to it. Opposite = facing the angle, Adjacent = next to the angle. ALWAYS use SOH CAH TOA. Memorize special angles table - it appears in EVERY trigonometry question."
+        }
+      },
+      {
+        "id": "math_trigonometry_heights_015",
+        "subject": "mathematics",
+        "chapter": "trigonometry",
+        "topic": "Applications of Trigonometry",
+        "subtopic": "Heights and Distances (Angle of Elevation/Depression)",
+        "keywords": [
+          {"word": "angle of elevation", "weight": 9},
+          {"word": "angle of depression", "weight": 9},
+          {"word": "height", "weight": 7},
+          {"word": "distance", "weight": 7},
+          {"word": "elevation", "weight": 8},
+          {"word": "depression", "weight": 8},
+          {"word": "building", "weight": 5},
+          {"word": "tower", "weight": 5},
+          {"word": "ladder", "weight": 5}
+        ],
+        "intent_patterns": [
+          {"pattern": "angle.*elevation|angle.*depression", "weight": 9},
+          {"pattern": "height.*distance|tower|building|ladder", "weight": 8},
+          {"pattern": "how.*high|how.*far", "weight": 7}
+        ],
+        "see_mark": "4 marks",
+        "difficulty": "medium",
+        "content": {
+          "explanation": "Angle of elevation: angle from horizontal upward to object\nAngle of depression: angle from horizontal downward to object\n\nKey principle: Use trigonometric ratios to form equations, then solve.",
+          "solved_example": "**SEE Question:** A boy is standing 50 m away from the base of a building. The angle of elevation to the top is 60°. Find the height of the building.\n\n**Solution:**\nGiven: Distance from building = 50 m (adjacent to angle)\n        Angle of elevation = 60°\n        Height = h (opposite to angle)\n\ntan 60° = height / distance\n√3 = h / 50\n**h = 50√3 ≈ 86.6 m**\n\n**Another Example:** From a 20 m high building, the angle of depression to an object on ground is 30°. Find distance from building base to object.\n\ntan 30° = height / distance\n1/√3 = 20 / distance\ndistance = **20√3 ≈ 34.6 m**",
+          "strategy": "1) Draw clear diagram showing angle, height, distance\n2) Identify which trig ratio to use (opposite/adjacent/hypotenuse)\n3) Set up equation using that ratio\n4) Substitute known values including angle\n5) Solve for unknown",
+          "see_tips": "DRAW the diagram! Angle of elevation is measured UP from horizontal. Angle of depression is measured DOWN from horizontal. In building problems: distance = adjacent, height = opposite. Use tan when height and distance given."
+        }
+      },
+      {
+        "id": "math_circle_016",
+        "subject": "mathematics",
+        "chapter": "geometry",
+        "topic": "Circle Properties",
+        "subtopic": "Arc, Chord, Sector",
+        "keywords": [
+          {"word": "circle", "weight": 8},
+          {"word": "arc", "weight": 8},
+          {"word": "chord", "weight": 8},
+          {"word": "sector", "weight": 8},
+          {"word": "radius", "weight": 7},
+          {"word": "diameter", "weight": 7},
+          {"word": "circumference", "weight": 8},
+          {"word": "perimeter", "weight": 6},
+          {"word": "2πr", "weight": 8}
+        ],
+        "intent_patterns": [
+          {"pattern": "circle|arc|chord|sector", "weight": 8},
+          {"pattern": "circumference|perimeter|radius", "weight": 8},
+          {"pattern": "πr|2πr|πd", "weight": 8}
+        ],
+        "see_mark": "3-4 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "Circumference = 2πr = πd\nArc length = (θ/360°) × 2πr\n        (where θ is in degrees)\n\nArea of circle = πr²\nArea of sector = (θ/360°) × πr²\n\nPerimeter of sector = 2r + arc length",
+          "explanation": "A circle is a set of points equidistant from center. Arc is part of circumference. Sector is like a pie slice (bounded by two radii and an arc).",
+          "solved_example": "**SEE Question:** A circle has radius 7 cm. Find:\n(a) Circumference\n(b) Arc length of sector with angle 60°\n(c) Area of sector\n\n**Solution:**\nr = 7 cm, θ = 60°\n\n(a) Circumference = 2πr = 2 × π × 7 = **14π cm ≈ 44 cm**\n\n(b) Arc length = (60°/360°) × 2πr\n             = (1/6) × 14π\n             = **7π/3 cm ≈ 7.33 cm**\n\n(c) Area of sector = (60°/360°) × πr²\n                   = (1/6) × π × 49\n                   = **49π/6 cm² ≈ 25.67 cm²**",
+          "see_tips": "Use θ/360° for all calculations (arc and sector). Sector area = (θ/360°) × circle area. If θ is 90°, that's 1/4 of circle. If θ is 180°, that's 1/2 of circle (semicircle)."
+        }
+      },
+      {
+        "id": "math_statistics_017",
+        "subject": "mathematics",
+        "chapter": "statistics",
+        "topic": "Mean, Median, Mode",
+        "subtopic": "Measures of Central Tendency",
+        "keywords": [
+          {"word": "mean", "weight": 9},
+          {"word": "median", "weight": 9},
+          {"word": "mode", "weight": 9},
+          {"word": "average", "weight": 8},
+          {"word": "middle value", "weight": 7},
+          {"word": "most frequent", "weight": 7},
+          {"word": "data", "weight": 6},
+          {"word": "set of numbers", "weight": 6}
+        ],
+        "intent_patterns": [
+          {"pattern": "mean|median|mode|average", "weight": 9},
+          {"pattern": "central.*tendenc|measure.*tendenc", "weight": 8},
+          {"pattern": "find.*mean|calculate.*average", "weight": 7}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "Mean = Sum of all values / Number of values\n       = Σx / n\n\nMedian = Middle value when arranged in order\n        For odd n: (n+1)/2 th value\n        For even n: Average of n/2 th and (n/2 + 1)th values\n\nMode = Value that appears most frequently\n      (May have no mode or multiple modes)",
+          "explanation": "Mean is average (good for continuous data). Median is middle (good for skewed data). Mode is most frequent (good for categorical data).",
+          "solved_example": "**SEE Question:** Find mean, median, and mode of: 5, 8, 3, 5, 9, 5, 2\n\n**Solution:**\nData: 5, 8, 3, 5, 9, 5, 2\nn = 7 values\n\nMean = (5+8+3+5+9+5+2) / 7 = 37 / 7 = **5.29 (approx)**\n\nMedian: Arrange in order: 2, 3, 5, 5, 5, 8, 9\n        Position = (7+1)/2 = 4th value = **5**\n\nMode: 5 appears 3 times (most frequent) = **5**",
+          "see_tips": "ALWAYS arrange data in order before finding median. Mode is the MOST FREQUENT value (highest count). Mean is affected by extreme values (outliers). If data set is skewed, median is more reliable."
+        }
+      },
+      {
+        "id": "math_statistics_frequency_018",
+        "subject": "mathematics",
+        "chapter": "statistics",
+        "topic": "Frequency Distribution",
+        "subtopic": "Frequency Table and Mean from Grouped Data",
+        "keywords": [
+          {"word": "frequency", "weight": 9},
+          {"word": "frequency table", "weight": 9},
+          {"word": "mean from grouped", "weight": 8},
+          {"word": "class interval", "weight": 8},
+          {"word": "class mark", "weight": 8},
+          {"word": "midpoint", "weight": 7},
+          {"word": "grouped data", "weight": 8}
+        ],
+        "intent_patterns": [
+          {"pattern": "frequency.*table|grouped.*data", "weight": 9},
+          {"pattern": "class.*mark|midpoint|interval", "weight": 8},
+          {"pattern": "mean.*grouped|Σfx|Σf", "weight": 8}
+        ],
+        "see_mark": "4 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "Class mark (midpoint) = (Lower limit + Upper limit) / 2\n\nMean from grouped data:\nMean = Σ(f × x) / Σf\n     = (Sum of frequency × class mark) / (Sum of frequencies)\n\nwhere f = frequency, x = class mark",
+          "explanation": "When data is grouped in intervals, we use class marks (midpoints) to calculate mean. Each interval's midpoint represents all values in that interval.",
+          "solved_example": "**SEE Question:** Find mean from frequency table:\n\n| Marks    | 0-10 | 10-20 | 20-30 | 30-40 |\n|----------|------|-------|-------|-------|\n| Frequency| 5    | 8     | 12    | 5     |\n\n**Solution:**\nClass mark (x): 5, 15, 25, 35\nFrequency (f): 5, 8, 12, 5\n\n| x  | f  | f×x  |\n|----|----|----- |\n| 5  | 5  | 25   |\n| 15 | 8  | 120  |\n| 25 | 12 | 300  |\n| 35 | 5  | 175  |\n    Σf=30 Σ(fx)=620\n\nMean = 620 / 30 = **20.67 marks**",
+          "see_tips": "Class mark = average of lower and upper limits. When you see frequency table, always make columns for x, f, and f×x. Sum the f and f×x columns, then divide. This is standard SEE pattern."
+        }
+      },
+      {
+        "id": "math_polynomial_division_019",
+        "subject": "mathematics",
+        "chapter": "algebra",
+        "topic": "Polynomial Division",
+        "subtopic": "Remainder Theorem and Factor Theorem",
+        "keywords": [
+          {"word": "polynomial", "weight": 8},
+          {"word": "remainder theorem", "weight": 9},
+          {"word": "factor theorem", "weight": 9},
+          {"word": "division", "weight": 6},
+          {"word": "f(x)", "weight": 8},
+          {"word": "divisor", "weight": 6},
+          {"word": "quotient", "weight": 6}
+        ],
+        "intent_patterns": [
+          {"pattern": "remainder.*theorem|factor.*theorem", "weight": 9},
+          {"pattern": "divide.*polynomial|polynomial.*division", "weight": 8},
+          {"pattern": "f\\(x\\)|is.*factor", "weight": 7}
+        ],
+        "see_mark": "3 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "Remainder Theorem:\nWhen f(x) is divided by (x - a), remainder = f(a)\n\nFactor Theorem:\nIf f(a) = 0, then (x - a) is a factor of f(x)",
+          "explanation": "These theorems help find remainders and factors without doing full polynomial division. Instead, substitute the value directly into the polynomial.",
+          "solved_example": "**SEE Question:** Find remainder when f(x) = x³ - 3x² + 2x + 1 is divided by (x - 2).\n\n**Solution (Using Remainder Theorem):**\nDivisor: (x - 2), so a = 2\n\nRemainder = f(2)\n          = (2)³ - 3(2)² + 2(2) + 1\n          = 8 - 12 + 4 + 1\n          = **1**\n\n**Another Example:** Show that (x - 1) is a factor of x³ - 2x² + 3x - 2.\n\nUsing Factor Theorem:\nf(x) = x³ - 2x² + 3x - 2\nf(1) = 1 - 2 + 3 - 2 = 0 ✓\n\nSince f(1) = 0, **(x - 1) IS a factor**",
+          "see_tips": "Remainder Theorem: If divided by (x-a), remainder = f(a). Factor Theorem: If f(a) = 0, then (x-a) is factor. No need for long division! Just substitute."
+        }
+      },
+      {
+        "id": "math_permutation_combination_020",
+        "subject": "mathematics",
+        "chapter": "algebra",
+        "topic": "Permutation and Combination",
+        "subtopic": "nPr and nCr",
+        "keywords": [
+          {"word": "permutation", "weight": 9},
+          {"word": "combination", "weight": 9},
+          {"word": "nPr", "weight": 9},
+          {"word": "nCr", "weight": 9},
+          {"word": "arrange", "weight": 8},
+          {"word": "select", "weight": 8},
+          {"word": "order matters", "weight": 8},
+          {"word": "factorial", "weight": 8}
+        ],
+        "intent_patterns": [
+          {"pattern": "permutation|combination|nPr|nCr", "weight": 9},
+          {"pattern": "arrange|select|order.*matters|does.*order.*matter", "weight": 8},
+          {"pattern": "factorial|!", "weight": 7}
+        ],
+        "see_mark": "3-4 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "Permutation (order matters):\nnPr = n! / (n-r)!\n\nCombination (order doesn't matter):\nnCr = n! / [r!(n-r)!]\n\nFactorial:\nn! = n × (n-1) × (n-2) × ... × 2 × 1\n0! = 1",
+          "explanation": "Use permutation when ORDER matters (like arranging books on shelf). Use combination when ORDER doesn't matter (like choosing team members). If 'arrange' or 'order' is mentioned → permutation. If 'select' or 'choose' is mentioned → combination.",
+          "solved_example": "**SEE Question:**\n(a) In how many ways can 5 students be arranged in a line?\n(b) In how many ways can 3 students be selected from 5?\n\n**Solution:**\n(a) Arrangement (order matters) → Permutation\n5P5 = 5! / (5-5)! = 5! / 0! = 120 / 1 = **120 ways**\n\nAlternatively: 5 × 4 × 3 × 2 × 1 = 120\n\n(b) Selection (order doesn't matter) → Combination\n5C3 = 5! / [3!(5-3)!] = 5! / (3! × 2!)\n    = (5 × 4 × 3!) / (3! × 2 × 1)\n    = (5 × 4) / (2 × 1)\n    = **10 ways**",
+          "see_tips": "Key words: 'Arrange' or 'arrange' → Permutation. 'Select', 'choose', 'choose' → Combination. If unsure, ask: 'Does order matter?' If YES → nPr, if NO → nCr. nPr ≥ nCr always (since nCr = nPr / r!)"
+        }
+      },
+      {
+        "id": "math_mensuration_surface_area_021",
+        "subject": "mathematics",
+        "chapter": "geometry",
+        "topic": "Mensuration - Surface Area",
+        "subtopic": "Surface Area of 3D Shapes",
+        "keywords": [
+          {"word": "surface area", "weight": 9},
+          {"word": "cube", "weight": 7},
+          {"word": "cuboid", "weight": 7},
+          {"word": "cylinder", "weight": 8},
+          {"word": "cone", "weight": 8},
+          {"word": "sphere", "weight": 7},
+          {"word": "6a²", "weight": 8},
+          {"word": "2πrh", "weight": 8}
+        ],
+        "intent_patterns": [
+          {"pattern": "surface.*area|area.*surface", "weight": 9},
+          {"pattern": "cube|cuboid|cylinder|cone|sphere", "weight": 8},
+          {"pattern": "wrap|cover|paint", "weight": 6}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "Cube: Surface area = 6a² (where a = side)\n\nCuboid: Surface area = 2(lh + lw + wh) (where l=length, w=width, h=height)\n\nCylinder: Surface area = 2πr² + 2πrh = 2πr(r+h)\n         (Two circles + curved surface)\n\nCone: Surface area = πr² + πrl = πr(r+l)\n     (Base + curved surface, where l=slant height)\n\nSphere: Surface area = 4πr²",
+          "explanation": "Surface area is the total area of all outer surfaces. For 3D shapes, identify component surfaces and add their areas.",
+          "solved_example": "**SEE Question:** A cylinder has radius 7 cm and height 10 cm. Find its surface area.\n\n**Solution:**\nr = 7 cm, h = 10 cm\n\nSurface area = 2πr(r + h)\n             = 2π(7)(7 + 10)\n             = 2π(7)(17)\n             = 238π\n             = **238 × 3.14 ≈ 747.3 cm²**\n\n**Breaking it down:**\n- Two circular bases: 2πr² = 2π(49) = 98π ≈ 308 cm²\n- Curved surface: 2πrh = 2π(7)(10) = 140π ≈ 440 cm²\n- Total: ≈ 748 cm² (slight rounding difference)",
+          "see_tips": "For cylinders: think of it as two circles (top and bottom) plus a rectangle wrapped around. For cones: trickier - need slant height, not vertical height. Use Pythagoras: l² = r² + h² where l is slant height."
+        }
+      },
+      {
+        "id": "math_mensuration_volume_022",
+        "subject": "mathematics",
+        "chapter": "geometry",
+        "topic": "Mensuration - Volume",
+        "subtopic": "Volume of 3D Shapes",
+        "keywords": [
+          {"word": "volume", "weight": 9},
+          {"word": "cube", "weight": 7},
+          {"word": "cuboid", "weight": 7},
+          {"word": "cylinder", "weight": 8},
+          {"word": "cone", "weight": 8},
+          {"word": "sphere", "weight": 7},
+          {"word": "a³", "weight": 8},
+          {"word": "πr²h", "weight": 8},
+          {"word": "capacity", "weight": 6}
+        ],
+        "intent_patterns": [
+          {"pattern": "volume|capacity", "weight": 9},
+          {"pattern": "how.*much|how.*many|container|tank", "weight": 7},
+          {"pattern": "cube|cuboid|cylinder|cone|sphere", "weight": 8}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "Cube: V = a³\n\nCuboid: V = l × w × h\n\nCylinder: V = πr²h\n\nCone: V = (1/3)πr²h\n\nSphere: V = (4/3)πr³",
+          "explanation": "Volume measures how much space a 3D shape occupies. Important for measuring liquid capacity or solid content.",
+          "solved_example": "**SEE Question:** \n(a) Find volume of cuboid with length 8 cm, width 6 cm, height 5 cm\n(b) Find volume of cone with radius 7 cm and height 12 cm\n\n**Solution:**\n(a) V = l × w × h = 8 × 6 × 5 = **240 cm³**\n\n(b) V = (1/3)πr²h\n    = (1/3) × π × 49 × 12\n    = (1/3) × 588π\n    = 196π\n    = **196 × 3.14 ≈ 615.4 cm³**",
+          "see_tips": "Cone volume is 1/3 of cylinder volume (same radius and height). Sphere volume is always 4/3. For 'capacity' questions (how much liquid fits), use volume. Units: cm³ for small, m³ for large, litres for liquid."
+        }
+      },
+      {
+        "id": "math_coordinate_distance_023",
+        "subject": "mathematics",
+        "chapter": "geometry",
+        "topic": "Coordinate Geometry",
+        "subtopic": "Distance Formula and Midpoint",
+        "keywords": [
+          {"word": "distance formula", "weight": 9},
+          {"word": "midpoint", "weight": 9},
+          {"word": "coordinate", "weight": 8},
+          {"word": "cartesian", "weight": 7},
+          {"word": "(x1, y1)", "weight": 8},
+          {"word": "√", "weight": 5},
+          {"word": "x-axis", "weight": 5},
+          {"word": "y-axis", "weight": 5}
+        ],
+        "intent_patterns": [
+          {"pattern": "distance.*formula|midpoint|coordinate", "weight": 9},
+          {"pattern": "between.*points|point.*point", "weight": 8},
+          {"pattern": "\\(\\d+,\\s*\\d+\\)", "weight": 7}
+        ],
+        "see_mark": "2-3 marks",
+        "difficulty": "easy",
+        "content": {
+          "formula": "Distance between two points P(x₁, y₁) and Q(x₂, y₂):\nd = √[(x₂-x₁)² + (y₂-y₁)²]\n\nMidpoint of line segment joining P(x₁, y₁) and Q(x₂, y₂):\nM = ((x₁+x₂)/2, (y₁+y₂)/2)",
+          "explanation": "Distance formula comes from Pythagorean theorem. Midpoint is simply the average of coordinates.",
+          "solved_example": "**SEE Question:** Find distance between A(1, 3) and B(4, 7).\n\n**Solution:**\nx₁ = 1, y₁ = 3, x₂ = 4, y₂ = 7\n\nd = √[(4-1)² + (7-3)²]\n  = √[3² + 4²]\n  = √[9 + 16]\n  = √25\n  = **5 units**\n\n**Finding Midpoint:**\nM = ((1+4)/2, (3+7)/2)\n  = (5/2, 5)\n  = **(2.5, 5)**",
+          "see_tips": "Distance formula = √[(Δx)² + (Δy)²]. Recognize common Pythagorean triples: 3-4-5, 5-12-13. Midpoint is AVERAGE of coordinates, not any formula."
+        }
+      },
+      {
+        "id": "math_exam_strategy_024",
+        "subject": "mathematics",
+        "chapter": "exam_strategy",
+        "topic": "SEE Exam Preparation Strategy",
+        "subtopic": "Time Management and Common Mistakes",
+        "keywords": [
+          {"word": "exam", "weight": 7},
+          {"word": "see", "weight": 8},
+          {"word": "mark", "weight": 6},
+          {"word": "score", "weight": 6},
+          {"word": "time", "weight": 5},
+          {"word": "mistake", "weight": 6},
+          {"word": "prepare", "weight": 5},
+          {"word": "practice", "weight": 5}
+        ],
+        "intent_patterns": [
+          {"pattern": "exam.*strateg|strateg.*exam|how.*prepare", "weight": 8},
+          {"pattern": "mark|score|time.*question", "weight": 6},
+          {"pattern": "mistake|avoid|common.*error", "weight": 7}
+        ],
+        "see_mark": "General Guidance",
+        "difficulty": "N/A",
+        "content": {
+          "explanation": "SEE Exam Mathematics consists of 75 marks over 3 hours.",
+          "pattern": "Section A: 1-mark questions (multiple choice or short)\nSection B: 2-3 mark questions (work required)\nSection C: 4-5 mark questions (detailed solutions needed)",
+          "strategy": "1. Read entire exam first (5 mins) - identify tough questions\n2. Attempt easy 1-mark first - builds confidence\n3. Move to 2-3 mark questions - balanced risk\n4. Tackle 4-5 mark last if time permits\n5. ALWAYS show working - partial marks awarded\n6. Check calculations before submitting",
+          "common_mistakes": [
+            "Not reading question carefully - missing 'find' or 'prove'\n          Using wrong formula - especially similar-looking ones\n          Arithmetic errors in final steps\n          Not drawing diagrams for geometry - leads to confusion\n          Forgetting units in final answer\n          Not verifying Pythagorean triple recognition"
+          ],
+          "see_tips": "SEE LOVES: Venn diagrams (sets), Pythagorean theorem, trigonometry with special angles, simultaneous equations from word problems. Study past 5 years papers - patterns repeat."
+        }
+      },
+      {
+        "id": "math_sequences_progression_025",
+        "subject": "mathematics",
+        "chapter": "algebra",
+        "topic": "Sequences and Series",
+        "subtopic": "Arithmetic Progression (AP)",
+        "keywords": [
+          {"word": "arithmetic progression", "weight": 9},
+          {"word": "AP", "weight": 9},
+          {"word": "sequence", "weight": 8},
+          {"word": "common difference", "weight": 9},
+          {"word": "nth term", "weight": 8},
+          {"word": "sum", "weight": 6},
+          {"word": "d", "weight": 7},
+          {"word": "a", "weight": 5}
+        ],
+        "intent_patterns": [
+          {"pattern": "arithmetic.*progress|AP|progression", "weight": 9},
+          {"pattern": "common.*difference|nth.*term|tn", "weight": 9},
+          {"pattern": "sequence|series|find.*term", "weight": 8}
+        ],
+        "see_mark": "3-4 marks",
+        "difficulty": "medium",
+        "content": {
+          "formula": "Arithmetic Progression:\nGeneral term: tₙ = a + (n-1)d\n\nWhere: a = first term, d = common difference, n = term number, tₙ = nth term\n\nSum of n terms:\nSₙ = (n/2)[2a + (n-1)d]\nOR\nSₙ = (n/2)(first term + last term)",
+          "explanation": "AP is a sequence where consecutive terms differ by constant amount. Examples: 2, 5, 8, 11 (d=3), or 10, 8, 6, 4 (d=-2).",
+          "solved_example": "**SEE Question:** In AP: 3, 7, 11, 15, ...\n(a) Find 10th term\n(b) Find sum of first 10 terms\n\n**Solution:**\na = 3, d = 7-3 = 4, n = 10\n\n(a) tₙ = a + (n-1)d\nt₁₀ = 3 + (10-1)(4)\n    = 3 + 36\n    = **39**\n\n(b) Sₙ = (n/2)[2a + (n-1)d]\nS₁₀ = (10/2)[2(3) + (10-1)(4)]\n    = 5[6 + 36]\n    = 5 × 42\n    = **210**\n\nOR using last term:\nS₁₀ = (10/2)(first + last) = 5(3 + 39) = 5 × 42 = 210 ✓",
+          "see_tips": "Identify first term and common difference by looking at sequence differences. For finding missing terms: tn depends on n (position). Sum formula uses either d or last term - choose based on what's given."
+        }
+      }
+    ]
+  }

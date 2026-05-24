@@ -1,18 +1,34 @@
+"""
+VEXARA v4.1 - PRODUCTION RAG WITH INTELLIGENT FALLBACK SYSTEM
+- External curriculum_chunks.json
+- Weighted keyword scoring
+- Intent pattern matching
+- Negative keyword penalties
+- Configurable retrieval thresholds
+- Full support for SEE curriculum structure
+- INTEGRATED: Cerebras API as primary fallback
+- FIXED: Gemini API with proper error handling
+- IMPROVED: Intelligent API selection and rate limit handling
+"""
+
 import json
 import base64
 import requests
 import time
 import uuid
 import os
+import re
+from io import BytesIO
+from PIL import Image
 from flask import Flask, render_template, request, jsonify, redirect, session, url_for, make_response
 from flask_dance.contrib.google import make_google_blueprint, google
 from authlib.integrations.flask_client import OAuth
-from PIL import Image
-from flask import send_from_directory
-from flask import send_file
-import tempfile
+from flask import send_from_directory, send_file
 from datetime import datetime, date, timedelta
 from flask_cors import CORS
+from collections import defaultdict
+from difflib import SequenceMatcher
+import math
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 template_path = os.path.join(current_dir, 'templates')
@@ -21,41 +37,747 @@ static_path = os.path.join(current_dir, 'static')
 app_name = '__main__'
 if '__app_id__' in globals():
     app_name = globals()['__app_id__']
-app = Flask(app_name)
+app = Flask(app_name, template_folder=template_path, static_folder=static_path)
 
-# ✅ Tell Flask where to find templates + static
-app = Flask(
-    app_name,
-    template_folder=template_path,
-    static_folder=static_path
-)
-
-# ✅ Enable CORS (Allowing frontend calls from any domain for now)
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-# Use an environment variable for the secret key for better security
+CORS(app, resources={
+    r"/*": {
+        "origins": ["https://aivexara.xyz", "https://www.aivexara.xyz"],
+        "methods": ["GET", "POST"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
 
-# --- API KEYS ---
+# ============================================================================
+# 🔑 API KEYS & CONFIGURATION
+# ============================================================================
+
 GOOGLE_GEMINI_API_KEY = os.environ.get("GOOGLE_GEMINI_API_KEY")
-AWAN_API_KEY = os.environ.get("AWAN_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+CEREBRAS_API_KEY = os.environ.get("CEREBRAS_API_KEY")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 SERPER_API_KEY = os.environ.get("SERPER_API_KEY")
 
-# --- API Endpoints ---
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
-AWAN_API_URL = "https://api.awanllm.com/v1/chat/completions"
+# API Endpoints
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# --- Models ---
-GEMINI_MODEL = "gemini-3.1-flash-lite"
-AWAN_MODEL = "Meta-Llama-3-8B-Instruct"
-GROQ_NORMAL_MODEL = "llama-3.1-8b-instant"  # For normal mode
-GROQ_DEEPTHINK_MODEL = "llama-3.3-70b-versatile"  # For solve/deepthink mode
-OPENROUTER_GENERAL_MODEL = "mistralai/mistral-small-3.2-24b-instruct:free"
-OPENROUTER_DEEPTHINK_MODEL = "google/gemma-4-31b-it:free"
+# ============================================================================
+# 🖼️ IMAGE COMPRESSION MODULE
+# ============================================================================
+
+class ImageOptimizer:
+    """Compress images for token efficiency - resize to 1200px, 85% JPEG quality for vision."""
+    MAX_WIDTH = 1200
+    JPEG_QUALITY = 85  # Increased from 75 for better vision model quality
+    MAX_SIZE_MB = 5
+    
+    @staticmethod
+    def compress_image(file_obj):
+        """Compress image: resize to 1200px width, 75% JPEG quality."""
+        try:
+            img = Image.open(file_obj)
+            
+            # Convert RGBA to RGB if needed
+            if img.mode == 'RGBA':
+                rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                rgb_img.paste(img, mask=img.split()[3])
+                img = rgb_img
+            
+            # Resize maintaining aspect ratio
+            if img.width > ImageOptimizer.MAX_WIDTH:
+                ratio = ImageOptimizer.MAX_WIDTH / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((ImageOptimizer.MAX_WIDTH, new_height), Image.Resampling.LANCZOS)
+            
+            # Compress to JPEG
+            output = BytesIO()
+            img.save(output, format='JPEG', quality=ImageOptimizer.JPEG_QUALITY, optimize=True)
+            compressed_data = output.getvalue()
+            
+            # Size check
+            size_mb = len(compressed_data) / (1024 * 1024)
+            if size_mb > ImageOptimizer.MAX_SIZE_MB:
+                raise ValueError(f"Image too large after compression: {size_mb:.2f}MB")
+            
+            return base64.standard_b64encode(compressed_data).decode('utf-8'), 'image/jpeg'
+        
+        except Exception as e:
+            raise Exception(f"Image compression failed: {str(e)}")
+
+ 
+# ============================================================================
+# 🎨 HYBRID IMAGE DETECTION & PROCESSING SYSTEM
+# ============================================================================
+ 
+class ImageAnalyzer:
+    """
+    Analyzes images to determine optimal solving strategy:
+    
+    STRATEGY:
+    - Text-only images → Extract text + Deepthink (CHEAP: 2 API calls, both text-based)
+    - Geometric/Diagrams → Direct vision solve (QUALITY: 1 API call, keeps visual context)
+    - Mixed content → Direct vision solve (SAFE: preserves all information)
+    
+    COST ANALYSIS:
+    - Text extraction (fast model): ~0.0001 per image
+    - Deepthink (Llama-70B): ~0.0005 per response = Total ~0.0006
+    - Direct vision solve (Gemini): ~0.0025 per image
+    
+    For text-only: Extract+Deepthink saves 75% vs direct solve
+    For geometric: Direct solve prevents hallucination from missing diagrams
+    """
+    
+    @staticmethod
+    def detect_content_type(image_data):
+        """
+        Classify image content in ONE quick call.
+        Returns: 'text_only' | 'geometric' | 'mixed'
+        
+        Cheap detection: uses lightweight prompt on fast model
+        """
+        detection_prompt = """ANALYZE THIS IMAGE - RESPOND WITH ONE WORD ONLY:
+ 
+Categorize:
+- TEXT: Pure text/numbers/equations (no diagrams, shapes, figures)
+- GEOMETRIC: Has diagrams, graphs, geometric shapes, coordinate systems, or visual elements
+- MIXED: Has both text AND diagrams
+ 
+Examples:
+- Handwritten "Solve: 2x + 3 = 11" → TEXT
+- Triangle with labeled angles → GEOMETRIC
+- Problem with graph plotted → GEOMETRIC
+- Equation "y = 2x + 5" as text only → TEXT
+ 
+Answer ONE WORD: TEXT / GEOMETRIC / MIXED"""
+        
+        detection_messages = [{"role": "user", "content": detection_prompt}]
+        detection_system = "Respond with exactly one word: TEXT or GEOMETRIC or MIXED"
+        
+        try:
+            print(f"[ANALYZER] Detecting image content type...")
+            response, provider, success = call_api_with_intelligent_fallback(
+                "normal", detection_system, detection_messages, 
+                image_data=image_data
+            )
+            
+            if not response or not success:
+                print(f"[ANALYZER] Detection failed, defaulting to GEOMETRIC (safer fallback)")
+                return 'geometric'  # Safe default: use vision directly for geometric
+            
+            detected_text = ""
+            
+            # Parse streaming response (Groq)
+            if response.headers.get('content-type', '').startswith('text/event-stream'):
+                for line in response.iter_lines():
+                    if line:
+                        line_str = line.decode('utf-8').strip() if isinstance(line, bytes) else line.strip()
+                        if line_str.startswith('data: '):
+                            try:
+                                data = json.loads(line_str[6:])
+                                if 'choices' in data and data['choices']:
+                                    delta = data['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        detected_text += delta['content']
+                            except json.JSONDecodeError:
+                                continue
+            # Parse non-streaming response (Gemini)
+            else:
+                data = response.json()
+                if 'candidates' in data and data['candidates']:
+                    candidate = data['candidates'][0]
+                    if 'content' in candidate and 'parts' in candidate['content']:
+                        for part in candidate['content']['parts']:
+                            if 'text' in part:
+                                detected_text = part['text']
+            
+            detected_type = detected_text.strip().upper()
+            print(f"[ANALYZER] Result: {detected_type}")
+            
+            # Map response to strategy
+            if 'TEXT' in detected_type:
+                return 'text_only'
+            elif 'GEOMETRIC' in detected_type or 'DIAGRAM' in detected_type:
+                return 'geometric'
+            elif 'MIXED' in detected_type:
+                return 'mixed'
+            else:
+                return 'geometric'  # Default to geometric if unclear
+        
+        except Exception as e:
+            print(f"[ANALYZER] Detection error: {e}, defaulting to GEOMETRIC")
+            return 'geometric'
+    
+    @staticmethod
+    def extract_text_from_image(image_data):
+        """
+        Extract text from text-only images (strategy: text extraction).
+        Uses fast extraction prompt on fast model.
+        
+        Returns: (extracted_text, error_message, success)
+        """
+        extraction_prompt = "Extract ONLY the text and mathematical expressions from this image. Return only the extracted text, nothing else. Preserve all equations, numbers, operators exactly."
+        extraction_messages = [{"role": "user", "content": extraction_prompt}]
+        extraction_system = "Extract text from images accurately. Return ONLY extracted text."
+        
+        try:
+            print(f"[EXTRACT] Calling vision model to extract text...")
+            response, provider, success = call_api_with_intelligent_fallback(
+                "normal", extraction_system, extraction_messages, 
+                image_data=image_data
+            )
+            
+            if not response or not success:
+                return "", "Could not extract text from image.", False
+            
+            extracted_text = ""
+            
+            # Parse streaming (Groq)
+            if response.headers.get('content-type', '').startswith('text/event-stream'):
+                for line in response.iter_lines():
+                    if line:
+                        line_str = line.decode('utf-8').strip() if isinstance(line, bytes) else line.strip()
+                        if line_str.startswith('data: '):
+                            try:
+                                data = json.loads(line_str[6:])
+                                if 'choices' in data and data['choices']:
+                                    delta = data['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        extracted_text += delta['content']
+                            except json.JSONDecodeError:
+                                continue
+            # Parse non-streaming (Gemini)
+            else:
+                data = response.json()
+                if 'candidates' in data and data['candidates']:
+                    candidate = data['candidates'][0]
+                    if 'content' in candidate and 'parts' in candidate['content']:
+                        for part in candidate['content']['parts']:
+                            if 'text' in part:
+                                extracted_text += part['text']
+            
+            if not extracted_text.strip():
+                return "", "Could not extract any text from image.", False
+            
+            print(f"[EXTRACT] Extracted: {len(extracted_text)} characters")
+            return extracted_text, None, True
+        
+        except Exception as e:
+            print(f"[EXTRACT] Error: {e}")
+            return "", str(e), False
+    
+    @staticmethod
+    def solve_with_vision_directly(image_data, question_text, chat_history, rag_context=None, rag_subject=None, rag_chapter=None, rag_confidence=None):
+        """
+        Solve problem directly from image using vision model.
+        For geometric/mixed content (strategy: keep visual context).
+        
+        Now uses EXTRACTED QUESTION for RAG retrieval (not user keywords).
+        Supports any chapter (Sets with Venn Diagrams, Algebra, Geometry, etc.)
+        
+        Yields response chunks as generator.
+        """
+        solving_prompt = f"""Solve this math problem from the image:
+ 
+Problem statement: {question_text if question_text else 'See image'}
+
+Provide a complete solution with:
+1. **Given:** Information from image
+2. **To Find:** What needs to be calculated
+3. **Solution:** Step-by-step with explanations
+4. **Answer:** Final result with units
+5. **SEE Tip:** Exam preparation tip"""
+        
+        solving_messages = [{"role": "user", "content": solving_prompt}]
+        
+        # Build system prompt with RAG context if available
+        if rag_context and rag_confidence and rag_confidence >= KNOWLEDGE_BASE.config.get('min_confidence_threshold', 0.15):
+            system_msg = f"""You are an expert math tutor solving problems with visual elements.
+
+CURRICULUM CONTEXT: {rag_subject} - {rag_chapter} (Confidence: {rag_confidence:.0%})
+{rag_context}
+
+Solve the problem using the curriculum context if relevant, along with what you see in the image."""
+        else:
+            system_msg = """You are an expert math tutor solving problems from images.
+
+Analyze the image carefully and solve the problem step-by-step."""
+        
+        print(f"[VISION_RAG] Question extracted from image: '{question_text[:60]}'")
+        print(f"[VISION_RAG] Using RAG Context: {rag_subject}/{rag_chapter if rag_context else 'None'}")
+        
+        try:
+            print(f"[SOLVE_VISION] Solving directly with vision model (image included)...")
+            response, provider, success = call_api_with_intelligent_fallback(
+                "deepthink", system_msg, solving_messages, 
+                image_data=image_data  # Keep image in context
+            )
+            
+            if not response or not success:
+                yield "❌ Could not solve this problem. Please try again or upload a clearer image."
+                return None, None
+            
+            full_response = ""
+            
+            # Handle streaming
+            if response.headers.get('content-type', '').startswith('text/event-stream'):
+                for line in response.iter_lines():
+                    if line:
+                        line_str = line.decode('utf-8').strip() if isinstance(line, bytes) else line.strip()
+                        if line_str.startswith('data: '):
+                            try:
+                                data = json.loads(line_str[6:])
+                                if 'choices' in data and data['choices']:
+                                    delta = data['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        chunk = delta['content']
+                                        full_response += chunk
+                                        yield chunk
+                            except json.JSONDecodeError:
+                                continue
+            # Handle non-streaming (Gemini)
+            else:
+                data = response.json()
+                if 'candidates' in data and data['candidates']:
+                    candidate = data['candidates'][0]
+                    if 'content' in candidate and 'parts' in candidate['content']:
+                        for part in candidate['content']['parts']:
+                            if 'text' in part:
+                                full_response = part['text']
+                                yield full_response
+            
+            if not full_response:
+                yield "❌ No response generated. Please try again."
+                return None, None
+            
+            return full_response, "vision"
+        
+        except Exception as e:
+            print(f"[SOLVE_VISION] Error: {e}")
+            yield f"❌ Error: {str(e)}"
+            return None, None
+    
+    @staticmethod
+    def solve_with_deepthink(extracted_text, chat_history, rag_context=None, rag_subject=None, rag_chapter=None, rag_confidence=None):
+        """
+        Solve extracted text problem using deepthink model.
+        For text-only content (strategy: cheaper + better quality).
+        
+        Now includes RAG context for any chapter (not just geometry).
+        
+        Yields response chunks as generator.
+        """
+        solving_prompt = f"Solve this math problem:\n\n{extracted_text}"
+        solving_messages = [{"role": "user", "content": solving_prompt}]
+        
+        # Build system prompt with RAG context if available
+        if rag_context and rag_confidence and rag_confidence >= KNOWLEDGE_BASE.config.get('min_confidence_threshold', 0.15):
+            system_msg = f"""You are an expert math tutor. You have relevant curriculum knowledge:
+
+CURRICULUM CONTEXT: {rag_subject} - {rag_chapter} (Confidence: {rag_confidence:.0%})
+{rag_context}
+
+Now solve the problem using the context above if relevant:
+
+{extracted_text}
+
+Provide:
+1. **Given:** What information is provided
+2. **To Find:** What needs to be calculated
+3. **Solution:** Step-by-step explanation with all work
+4. **Answer:** Final answer clearly stated
+5. **SEE Tip:** Exam preparation tip"""
+        else:
+            system_msg = f"""You are an expert math tutor. Solve this problem:
+
+{extracted_text}
+
+Provide:
+1. **Given:** What information is provided
+2. **To Find:** What needs to be calculated
+3. **Solution:** Step-by-step explanation with all work
+4. **Answer:** Final answer clearly stated
+5. **SEE Tip:** Exam preparation tip"""
+        
+        solving_system = system_msg
+        
+        try:
+            print(f"[SOLVE_TEXT] Solving with deepthink model (text only)...")
+            print(f"[SOLVE_TEXT] RAG Context: {rag_subject}/{rag_chapter if rag_context else 'None'}")
+            response, provider, success = call_api_with_intelligent_fallback(
+                "deepthink", solving_system, solving_messages, 
+                image_data=None  # Text-only: no image needed
+            )
+            
+            if not response or not success:
+                yield "❌ Could not solve this problem. Please try again."
+                return None, None
+            
+            full_response = ""
+            
+            # Handle streaming
+            if response.headers.get('content-type', '').startswith('text/event-stream'):
+                for line in response.iter_lines():
+                    if line:
+                        line_str = line.decode('utf-8').strip() if isinstance(line, bytes) else line.strip()
+                        if line_str.startswith('data: '):
+                            try:
+                                data = json.loads(line_str[6:])
+                                if 'choices' in data and data['choices']:
+                                    delta = data['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        chunk = delta['content']
+                                        full_response += chunk
+                                        yield chunk
+                            except json.JSONDecodeError:
+                                continue
+            # Handle non-streaming (Gemini)
+            else:
+                data = response.json()
+                if 'candidates' in data and data['candidates']:
+                    candidate = data['candidates'][0]
+                    if 'content' in candidate and 'parts' in candidate['content']:
+                        for part in candidate['content']['parts']:
+                            if 'text' in part:
+                                full_response = part['text']
+                                yield full_response
+            
+            if not full_response:
+                yield "❌ No response generated. Please try again."
+                return None, None
+            
+            return full_response, "deepthink"
+        
+        except Exception as e:
+            print(f"[SOLVE_TEXT] Error: {e}")
+            yield f"❌ Error: {str(e)}"
+            return None, None
+ 
+# ============================================================================
+
+class APIProvider:
+    """Manages API calls with intelligent fallback and rate limit handling."""
+    
+    # Primary providers with their models
+    PROVIDERS = {
+        'groq': {
+            'url': GROQ_API_URL,
+            'api_key': GROQ_API_KEY,
+            'type': 'openai_compatible',
+            'models': {
+                'normal': 'llama-3.1-8b-instant',
+                'deepthink': 'llama-3.3-70b-versatile',
+                'vision': 'meta-llama/llama-4-scout-17b-16e-instruct'
+            },
+            'supports_vision': True,
+            'status': 'active'
+        },
+        'cerebras': {
+            'url': CEREBRAS_API_URL,
+            'api_key': CEREBRAS_API_KEY,
+            'type': 'openai_compatible',
+            'models': {
+                'normal': 'llama-3.1-8b',
+                'deepthink': 'qwen-qvq-32b-preview',
+                'vision': None
+            },
+            'supports_vision': False,
+            'status': 'active'
+        },
+        'gemini': {
+            'url': GEMINI_API_URL,
+            'api_key': GOOGLE_GEMINI_API_KEY,
+            'type': 'gemini',
+            'models': {
+                'normal': 'gemini-2.0-flash',
+                'deepthink': 'gemini-2.0-flash',
+                'vision': 'gemini-2.0-flash'
+            },
+            'supports_vision': True,
+            'status': 'active'
+        },
+        'openrouter': {
+            'url': OPENROUTER_API_URL,
+            'api_key': OPENROUTER_API_KEY,
+            'type': 'openai_compatible',
+            'models': {
+                'normal': 'mistralai/mistral-small-3.2-24b-instruct:free',
+                'deepthink': 'google/gemma-4-31b-it:free',
+                'vision': None
+            },
+            'supports_vision': False,
+            'status': 'active'
+        }
+    }
+    
+    # Fallback chain: [primary, secondary, tertiary]
+    FALLBACK_CHAIN = {
+        'normal': ['groq', 'cerebras', 'openrouter', 'gemini'],
+        'deepthink': ['groq', 'cerebras', 'openrouter', 'gemini'],
+        'vision': ['groq', 'gemini', 'cerebras', 'openrouter']
+    }
+    
+    # Rate limit tracking
+    RATE_LIMITS = {
+        'groq': {'requests': 0, 'last_reset': time.time(), 'max_requests': 100},
+        'cerebras': {'requests': 0, 'last_reset': time.time(), 'max_requests': 200},
+        'openrouter': {'requests': 0, 'last_reset': time.time(), 'max_requests': 150},
+        'gemini': {'requests': 0, 'last_reset': time.time(), 'max_requests': 120}
+    }
+    
+    @classmethod
+    def check_rate_limit(cls, provider):
+        """Check and update rate limit status for a provider."""
+        limit = cls.RATE_LIMITS.get(provider, {})
+        current_time = time.time()
+        
+        # Reset hourly
+        if current_time - limit.get('last_reset', 0) > 3600:
+            limit['requests'] = 0
+            limit['last_reset'] = current_time
+        
+        if limit['requests'] >= limit.get('max_requests', 100):
+            return False, f"Rate limit exceeded for {provider}"
+        
+        return True, None
+    
+    @classmethod
+    def increment_request(cls, provider):
+        """Increment request counter."""
+        if provider in cls.RATE_LIMITS:
+            cls.RATE_LIMITS[provider]['requests'] += 1
+    
+    @classmethod
+    def get_provider_status(cls, provider):
+        """Get full status of a provider."""
+        if provider not in cls.PROVIDERS:
+            return None
+        
+        prov = cls.PROVIDERS[provider]
+        can_use, limit_error = cls.check_rate_limit(provider)
+        
+        return {
+            'name': provider,
+            'status': 'active' if can_use else 'rate_limited',
+            'error': limit_error,
+            'requests_used': cls.RATE_LIMITS[provider].get('requests', 0),
+            'api_key_configured': bool(prov.get('api_key')),
+            'max_requests': cls.RATE_LIMITS[provider].get('max_requests', 0)
+        }
+    
+    @classmethod
+    def call_provider(cls, provider, mode, system_prompt, messages, image_data=None, stream=True):
+        """Call a specific provider with error handling and optional image support."""
+        if provider not in cls.PROVIDERS:
+            return None, f"Unknown provider: {provider}"
+        
+        # Check rate limit
+        can_use, limit_error = cls.check_rate_limit(provider)
+        if not can_use:
+            return None, limit_error
+        
+        prov = cls.PROVIDERS[provider]
+        api_key = prov.get('api_key')
+        
+        if not api_key:
+            return None, f"API key not configured for {provider}"
+        
+        # Check vision support
+        if image_data and not prov.get('supports_vision'):
+            return None, f"{provider} does not support vision"
+        
+        model = prov['models'].get('vision' if image_data else mode, prov['models']['normal'])
+        
+        if not model:
+            return None, f"No model available for {mode} in {provider}"
+        
+        print(f"[DEBUG] Calling {provider} with model: {model}, has_image: {image_data is not None}")
+        
+        try:
+            if prov['type'] == 'gemini':
+                response = cls._call_gemini(prov['url'], api_key, system_prompt, messages, model, image_data)
+            else:  # openai_compatible
+                response = cls._call_openai_compatible(prov['url'], api_key, model, messages, image_data, stream)
+            
+            if response:
+                # Print error details if status is not 200
+                if response.status_code != 200:
+                    try:
+                        error_detail = response.json()
+                        print(f"[{provider.upper()}] Error {response.status_code}: {error_detail}")
+                    except:
+                        print(f"[{provider.upper()}] Error {response.status_code}: {response.text[:200]}")
+                
+                if response.status_code in [200, 400, 401, 429]:
+                    cls.increment_request(provider)
+                    return response, None
+            
+            return None, f"Provider {provider} returned status {response.status_code if response else 'None'}"
+        
+        except Exception as e:
+            error_msg = f"Provider {provider} error: {str(e)}"
+            print(f"[ERROR] {error_msg}")
+            import traceback
+            traceback.print_exc()
+            return None, error_msg
+    
+    @classmethod
+    def _call_openai_compatible(cls, url, api_key, model, messages, image_data=None, stream=True):
+        """Call OpenAI-compatible API (Groq, Cerebras, OpenRouter) with optional image support."""
+        import copy
+        msgs = copy.deepcopy(messages)
+        
+        # Add image to messages if provided (Groq format)
+        if image_data:
+            for msg in msgs:
+                if msg.get('role') == 'user' and isinstance(msg.get('content'), str):
+                    msg['content'] = [
+                        {"type": "text", "text": msg['content']},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+                    ]
+            print(f"[IMAGE_FORMAT] Added image to message, base64 length: {len(image_data)}")
+        
+        payload = {
+            "model": model,
+            "messages": msgs,
+            "temperature": 0.7,
+            "max_tokens": 2048,
+            "stream": stream
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            # Log request details
+            print(f"[GROQ_REQUEST] Model: {model}, Messages: {len(msgs)}, Image: {image_data is not None}")
+            
+            response = requests.post(url, json=payload, headers=headers, stream=stream, timeout=60)
+            print(f"[GROQ/OPENAI] Response status: {response.status_code}")
+            return response
+        except requests.exceptions.Timeout:
+            print(f"[TIMEOUT] OpenAI-compatible API timeout")
+            return None
+        except Exception as e:
+            print(f"[API_ERROR] OpenAI-compatible call failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    @classmethod
+    def _call_gemini(cls, url, api_key, system_prompt, messages, model, image_data=None):
+        """Call Gemini API with proper format and optional image support."""
+        # Convert messages to Gemini format
+        contents = []
+        for msg in messages:
+            if msg.get("role") == "system":
+                continue
+            
+            content_parts = []
+            
+            # Text content
+            if isinstance(msg.get('content'), str):
+                content_parts.append({"text": msg.get("content", "")})
+            elif isinstance(msg.get('content'), list):
+                content_parts.extend(msg.get('content'))
+            
+            # Image content (Gemini format)
+            if image_data:
+                content_parts.append({
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": image_data
+                    }
+                })
+            
+            contents.append({
+                "role": "user" if msg.get("role") == "user" else "model",
+                "parts": content_parts
+            })
+        
+        payload = {
+            "contents": contents,
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "generationConfig": {
+                "temperature": 0.7,
+                "topK": 40,
+                "topP": 0.95,
+                "maxOutputTokens": 2048,
+            },
+            "safetySettings": [
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_UNSPECIFIED", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_VIOLENCE", "threshold": "BLOCK_NONE"},
+            ]
+        }
+        
+        full_url = f"{url}?key={api_key}"
+        
+        try:
+            response = requests.post(full_url, json=payload, timeout=60)
+            print(f"[GEMINI] Response status: {response.status_code}")
+            return response
+        except requests.exceptions.Timeout:
+            print(f"[TIMEOUT] Gemini API timeout")
+            return None
+        except Exception as e:
+            print(f"[API_ERROR] Gemini API call failed: {e}")
+            return None
+    
+    @classmethod
+    def call_with_fallback(cls, mode, system_prompt, messages, image_data=None, stream=True):
+        """
+        Call API with intelligent fallback chain.
+        Returns: (response, provider_used, error_log)
+        """
+        # Use vision chain for images, otherwise use normal chain
+        if image_data:
+            fallback_chain = cls.FALLBACK_CHAIN.get('vision', cls.FALLBACK_CHAIN['normal'])
+        else:
+            fallback_chain = cls.FALLBACK_CHAIN.get(mode, cls.FALLBACK_CHAIN['normal'])
+        
+        error_log = []
+        
+        for provider in fallback_chain:
+            # Skip if image and provider doesn't support vision
+            if image_data and not cls.PROVIDERS[provider].get('supports_vision'):
+                print(f"[SKIP] {provider} does not support vision")
+                continue
+            
+            print(f"[PROVIDER] Attempting {provider}...")
+            response, error = cls.call_provider(provider, mode, system_prompt, messages, image_data, stream)
+            
+            if response:
+                if response.status_code == 200:
+                    print(f"[SUCCESS] Using {provider}")
+                    return response, provider, error_log
+                elif response.status_code == 429:
+                    error_msg = f"{provider}: Rate limit hit"
+                    error_log.append(error_msg)
+                    print(f"[FALLBACK] {error_msg}")
+                elif response.status_code in [401, 403]:
+                    error_msg = f"{provider}: Authentication failed"
+                    error_log.append(error_msg)
+                    print(f"[FALLBACK] {error_msg}")
+                else:
+                    error_msg = f"{provider}: HTTP {response.status_code}"
+                    error_log.append(error_msg)
+                    print(f"[FALLBACK] {error_msg}")
+            else:
+                error_log.append(error)
+                print(f"[FALLBACK] {error}")
+        
+        return None, None, error_log
+
+# Initialize API Provider
+api_provider = APIProvider()
 
 # Directories
 CHAT_HISTORY_DIR = os.path.join(app.root_path, 'chat_history')
@@ -63,28 +785,340 @@ os.makedirs(CHAT_HISTORY_DIR, exist_ok=True)
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# --- Load SEE Curriculum Knowledge Base ---
-def load_see_curriculum():
-    """Load the SEE curriculum knowledge base."""
-    curriculum_path = os.path.join(app.root_path, 'see_curriculum.json')
-    try:
-        with open(curriculum_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print("Warning: see_curriculum.json not found. RAG system will not work.")
-        return {}
-    except json.JSONDecodeError:
-        print("Warning: see_curriculum.json is invalid JSON.")
-        return {}
+# ============================================================================
+# 📚 EXTERNAL CHUNKED KNOWLEDGE BASE (FULLY UPDATED)
+# ============================================================================
 
-SEE_CURRICULUM = load_see_curriculum()
+class ChunkedKnowledgeBase:
+    """Loads chunks from external JSON file with weighted retrieval."""
+    
+    def __init__(self, json_path=None):
+        if json_path is None:
+            json_path = os.path.join(current_dir, 'curriculum_chunks.json')
+        
+        self.chunks = []
+        self.config = {}
+        self.metadata = {}
+        self._load_from_file(json_path)
+    
+    def _load_from_file(self, path):
+        """Load chunks from external JSON file."""
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            self.chunks = data.get('chunks', [])
+            self.config = data.get('retrieval_config', {
+                "min_confidence_threshold": 0.15,
+                "max_chunks_per_query": 3,
+                "keyword_match_weight": 1.0,
+                "intent_pattern_weight": 2.0,
+                "use_fuzzy_matching": True,
+                "fuzzy_threshold": 0.6
+            })
+            self.metadata = data.get('metadata', {})
+            
+            print(f"[KB] Loaded {len(self.chunks)} chunks from {path}")
+            print(f"[KB] Version: {self.metadata.get('version', 'unknown')}")
+            print(f"[KB] Config: min_confidence={self.config.get('min_confidence_threshold')}")
+        except FileNotFoundError:
+            print(f"[KB] Warning: {path} not found. Using fallback empty KB.")
+            self.chunks = []
+            self.config = {}
+            self.metadata = {}
+        except json.JSONDecodeError as e:
+            print(f"[KB] Error: Invalid JSON in {path}: {e}")
+            self.chunks = []
+            self.config = {}
+            self.metadata = {}
+    
+    def _extract_keywords_from_chunk(self, chunk):
+        """Extract keywords from chunk - handles both list and dict formats."""
+        keywords = chunk.get('keywords', [])
+        
+        # Handle string keywords
+        if keywords and isinstance(keywords[0], str):
+            return [{'word': kw, 'weight': 5} for kw in keywords]
+        
+        # Handle dict format with weights
+        return keywords
+    
+    def _match_keywords(self, question_lower, chunk):
+        """Calculate keyword match score with weights."""
+        score = 0
+        matched_keywords = []
+        
+        keywords = self._extract_keywords_from_chunk(chunk)
+        
+        for kw in keywords:
+            word = kw.get('word', '').lower()
+            weight = kw.get('weight', 5)
+            
+            # Check for exact word match or partial match for multi-word
+            if word in question_lower:
+                score += weight * self.config.get('keyword_match_weight', 1.0)
+                matched_keywords.append(word)
+            elif ' ' in word:
+                # For multi-word keywords like "compound interest"
+                if word in question_lower:
+                    score += weight * self.config.get('keyword_match_weight', 1.0) * 1.5
+                    matched_keywords.append(word)
+        
+        return score, matched_keywords
+    
+    def _apply_negative_keywords(self, question_lower, chunk):
+        """Apply negative keyword penalties."""
+        penalty = 0
+        
+        for nkw in chunk.get('negative_keywords', []):
+            word = nkw.get('word', '').lower()
+            weight = nkw.get('weight', 10)
+            
+            if word in question_lower:
+                penalty += weight * self.config.get('negative_keyword_penalty', 2.0)
+        
+        return penalty
+    
+    def _match_intent_patterns(self, question_lower, chunk):
+        """Match regex intent patterns."""
+        score = 0
+        
+        for pattern_info in chunk.get('intent_patterns', []):
+            pattern = pattern_info.get('pattern', '')
+            weight = pattern_info.get('weight', 10)
+            
+            try:
+                if re.search(pattern, question_lower, re.IGNORECASE):
+                    score += weight * self.config.get('intent_pattern_weight', 2.0)
+            except re.error:
+                continue
+        
+        return score
+    
+    def _fuzzy_match(self, question_lower, chunk):
+        """Fuzzy matching for short queries and keywords."""
+        if not self.config.get('use_fuzzy_matching', True):
+            return 0
+        
+        score = 0
+        threshold = self.config.get('fuzzy_threshold', 0.6)
+        
+        # Only apply fuzzy for short questions
+        if len(question_lower) > 40:
+            return 0
+        
+        keywords = self._extract_keywords_from_chunk(chunk)
+        
+        for kw in keywords:
+            word = kw.get('word', '').lower()
+            if len(word) > 3:
+                if word in question_lower:
+                    continue  # Already matched exactly
+                ratio = SequenceMatcher(None, word, question_lower).ratio()
+                if ratio > threshold:
+                    score += kw.get('weight', 5) * ratio * 0.5
+        
+        return score
+    
+    def _format_content(self, chunk, max_chunks):
+        """Format chunk content for injection - handles all content types."""
+        content_obj = chunk.get('content', {})
+        
+        formatted_parts = []
+        
+        # Add SEE marks if available
+        see_mark = chunk.get('see_mark', '')
+        if see_mark:
+            formatted_parts.append(f"📊 **SEE Marks:** {see_mark}")
+        
+        # Add explanation/strategy/approach
+        if content_obj.get('explanation'):
+            formatted_parts.append(f"📖 {content_obj['explanation']}")
+        if content_obj.get('strategy'):
+            formatted_parts.append(f"🎯 **Strategy:** {content_obj['strategy']}")
+        if content_obj.get('approach'):
+            formatted_parts.append(f"📝 **Approach:** {content_obj['approach']}")
+        
+        # Add formula
+        if content_obj.get('formula'):
+            formulas = content_obj['formula']
+            if isinstance(formulas, str):
+                formatted_parts.append(f"📐 **Formula:** {formulas}")
+            elif isinstance(formulas, dict):
+                for name, formula in formulas.items():
+                    formatted_parts.append(f"📐 **{name.title()}:** {formula}")
+        
+        # Add table (for trig values, etc.)
+        if content_obj.get('table'):
+            formatted_parts.append(f"📊 **Values:**\n{content_obj['table']}")
+        
+        # Add solved example
+        if content_obj.get('solved_example'):
+            formatted_parts.append(f"✅ **Solved Example:**\n{content_obj['solved_example']}")
+        
+        # Add common mistakes
+        if content_obj.get('common_mistakes'):
+            mistakes = content_obj['common_mistakes']
+            if isinstance(mistakes, list):
+                mistakes_str = '\n'.join(f"• {m}" for m in mistakes)
+            else:
+                mistakes_str = mistakes
+            formatted_parts.append(f"⚠️ **Common Mistakes to Avoid:**\n{mistakes_str}")
+        
+        # Add SEE tips
+        see_tips = content_obj.get('see_tips') or chunk.get('see_tips')
+        if see_tips:
+            if isinstance(see_tips, list):
+                tips_str = '\n'.join(f"• {t}" for t in see_tips)
+            else:
+                tips_str = see_tips
+            formatted_parts.append(f"💡 **SEE Tip:** {tips_str}")
+        
+        # Add theorem proof
+        if content_obj.get('theorem_proof') or content_obj.get('proof'):
+            proof = content_obj.get('theorem_proof') or content_obj.get('proof')
+            formatted_parts.append(f"📐 **Proof:** {proof}")
+        
+        # Add formulas section
+        if content_obj.get('formulas'):
+            formatted_parts.append(f"📐 **Formulas:**\n{content_obj['formulas']}")
+        
+        # Add mistakes section
+        if content_obj.get('mistakes'):
+            formatted_parts.append(f"⚠️ **Mistakes to Avoid:**\n{content_obj['mistakes']}")
+        
+        # Add pattern
+        if content_obj.get('pattern'):
+            formatted_parts.append(f"📋 **Question Pattern:** {content_obj['pattern']}")
+        
+        return '\n\n'.join(formatted_parts)
+    
+    def retrieve(self, question, max_chunks=None):
+        """
+        Retrieve most relevant chunks with weighted scoring.
+        
+        Args:
+            question: User's question text
+            max_chunks: Max chunks to return (uses config if None)
+        
+        Returns:
+            tuple: (subject, chapter, context_string, confidence, chunks_used)
+        """
+        if max_chunks is None:
+            max_chunks = self.config.get('max_chunks_per_query', 3)
+        
+        question_lower = question.lower()
+        scored_chunks = []
+        
+        # Special handling for equations
+        has_equals = '=' in question_lower
+        has_variable = bool(re.search(r'[0-9][x]|[x][0-9]| [x] |\(x\)| x[=+\-]', question_lower))
+        has_chemical = any(kw in question_lower for kw in ['chemical', 'reaction', 'acid', 'base', 'salt'])
+        
+        if has_equals and has_variable and not has_chemical:
+            for chunk in self.chunks:
+                if chunk.get('id') == 'math_algebra_linear_005':
+                    content = self._format_content(chunk, 1)
+                    return ('mathematics', 'algebra', content, 0.95, 1)
+        
+        # Score each chunk
+        for chunk in self.chunks:
+            keyword_score, matched = self._match_keywords(question_lower, chunk)
+            penalty = self._apply_negative_keywords(question_lower, chunk)
+            intent_score = self._match_intent_patterns(question_lower, chunk)
+            fuzzy_score = self._fuzzy_match(question_lower, chunk)
+            
+            total_score = keyword_score + intent_score + fuzzy_score - penalty
+            
+            # Boost score for exam strategy questions
+            if chunk.get('chapter') == 'exam_strategy':
+                strategy_keywords = ['exam', 'see', 'mark', 'score', 'time', 'mistake', 'formula', 'pattern', 'model']
+                if any(kw in question_lower for kw in strategy_keywords):
+                    total_score *= 1.3
+            
+            if total_score > 0:
+                scored_chunks.append({
+                    'score': total_score,
+                    'chunk': chunk,
+                    'matched_keywords': matched
+                })
+        
+        # Sort by score descending
+        scored_chunks.sort(key=lambda x: x['score'], reverse=True)
+        
+        # Calculate confidence
+        max_possible_score = 50
+        confidence = min(scored_chunks[0]['score'] / max_possible_score, 1.0) if scored_chunks else 0
+        
+        # Check threshold
+        min_threshold = self.config.get('min_confidence_threshold', 0.15)
+        if not scored_chunks or confidence < min_threshold:
+            print(f"[RAG] No chunk above threshold (conf: {confidence:.2f} < {min_threshold})")
+            return (None, None, "", confidence, 0)
+        
+        # Get top chunks
+        top_chunks = scored_chunks[:max_chunks]
+        
+        # Format combined context
+        contexts = []
+        subjects = set()
+        chapters = set()
+        
+        for idx, item in enumerate(top_chunks):
+            chunk = item['chunk']
+            formatted = self._format_content(chunk, len(top_chunks))
+            header = f"--- {chunk.get('chapter', '').replace('_', ' ').title()} - {chunk.get('topic', chunk.get('subtopic', '')).replace('_', ' ').title()} ---"
+            contexts.append(f"{header}\n{formatted}")
+            subjects.add(chunk.get('subject', ''))
+            chapters.add(chunk.get('chapter', ''))
+        
+        combined_context = '\n\n'.join(contexts)
+        
+        # Get primary subject/chapter
+        primary = top_chunks[0]['chunk']
+        
+        print(f"[RAG] Retrieved {len(top_chunks)} chunks (conf: {confidence:.2f})")
+        print(f"[RAG] Primary: {primary.get('subject')}/{primary.get('chapter')} - {primary.get('topic', '')}")
+        
+        return (primary.get('subject'), primary.get('chapter'), combined_context, confidence, len(top_chunks))
 
-# --- Quota Tracking ---
+# Initialize external knowledge base
+KNOWLEDGE_BASE = ChunkedKnowledgeBase()
+
+# ============================================================================
+# 💾 CHAT HISTORY MANAGEMENT
+# ============================================================================
+
+MAX_HISTORY_MESSAGES = 10
+
+def trim_chat_history(chat_history, max_messages=MAX_HISTORY_MESSAGES):
+    """Trim chat history to prevent token inflation."""
+    if len(chat_history) <= max_messages:
+        return chat_history
+    return chat_history[-max_messages:]
+
+def get_chat_context_string(chat_history, max_messages=4):
+    """Convert chat history to simple context string."""
+    if not chat_history:
+        return ""
+    
+    recent = chat_history[-max_messages:]
+    context_lines = ["Previous conversation:"]
+    for msg in recent:
+        role = "Student" if msg['type'] == 'user' else "Vexara"
+        text = msg['text'][:200]
+        context_lines.append(f"{role}: {text}")
+    
+    return "\n".join(context_lines)
+
+# ============================================================================
+# 📊 QUOTA TRACKING
+# ============================================================================
+
 user_message_counts = {}
 DAILY_MESSAGE_LIMIT = 20
 
 def get_daily_message_count(user_id):
-    """Retrieves the message count for the current user and day."""
     today_str = date.today().isoformat()
     if user_id not in user_message_counts:
         user_message_counts[user_id] = {}
@@ -93,7 +1127,6 @@ def get_daily_message_count(user_id):
     return user_message_counts[user_id][today_str]
 
 def increment_daily_message_count(user_id):
-    """Increments the message count for the current user and day."""
     today_str = date.today().isoformat()
     if user_id not in user_message_counts:
         user_message_counts[user_id] = {}
@@ -105,7 +1138,10 @@ def increment_daily_message_count(user_id):
         if d_str < one_week_ago:
             del user_message_counts[user_id][d_str]
 
-# OAuth configuration (keep existing)
+# ============================================================================
+# 🔐 OAUTH CONFIGURATION
+# ============================================================================
+
 google_bp = make_google_blueprint(
     client_id="1032731423015-tis6kpcdvm96uni6e7p5cnek2bepnuu6.apps.googleusercontent.com",
     client_secret="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",
@@ -125,620 +1161,387 @@ microsoft = oauth.register(
     client_kwargs={'scope': 'User.Read'}
 )
 
-# --- PROMPT TEMPLATES ---
-NORMAL_SYSTEM_PROMPT = """You are Vexara, a friendly and helpful AI tutor for SEE students in Nepal.
+# ============================================================================
+# 📝 PROMPT TEMPLATES
+# ============================================================================
+
+BASE_SYSTEM_PROMPT = """You are Vexara, a friendly and helpful AI tutor for SEE students in Nepal.
 
 **YOUR PERSONALITY:**
 - Be friendly, encouraging, and supportive
 - Use simple language that Class 10 students understand
 - Keep responses concise and clear
-- For greetings (hi, hello, how are you): Respond warmly and briefly
-- For general questions: Be helpful but keep it simple
+- For greetings: Respond warmly and briefly
 - For non-educational questions: Politely redirect to educational topics
 
-**WHEN TO USE SOLVE MODE:**
-If the student asks a math/science problem that requires step-by-step solving, suggest: "This looks like a problem that needs detailed solving. Click the 'Solve' button for a complete step-by-step solution!"
+**IMPORTANT:**
+Below you may find a "Retrieved Knowledge" section with specific formulas, examples, and exam tips.
+Use THIS retrieved knowledge as your primary source for calculations and steps.
+Do NOT invent formulas - use what is provided.
 
-**EXAMPLES:**
-- Student: "Hi" → "Hello! 👋 I'm Vexara, your SEE tutor. How can I help you today?"
-- Student: "What is photosynthesis?" → Give brief, clear explanation
-- Student: "Solve 3x + 5 = 17" → Suggest using Solve mode for detailed steps"""
-
-DEEPTHINK_SYSTEM_PROMPT = """You are Vexara, an expert SEE exam tutor specializing in step-by-step problem solving for Class 10 students in Nepal.
-
-**SOLVING APPROACH:**
-
-1. **IDENTIFY**: First, identify what chapter/topic this problem belongs to
-2. **GIVEN**: List all given information clearly
-3. **TO FIND**: State what needs to be calculated/found
-4. **FORMULA/CONCEPT**: Write the relevant formula or concept
-5. **SOLUTION**: Show each step using arrow format (⇒)
-6. **FINAL ANSWER**: State clearly with proper units
-
-**FORMAT FOR MATH PROBLEMS:**
-
-**Problem:** [Restate the problem]
-
-**Chapter:** [Name of chapter - Sets, Algebra, Geometry, etc.]
-**Marks in SEE:** [Typical marks for this type]
-
-**Given:**
-[List what's given]
-
-**To Find:**
-[What needs to be found]
-
-**Formula:**
-[Write the formula]
-
-**Solution:**
-⇒ [Step 1]
-⇒ [Step 2]
-⇒ [Step 3]
-...
-
-**Final Answer:** [Clear answer with units]
-
-**SEE Tip:** [One helpful tip for exam]
-
-**FORMAT FOR SCIENCE PROBLEMS:**
-
-**Problem:** [Restate]
-
-**Chapter:** [Physics/Chemistry/Biology]
-**Marks in SEE:** [Typical marks]
-
-**Given:**
-[List with units]
-
-**To Find:**
-[What to calculate]
-
-**Formula/Concept:**
-[Write formula or concept]
-
-**Solution:**
-⇒ [Step 1 with units]
-⇒ [Step 2 with units]
-
-**Final Answer:** [With proper units]
-
-**Explanation:** [Brief explanation of the concept]
-
-**IMPORTANT RULES:**
-- ALWAYS identify the chapter first
-- ALWAYS use ⇒ for calculation steps
-- ALWAYS include units in science problems
-- For geometry: Mention drawing figure
-- For word problems: Define variables first
-- Keep SEE marking scheme in mind
-- For theoretical questions: Give definitions, explanations, and examples"""
-
-# --- RAG SYSTEM: Chapter Detection ---
-def detect_chapter(user_question):
-    """Detect which chapter/topic the question belongs to using keyword matching."""
-    question_lower = user_question.lower()
-    
-    # Math chapter keywords
-    math_chapters = {
-        "sets": ["set", "union", "intersection", "venn", "subset", "universal set", "cardinality", "n(a", "n(b", "complement"],
-        "arithmetic": ["compound interest", "population growth", "depreciation", "vat", "discount", "profit", "loss", "tax", "ci", "simple interest"],
-        "algebra": ["indices", "simultaneous", "equation", "quadratic", "factorize", "factorise", "solve for x", "find x", "solve for y", "linear equation", "x^2", "polynomial"],
-        "geometry": ["triangle", "circle", "parallelogram", "angle", "theorem", "prove that", "area of", "perimeter", "construction", "pythagoras", "congruent", "similar"],
-        "trigonometry": ["sin", "cos", "tan", "trig", "angle of elevation", "angle of depression", "height and distance", "pythagoras", "theta", "sinθ", "cosθ", "tanθ"],
-        "statistics": ["mean", "median", "mode", "quartile", "ogive", "frequency", "cumulative", "data", "graph", "histogram", "bar chart", "pie chart"],
-        "probability": ["probability", "card", "dice", "coin", "random", "chance", "outcome", "sample space"]
-    }
-    
-    # Science chapter keywords
-    science_chapters = {
-        "physics": ["force", "pressure", "energy", "light", "electricity", "heat", "ohm", "voltage", "current", "resistance", "power", "work", "lens", "mirror", "reflection", "refraction", "circuit", "magnet", "wave", "sound"],
-        "chemistry": ["chemical", "reaction", "acid", "base", "salt", "metal", "non-metal", "organic", "carbon", "compound", "element", "equation", "balance", "mole", "ph", "gas", "oxygen", "hydrogen", "nitrogen"],
-        "biology": ["cell", "tissue", "organ", "plant", "animal", "human", "digestive", "respiratory", "circulatory", "nervous", "reproduction", "genetics", "dna", "photosynthesis", "enzyme", "hormone", "bacteria", "virus"],
-        "astronomy_geology": ["earth", "planet", "solar", "sun", "moon", "star", "galaxy", "volcano", "earthquake", "weather", "climate", "greenhouse", "ozone", "atmosphere", "plate tectonic", "natural disaster"]
-    }
-    
-    detected_chapter = None
-    detected_subject = None
-    max_score = 0
-    
-    # Check math chapters
-    for chapter, keywords in math_chapters.items():
-        score = sum(1 for kw in keywords if kw in question_lower)
-        if score > max_score:
-            max_score = score
-            detected_chapter = chapter
-            detected_subject = "mathematics"
-    
-    # Check science chapters
-    for chapter, keywords in science_chapters.items():
-        score = sum(1 for kw in keywords if kw in question_lower)
-        if score > max_score:
-            max_score = score
-            detected_chapter = chapter
-            detected_subject = "science"
-    
-    return detected_subject, detected_chapter, max_score
-
-def get_chapter_context(subject, chapter):
-    """Retrieve relevant chapter context from curriculum knowledge base."""
-    if not SEE_CURRICULUM or not subject or not chapter:
-        return ""
-    
-    try:
-        chapter_data = SEE_CURRICULUM["subjects"][subject]["chapters"][chapter]
-        
-        context = f"""
-**SEE Chapter Information:**
-Subject: {subject.title()}
-Chapter: {chapter.replace('_', ' ').title()}
-SEE Marks: {chapter_data.get('marks_distribution', 'Varies')}
-Key Topics: {', '.join(chapter_data.get('topics', []))}
-Common Questions: {', '.join(chapter_data.get('common_questions', []))}
-
-**Solving Approach:**
-{chapter_data.get('solving_approach', 'Standard step-by-step method')}
-
-**Key Formulas/Concepts:**
-{chr(10).join(f'• {formula}' for formula in chapter_data.get('key_formulas', chapter_data.get('key_concepts', [])))}
-
-**SEE Tips:**
-{chapter_data.get('see_tips', 'Show all steps clearly')}
+**SEE Focus:** Help students prepare for their SEE Mathematics exam.
 """
-        return context
-    except KeyError:
-        return ""
+
+DEEPTHINK_BASE_PROMPT = """You are Vexara, an expert SEE exam tutor specializing in step-by-step problem solving.
+
+**FORMAT FOR PROBLEMS:**
+1. **Given:** List given information
+2. **To Find:** State what needs to be calculated
+3. **Formula/Concept:** Write the relevant formula
+4. **Solution:** Show each step using ⇒ format
+5. **Final Answer:** State clearly with units
+6. **SEE Tip:** Include one exam tip from the retrieved knowledge
+
+**IMPORTANT:**
+Use the "Retrieved Knowledge" section below for exact formulas, solved examples, and common mistakes.
+Do not invent formulas - use provided knowledge.
+"""
+
+# ============================================================================
+# 🎯 PROMPT BUILDING WITH RETRIEVED CHUNKS
+# ============================================================================
+
+def build_enhanced_prompt(question, chat_history, mode="normal"):
+    """Build prompt with retrieved chunks from external KB."""
+    # Retrieve relevant chunks
+    subject, chapter, context, confidence, num_chunks = KNOWLEDGE_BASE.retrieve(question)
+    
+    # Build base prompt
+    if mode == "deepthink":
+        base_prompt = DEEPTHINK_BASE_PROMPT
+    else:
+        base_prompt = BASE_SYSTEM_PROMPT
+    
+    # Add retrieved knowledge if confidence is sufficient
+    if confidence >= 0.15 and context:
+        enhanced_prompt = base_prompt + f"""
+
+**=== RETRIEVED KNOWLEDGE (USE THIS) ===**
+Subject: {subject if subject else 'Mathematics'}
+Topic: {chapter if chapter else 'General'}
+Confidence: {int(confidence * 100)}%
+
+{context}
+**=========================================**
+
+**INSTRUCTION:** Use the formulas and examples above to answer the student's question.
+"""
+        print(f"[RAG] Using {num_chunks} chunk(s) with {int(confidence*100)}% confidence")
+    else:
+        enhanced_prompt = base_prompt
+        print(f"[RAG] No retrieval (confidence {confidence:.2f} < 0.15)")
+    
+    # Add minimal chat context
+    chat_context = get_chat_context_string(chat_history, max_messages=4)
+    if chat_context:
+        enhanced_prompt += f"\n\n{chat_context}"
+    
+    return enhanced_prompt
+
+# ============================================================================
+# 🧠 MODE DETECTION
+# ============================================================================
 
 def should_use_deepthink(question):
     """Determine if question needs deepthink/solve mode."""
     question_lower = question.lower()
     
-    # Keywords that indicate problem-solving needed
-    solve_keywords = [
-        "solve", "calculate", "find", "prove", "show that", "evaluate",
-        "determine", "compute", "what is the value", "simplify", "factorize",
-        "factorise", "draw", "construct", "balance", "derive", "if", "then find"
-    ]
+    # Equation detection
+    has_equals = '=' in question_lower
+    has_variable = bool(re.search(r'[0-9][x]|[x][0-9]| [x] |\(x\)', question_lower))
+    has_calculation = bool(re.search(r'\d+\s*[+\-*/]\s*\d+', question_lower))
     
-    # Keywords that indicate conceptual questions (no solve mode)
-    concept_keywords = [
-        "what is", "define", "explain", "describe", "why", "how does",
-        "what are", "difference between", "list", "state", "name"
-    ]
+    if (has_equals and has_variable) or has_calculation:
+        return True
     
-    # If question has numbers or equations, likely needs solving
-    has_numbers = any(char.isdigit() for char in question)
-    has_equation = any(symbol in question for symbol in ['=', '+', '-', '×', '÷', 'x', 'y', '^'])
+    # Solve keywords
+    solve_keywords = ["solve", "calculate", "find", "prove", "evaluate", "determine", "compute", "simplify", "factorize"]
+    concept_keywords = ["what is", "define", "explain", "describe", "why", "how does", "what are", "difference between"]
     
-    solve_score = sum(1 for kw in solve_keywords if kw in question_lower)
+    solve_score = sum(2 for kw in solve_keywords if kw in question_lower)
     concept_score = sum(1 for kw in concept_keywords if kw in question_lower)
     
-    # Use deepthink if: has solve keywords, or has numbers/equations without concept keywords
-    if solve_score > 0 or (has_numbers and concept_score == 0) or has_equation:
+    has_numbers = bool(re.search(r'\d+', question_lower))
+    
+    if solve_score >= 2 or (has_numbers and concept_score == 0):
         return True
     
-    # Check if it's a greeting or simple question
-    greetings = ["hi", "hello", "hey", "how are you", "good morning", "good evening"]
-    if any(greeting in question_lower for greeting in greetings):
+    # Greetings
+    greetings = ["hi", "hello", "hey", "how are you", "good morning"]
+    if any(g in question_lower for g in greetings):
         return False
-    
-    # For ambiguous questions, check length (longer questions often need solving)
-    if len(question.split()) > 15 and has_numbers:
-        return True
     
     return False
 
-# --- CHAT HISTORY MANAGEMENT ---
+# ============================================================================
+# 📍 USER MANAGEMENT
+# ============================================================================
+
 def get_user_id():
-    """Gets a unique user ID. Prefers authenticated user ID."""
+    """Get user ID from session."""
     if 'user_id' in session:
         return session['user_id']
-    if 'temp_user_id' not in session:
-        session['temp_user_id'] = str(uuid.uuid4())
-        session['user_id'] = session['temp_user_id']
-    return session['temp_user_id']
+    if 'temp_user_id' in session:
+        return session['temp_user_id']
+    
+    temp_id = str(uuid.uuid4())
+    session['temp_user_id'] = temp_id
+    session['user_id'] = temp_id
+    return temp_id
 
 def get_chat_file_path(user_id, chat_id):
-    """Constructs the file path for a specific chat history."""
+    """Get safe file path for chat."""
     safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
     return os.path.join(CHAT_HISTORY_DIR, f"{safe_user_id}_{chat_id}.json")
 
 def load_chat_history_from_file(user_id, chat_id):
-    """Loads chat history for a given user and chat ID from a JSON file."""
+    """Load chat history from file."""
     file_path = get_chat_file_path(user_id, chat_id)
     if os.path.exists(file_path):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except json.JSONDecodeError:
-            print(f"Warning: Could not decode JSON from {file_path}. Starting with empty chat.")
-            return []
-        except Exception as e:
-            print(f"Error loading chat history from {file_path}: {e}")
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"Error loading chat: {e}")
             return []
     return []
 
 def save_chat_history_to_file(user_id, chat_id, chat_data):
-    """Saves chat history for a given user and chat ID to a JSON file."""
+    """Save chat history to file."""
     file_path = get_chat_file_path(user_id, chat_id)
     try:
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(chat_data, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"Error saving chat history to {file_path}: {e}")
+        print(f"Error saving chat: {e}")
 
-# --- HELPER: Build chat context for API ---
-def build_gemini_messages(chat_history, new_instruction, mode="normal"):
-    """Builds the message list for Gemini API from chat history."""
-    messages = []
-    
-    # Convert chat history to Gemini format
-    for msg in chat_history:
-        if msg.get('type') == 'user':
-            messages.append({
-                "role": "user",
-                "parts": [{"text": msg.get('text', '')}]
-            })
-        elif msg.get('type') == 'bot':
-            messages.append({
-                "role": "model",
-                "parts": [{"text": msg.get('text', '')}]
-            })
-    
-    # Add the new user instruction with chapter context if applicable
-    subject, chapter, confidence = detect_chapter(new_instruction)
-    chapter_context = ""
-    if confidence > 0 and mode == "deepthink":
-        chapter_context = get_chapter_context(subject, chapter)
-    
-    enhanced_instruction = new_instruction
-    if chapter_context and mode == "deepthink":
-        enhanced_instruction = f"{new_instruction}\n\n[Chapter Context for Tutor]\n{chapter_context}"
-    
-    messages.append({
-        "role": "user",
-        "parts": [{"text": enhanced_instruction}]
-    })
-    
-    return messages
+# ============================================================================
+# 🌐 UNIFIED API CALLING WITH FALLBACK
+# ============================================================================
 
-def build_chat_completion_messages(chat_history, new_instruction, mode="normal"):
-    """Builds message list for OpenAI-compatible APIs (Groq, OpenRouter, Awan)."""
-    system_prompt = NORMAL_SYSTEM_PROMPT if mode == "normal" else DEEPTHINK_SYSTEM_PROMPT
+def call_api_with_intelligent_fallback(mode, system_prompt, messages, image_data=None):
+    """
+    Call API with intelligent fallback chain.
+    Returns: (response, provider_used, success)
+    """
+    response, provider_used, error_log = api_provider.call_with_fallback(
+        mode, system_prompt, messages, image_data=image_data, stream=True
+    )
     
-    # Add chapter context to system prompt for deepthink mode
-    if mode == "deepthink":
-        subject, chapter, confidence = detect_chapter(new_instruction)
-        chapter_context = get_chapter_context(subject, chapter)
-        if chapter_context:
-            system_prompt += f"\n\n**RELEVANT SEE CURRICULUM INFORMATION:**\n{chapter_context}"
+    if response and response.status_code == 200:
+        return response, provider_used, True
     
-    messages = [
-        {"role": "system", "content": system_prompt}
-    ]
+    # Log errors
+    if error_log:
+        print(f"[FALLBACK_LOG] Errors encountered: {error_log}")
     
-    # Add chat history
-    for msg in chat_history:
-        if msg.get('type') == 'user':
-            messages.append({"role": "user", "content": msg.get('text', '')})
-        elif msg.get('type') == 'bot':
-            messages.append({"role": "assistant", "content": msg.get('text', '')})
-    
-    # Add new instruction
-    messages.append({"role": "user", "content": new_instruction})
-    
-    return messages
+    return response, provider_used, False
 
-# --- GEMINI API CALL ---
-def call_gemini_api(messages, stream=False):
-    """Calls Gemini API (Gemini does NOT support streaming via REST API)."""
-    payload = {
-        "contents": messages,
-        "systemInstruction": {
-            "parts": [{"text": NORMAL_SYSTEM_PROMPT}]
-        },
-        "generationConfig": {
-            "temperature": 0.7,
-            "topK": 40,
-            "topP": 0.95,
-            "maxOutputTokens": 2048,
-        },
-        "safetySettings": [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-        ]
-    }
-    
-    url = f"{GEMINI_API_URL}?key={GOOGLE_GEMINI_API_KEY}"
-    
-    try:
-        print(f"[DEBUG] Calling Gemini API (non-streaming) with {len(messages)} messages")
-        response = requests.post(url, json=payload, timeout=60)
-        print(f"[DEBUG] Gemini response status: {response.status_code}")
-        
-        if response.status_code != 200:
-            print(f"[DEBUG] Gemini error response: {response.text[:500]}")
-        
-        response.raise_for_status()
-        return response
-    except Exception as e:
-        print(f"Gemini API error: {e}")
-        print(f"[DEBUG] API Key set: {bool(GOOGLE_GEMINI_API_KEY)}")
-        if GOOGLE_GEMINI_API_KEY:
-            print(f"[DEBUG] Key preview: {GOOGLE_GEMINI_API_KEY[:20]}...")
-        return None
+# ============================================================================
+# 🖼️ IMAGE UPLOAD ENDPOINT
+# ============================================================================
 
-# --- GROQ API CALL ---
-def call_groq_api(messages, model=None, stream=True):
-    """Calls Groq API (fast LLM)."""
-    if model is None:
-        model = GROQ_NORMAL_MODEL
+# @app.route('/upload_image', methods=['POST'])
+# def upload_image_endpoint():
+#     """Upload and process images with compression and vision models."""
+ 
+# ============================================================================
+# 🖼️ IMAGE UPLOAD ENDPOINT - HYBRID INTELLIGENT STRATEGY
+# ============================================================================
+ 
+@app.route('/upload_image', methods=['POST'])
+def upload_image_endpoint():
+    """
+    Upload and process images with HYBRID strategy:
     
-    payload = {
-        "model": model,
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 2048,
-        "stream": stream
-    }
+    1. DETECT: Is image text-only or geometric?
+    2. TEXT-ONLY: Extract text → Deepthink solve (CHEAP: 2 calls, saves 75%)
+    3. GEOMETRIC: Direct vision solve (QUALITY: keeps diagram context)
+    4. ERROR: Smart fallback with helpful messages
     
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    try:
-        print(f"[DEBUG] Calling Groq with model {model}")
-        response = requests.post(GROQ_API_URL, json=payload, headers=headers, stream=stream, timeout=60)
-        print(f"[DEBUG] Groq status: {response.status_code}")
-        if response.status_code != 200:
-            print(f"[DEBUG] Groq error response: {response.text[:500]}")
-        response.raise_for_status()
-        return response
-    except Exception as e:
-        print(f"Groq API error: {e}")
-        return None
-
-# --- OPENROUTER API CALL ---
-def call_openrouter_api(messages, model, stream=True):
-    """Calls OpenRouter API."""
-    payload = {
-        "model": model,
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 2048,
-        "stream": stream
-    }
-    
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://vexara.ai",
-        "X-Title": "Vexara SEE Tutor"
-    }
-    
-    try:
-        response = requests.post(OPENROUTER_API_URL, json=payload, headers=headers, stream=stream, timeout=60)
-        response.raise_for_status()
-        return response
-    except Exception as e:
-        print(f"OpenRouter API error: {e}")
-        return None
-
-# --- MAIN /ask ENDPOINT (DUAL MODE WITH RAG) ---
-@app.route('/ask', methods=['POST'])
-def ask_endpoint():
-    """Main Q&A endpoint with dual-mode and RAG system."""
+    Cost optimization for startup:
+    - Text-only: ~$0.0006 per solve
+    - Geometric: ~$0.0025 per solve
+    - Mixed: ~$0.0025 per solve (safe to not lose data)
+    """
     user_id = get_user_id()
     chat_id = request.form.get('chat_id')
-    instruction = request.form.get('instruction', '').strip()
-    model_choice = request.form.get('model_choice', 'auto')  # 'auto', 'normal', 'deepthink'
-    web_search_enabled = request.form.get('web_search', 'false').lower() == 'true'
+    caption = request.form.get('caption', '').strip()
     
     if not chat_id:
         return jsonify({"error": "Chat ID not provided."}), 400
-    if not instruction:
-        return jsonify({"error": "No instruction provided."}), 400
     
-    # Auto-detect mode if not specified
-    if model_choice == 'auto':
-        needs_solving = should_use_deepthink(instruction)
-        mode = "deepthink" if needs_solving else "normal"
-        print(f"[DEBUG] Auto-detected mode: {mode} for question: {instruction[:50]}...")
-    else:
-        mode = model_choice  # 'normal' or 'deepthink'
+    if 'image' not in request.files:
+        return jsonify({"error": "No image file provided."}), 400
     
-    # Detect chapter for logging
-    subject, chapter, confidence = detect_chapter(instruction)
-    if confidence > 0:
-        print(f"[DEBUG] Detected chapter: {chapter} in {subject} (confidence: {confidence})")
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": "No file selected."}), 400
+    
+    if not file.filename.lower().endswith(('png', 'jpg', 'jpeg', 'gif', 'webp')):
+        return jsonify({"error": "File must be an image (PNG, JPG, GIF, WebP)."}), 400
     
     # Check quota
-    current_message_count = get_daily_message_count(user_id)
-    if current_message_count >= DAILY_MESSAGE_LIMIT:
-        return jsonify({"response": f"You have reached your daily message limit of {DAILY_MESSAGE_LIMIT}. Please try again tomorrow."}), 429
+    current_count = get_daily_message_count(user_id)
+    if current_count >= DAILY_MESSAGE_LIMIT:
+        return jsonify({"response": f"Daily limit ({DAILY_MESSAGE_LIMIT}) reached. You can use {DAILY_MESSAGE_LIMIT} more messages tomorrow."}), 429
     
-    # Load chat history
-    current_chat_history = load_chat_history_from_file(user_id, chat_id)
+    # Compress image
+    try:
+        file.seek(0)
+        image_data, mime_type = ImageOptimizer.compress_image(file)
+        print(f"[IMAGE] Compressed image, base64 length: {len(image_data)}")
+    except Exception as e:
+        return jsonify({"error": f"Image compression failed: {str(e)}"}), 400
     
-    # Save user message to history
-    current_chat_history.append({"type": "user", "text": instruction, "timestamp": time.time()})
-    save_chat_history_to_file(user_id, chat_id, current_chat_history)
-    
-    # Increment quota
-    increment_daily_message_count(user_id)
-    
-    def generate_response():
-        """Generator function for streaming response."""
+    def stream_hybrid_response():
         try:
-            # Build messages for API based on mode
-            gemini_messages = build_gemini_messages(current_chat_history, instruction, mode)
-            completion_messages = build_chat_completion_messages(current_chat_history, instruction, mode)
+            current_history = load_chat_history_from_file(user_id, chat_id)
             
-            response = None
-            full_response = ""
+            # STEP 0: DETECT image content type (text vs geometric)
+            print(f"[HYBRID] Starting image analysis...")
+            yield "🔍 Analyzing image...\n"
             
-            if mode == "deepthink":
-                # Use Groq DeepThink model (llama-3.3-70b-versatile) for solving
-                print(f"[DEEPTHINK MODE] Using Groq DeepThink for: {instruction[:50]}...")
-                response = call_groq_api(completion_messages, model=GROQ_DEEPTHINK_MODEL, stream=True)
-                
-                if response and response.status_code == 200:
-                    try:
-                        for line in response.iter_lines():
-                            if line:
-                                line_str = line.decode('utf-8').strip() if isinstance(line, bytes) else line.strip()
-                                if line_str.startswith('data: '):
-                                    try:
-                                        data = json.loads(line_str[6:])
-                                        if 'choices' in data and len(data['choices']) > 0:
-                                            choice = data['choices'][0]
-                                            if 'delta' in choice and 'content' in choice['delta']:
-                                                chunk = choice['delta']['content']
-                                                full_response += chunk
-                                                yield chunk
-                                    except (json.JSONDecodeError, KeyError, TypeError):
-                                        continue
-                    except Exception as e:
-                        print(f"Groq DeepThink streaming error: {e}")
-                
-                # Fallback chain for DeepThink mode
-                if not full_response:
-                    print("Groq DeepThink failed, trying OpenRouter DeepThink...")
-                    response = call_openrouter_api(completion_messages, OPENROUTER_DEEPTHINK_MODEL, stream=True)
-                    
-                    if response and response.status_code == 200:
-                        try:
-                            for line in response.iter_lines():
-                                if line:
-                                    line_str = line.decode('utf-8').strip() if isinstance(line, bytes) else line.strip()
-                                    if line_str.startswith('data: '):
-                                        try:
-                                            data = json.loads(line_str[6:])
-                                            if 'choices' in data and len(data['choices']) > 0:
-                                                choice = data['choices'][0]
-                                                if 'delta' in choice and 'content' in choice['delta']:
-                                                    chunk = choice['delta']['content']
-                                                    full_response += chunk
-                                                    yield chunk
-                                        except (json.JSONDecodeError, KeyError, TypeError):
-                                            continue
-                        except Exception as e:
-                            print(f"OpenRouter streaming error: {e}")
-                    
-                    # Final fallback: Gemini
-                    if not full_response:
-                        print("All deepthink models failed, falling back to Gemini...")
-                        response = call_gemini_api(gemini_messages, stream=False)
-                        
-                        if response and response.status_code == 200:
-                            try:
-                                data = response.json()
-                                if 'candidates' in data and len(data['candidates']) > 0:
-                                    candidate = data['candidates'][0]
-                                    if 'content' in candidate and 'parts' in candidate['content']:
-                                        for part in candidate['content']['parts']:
-                                            if 'text' in part:
-                                                full_response = part['text']
-                                                words = full_response.split(' ')
-                                                chunk = ""
-                                                for word in words:
-                                                    chunk += word + " "
-                                                    if len(chunk) > 50:
-                                                        yield chunk
-                                                        chunk = ""
-                                                if chunk:
-                                                    yield chunk
-                            except Exception as e:
-                                print(f"Gemini fallback error: {e}")
+            content_type = ImageAnalyzer.detect_content_type(image_data)
+            print(f"[HYBRID] Detected content: {content_type}")
             
-            else:  # NORMAL MODE
-                # Use Groq Normal model (llama-3.1-8b-instant) for quick responses
-                print(f"[NORMAL MODE] Using Groq Normal for: {instruction[:50]}...")
-                response = call_groq_api(completion_messages, model=GROQ_NORMAL_MODEL, stream=True)
-                
-                if response and response.status_code == 200:
-                    try:
-                        for line in response.iter_lines():
-                            if line:
-                                line_str = line.decode('utf-8').strip() if isinstance(line, bytes) else line.strip()
-                                if line_str.startswith('data: '):
-                                    try:
-                                        data = json.loads(line_str[6:])
-                                        if 'choices' in data and len(data['choices']) > 0:
-                                            choice = data['choices'][0]
-                                            if 'delta' in choice and 'content' in choice['delta']:
-                                                chunk = choice['delta']['content']
-                                                full_response += chunk
-                                                yield chunk
-                                    except (json.JSONDecodeError, KeyError, TypeError):
-                                        continue
-                    except Exception as e:
-                        print(f"Groq Normal streaming error: {e}")
-                
-                # Fallback for Normal mode
-                if not full_response:
-                    print("Groq Normal failed, trying Gemini...")
-                    response = call_gemini_api(gemini_messages, stream=False)
-                    
-                    if response and response.status_code == 200:
-                        try:
-                            data = response.json()
-                            if 'candidates' in data and len(data['candidates']) > 0:
-                                candidate = data['candidates'][0]
-                                if 'content' in candidate and 'parts' in candidate['content']:
-                                    for part in candidate['content']['parts']:
-                                        if 'text' in part:
-                                            full_response = part['text']
-                                            words = full_response.split(' ')
-                                            chunk = ""
-                                            for word in words:
-                                                chunk += word + " "
-                                                if len(chunk) > 50:
-                                                    yield chunk
-                                                    chunk = ""
-                                            if chunk:
-                                                yield chunk
-                        except Exception as e:
-                            print(f"Gemini fallback error: {e}")
+            extracted_text = None
+            full_response = None
+            solving_method = None
+            rag_context = None
+            rag_chapter = None
+            rag_subject = None
+            rag_confidence = None
             
-            if not full_response:
-                yield "Error: Could not get a response from AI models. Please try again."
+            # ================== STEP 1: EXTRACT QUESTION FROM IMAGE ==================
+            # This is done FIRST for all image types
+            # The extracted question is used for RAG retrieval (not user keywords like "solve 1 a")
+            print(f"[HYBRID] Step 1: Extracting question from image...")
+            question_text, _, _ = ImageAnalyzer.extract_text_from_image(image_data)
+            
+            if question_text:
+                print(f"[HYBRID] Extracted question: '{question_text[:80]}'")
+            else:
+                question_text = caption if caption else "math problem"
+                print(f"[HYBRID] Using caption as fallback: '{question_text}'")
+            
+            # STEP 2: RETRIEVE RAG CONTEXT BASED ON EXTRACTED QUESTION (NOT KEYWORDS)
+            # This ensures we match by actual problem content, not command keywords
+            print(f"[HYBRID] Step 2: Retrieving curriculum context...")
+            rag_subject, rag_chapter, rag_context, rag_confidence, num_chunks = KNOWLEDGE_BASE.retrieve(question_text)
+            
+            if rag_context and rag_confidence >= KNOWLEDGE_BASE.config.get('min_confidence_threshold', 0.15):
+                print(f"[RAG] Retrieved {num_chunks} chunks (confidence: {rag_confidence:.2f})")
+                print(f"[RAG] Subject/Chapter: {rag_subject} / {rag_chapter}")
+                yield f"📚 Found relevant chapter: {rag_subject} - {rag_chapter}\n\n"
+            else:
+                rag_context = None
+                print(f"[RAG] No relevant context found (threshold: {KNOWLEDGE_BASE.config.get('min_confidence_threshold', 0.15):.0%})")
+                yield "📚 No specific chapter context found - using general knowledge\n\n"
+            
+            # ================== STRATEGY 1: TEXT-ONLY ==================
+            # Extract text → Deepthink solve (CHEAPER: saves 75% cost)
+            if content_type == 'text_only':
+                print(f"[HYBRID] Using TEXT-ONLY strategy (extract + deepthink)")
+                yield "✓ Text-based problem detected\n\n"
+                yield "📝 Processing...\n\n"
+                
+                extracted_text = question_text
+                
+                if not extracted_text.strip():
+                    yield "❌ Could not read text from image.\n\n💡 Please try uploading a clearer image or type the problem directly.\n"
+                    return
+                
+                yield f"🧠 Solving with deepthink...\n\n"
+                
+                # Now solve using deepthink with RAG context
+                full_response_gen = ImageAnalyzer.solve_with_deepthink(extracted_text, current_history, rag_context, rag_subject, rag_chapter, rag_confidence)
+                full_response = None
+                for chunk in full_response_gen:
+                    if chunk:
+                        full_response = chunk if full_response is None else full_response
+                    yield chunk
+                
+            # ================== STRATEGY 2: GEOMETRIC/MIXED ==================
+            # Direct vision solve (PRESERVE DIAGRAM CONTEXT)
+            elif content_type in ('geometric', 'mixed'):
+                print(f"[HYBRID] Using {content_type.upper()} strategy (direct vision solve)")
+                strategy_text = "geometric" if content_type == 'geometric' else "mixed (text + diagram)"
+                yield f"✓ {strategy_text.title()} problem detected\n\n"
+                yield "🔍 Analyzing with vision model...\n\n"
+                
+                # Solve directly with image context and RAG
+                full_response_gen = ImageAnalyzer.solve_with_vision_directly(image_data, question_text, current_history, rag_context, rag_subject, rag_chapter, rag_confidence)
+                full_response = None
+                for chunk in full_response_gen:
+                    if chunk:
+                        full_response = chunk if full_response is None else full_response
+                    yield chunk
+            
+            else:
+                yield "❌ Could not determine image type. Please try again.\n"
                 return
             
-            # Save bot response to history
-            current_chat_history.append({"type": "bot", "text": full_response, "timestamp": time.time()})
-            save_chat_history_to_file(user_id, chat_id, current_chat_history)
+            # ================== SAVE TO HISTORY ==================
+            if full_response and full_response.strip():
+                # Build user message for history
+                if extracted_text:
+                    user_msg = f"[Image] {caption}\n[Extracted]: {extracted_text}"
+                else:
+                    user_msg = f"[Image] {caption or 'Math problem'}\n[Question]: {question_text}"
+                
+                # Save to history
+                current_history.append({
+                    "type": "user",
+                    "text": user_msg,
+                    "timestamp": time.time()
+                })
+                current_history.append({
+                    "type": "bot",
+                    "text": full_response,
+                    "timestamp": time.time()
+                })
+                
+                save_chat_history_to_file(user_id, chat_id, current_history)
+                increment_daily_message_count(user_id)
+                
+                print(f"[HYBRID] ✓ Complete using {content_type} strategy")
+                print(f"[HYBRID] RAG Used: {rag_context is not None}, Chapter: {rag_chapter if rag_context else 'None'}")
+            else:
+                yield "\n❌ Could not generate solution. Please try again."
             
         except Exception as e:
-            print(f"Error in /ask: {e}")
+            print(f"[HYBRID] Fatal error: {e}")
             import traceback
             traceback.print_exc()
-            yield f"Error: {str(e)}"
+            yield f"\n❌ Unexpected error: {str(e)}"
     
-    return app.response_class(generate_response(), mimetype='text/event-stream')
+    return app.response_class(stream_hybrid_response(), mimetype='text/event-stream')
+ 
+# 📋 CHAT MANAGEMENT ENDPOINTS
+# ============================================================================
 
-# --- OTHER REQUIRED ENDPOINTS (keep all existing) ---
 @app.route('/start_new_chat', methods=['POST'])
 def start_new_chat_endpoint():
-    """Starts a new chat session."""
+    """Create a new chat."""
     user_id = get_user_id()
     new_chat_id = str(uuid.uuid4())
     save_chat_history_to_file(user_id, new_chat_id, [])
     
     has_previous_chats = False
-    for filename in os.listdir(CHAT_HISTORY_DIR):
-        if filename.startswith(f"{user_id}_") and filename.endswith(".json") and filename != f"{user_id}_{new_chat_id}.json":
-            has_previous_chats = True
-            break
+    try:
+        for filename in os.listdir(CHAT_HISTORY_DIR):
+            if filename.startswith(f"{user_id}_") and filename.endswith(".json") and filename != f"{user_id}_{new_chat_id}.json":
+                has_previous_chats = True
+                break
+    except:
+        pass
     
     return jsonify({"status": "success", "chat_id": new_chat_id, "has_previous_chats": has_previous_chats})
 
 @app.route('/clear_all_chats', methods=['POST'])
 def clear_all_chats_endpoint():
-    """Deletes all chat history files for the current user."""
+    """Clear all chats for user."""
     user_id = get_user_id()
     try:
         count = 0
@@ -752,48 +1555,183 @@ def clear_all_chats_endpoint():
 
 @app.route('/get_chat_history_list', methods=['GET'])
 def get_chat_history_list():
-    """Returns a list of chat summaries for the current user."""
+    """Get list of all user chats."""
     user_id = get_user_id()
     chat_summaries = []
     
-    user_chat_files = [f for f in os.listdir(CHAT_HISTORY_DIR) if f.startswith(f"{user_id}_") and f.endswith(".json")]
-    user_chat_files.sort(key=lambda f: os.path.getmtime(os.path.join(CHAT_HISTORY_DIR, f)), reverse=True)
-    
-    for filename in user_chat_files:
-        chat_id = filename.replace(f"{user_id}_", "").replace(".json", "")
-        chat_data = load_chat_history_from_file(user_id, chat_id)
+    try:
+        user_chat_files = [f for f in os.listdir(CHAT_HISTORY_DIR) if f.startswith(f"{user_id}_") and f.endswith(".json")]
+        user_chat_files.sort(key=lambda f: os.path.getmtime(os.path.join(CHAT_HISTORY_DIR, f)), reverse=True)
         
-        display_title = "New Chat"
-        if chat_data:
-            first_meaningful_message = next((
-                msg for msg in chat_data 
-                if msg['type'] == 'user' and msg['text'].strip()
-            ), None)
-            if first_meaningful_message:
-                display_title = first_meaningful_message['text'].split('\n')[0][:30]
-                if len(first_meaningful_message['text'].split('\n')[0]) > 30:
-                    display_title += "..."
-        
-        chat_summaries.append({'id': chat_id, 'title': display_title})
+        for filename in user_chat_files:
+            chat_id = filename.replace(f"{user_id}_", "").replace(".json", "")
+            chat_data = load_chat_history_from_file(user_id, chat_id)
+            
+            display_title = "New Chat"
+            if chat_data:
+                first_user_msg = next((msg for msg in chat_data if msg['type'] == 'user' and msg['text'].strip()), None)
+                if first_user_msg:
+                    display_title = first_user_msg['text'].split('\n')[0][:30]
+                    if len(display_title) > 30:
+                        display_title += "..."
+            
+            chat_summaries.append({'id': chat_id, 'title': display_title})
+    except Exception as e:
+        print(f"Error getting chat list: {e}")
     
     return jsonify(chat_summaries)
 
 @app.route('/get_chat_messages/<chat_id>', methods=['GET'])
 def get_chat_messages(chat_id):
-    """Returns the full chat message history for a given chat ID."""
+    """Get messages for a specific chat."""
     user_id = get_user_id()
     chat_data = load_chat_history_from_file(user_id, chat_id)
     return jsonify(chat_data)
 
-@app.route('/chat')
+# ============================================================================
+# 🚀 MAIN /ask ENDPOINT WITH INTELLIGENT FALLBACK
+# ============================================================================
+
+@app.route('/ask', methods=['POST'])
+def ask_endpoint():
+    """Main Q&A endpoint with external KB retrieval and intelligent fallback."""
+    user_id = get_user_id()
+    chat_id = request.form.get('chat_id')
+    instruction = request.form.get('instruction', '').strip()
+    model_choice = request.form.get('model_choice', 'auto')
+    
+    if not chat_id:
+        return jsonify({"error": "Chat ID not provided."}), 400
+    if not instruction:
+        return jsonify({"error": "No instruction provided."}), 400
+    
+    # Auto-detect mode
+    if model_choice == 'auto':
+        mode = "deepthink" if should_use_deepthink(instruction) else "normal"
+        print(f"[MODE] Auto-detected: {mode}")
+    else:
+        mode = model_choice
+    
+    # Check quota
+    current_count = get_daily_message_count(user_id)
+    if current_count >= DAILY_MESSAGE_LIMIT:
+        return jsonify({"response": f"Daily limit ({DAILY_MESSAGE_LIMIT}) reached."}), 429
+    
+    # Load and trim chat history
+    full_history = load_chat_history_from_file(user_id, chat_id)
+    trimmed_history = trim_chat_history(full_history)
+    
+    # Save user message
+    trimmed_history.append({"type": "user", "text": instruction, "timestamp": time.time()})
+    save_chat_history_to_file(user_id, chat_id, trimmed_history)
+    
+    # Increment quota
+    increment_daily_message_count(user_id)
+    
+    # Build enhanced prompt with retrieved chunks
+    system_prompt = build_enhanced_prompt(instruction, trimmed_history[:-1], mode)
+    
+    # Build messages for API
+    messages = [{"role": "system", "content": system_prompt}]
+    for msg in trimmed_history[:-1]:
+        if msg['type'] == 'user':
+            messages.append({"role": "user", "content": msg['text']})
+        elif msg['type'] == 'bot':
+            messages.append({"role": "assistant", "content": msg['text']})
+    messages.append({"role": "user", "content": instruction})
+    
+    def generate_response():
+        full_response = ""
+        
+        try:
+            response, provider_used, success = call_api_with_intelligent_fallback(mode, system_prompt, messages)
+            
+            if not response or not success:
+                yield "I'm experiencing connection issues with all providers. Please try again in a moment."
+                return
+            
+            print(f"[RESPONSE] Using provider: {provider_used}")
+            
+            # Handle streaming vs non-streaming responses
+            if response.headers.get('content-type', '').startswith('text/event-stream'):
+                # Streaming response (OpenAI-compatible)
+                for line in response.iter_lines():
+                    if line:
+                        line_str = line.decode('utf-8').strip() if isinstance(line, bytes) else line.strip()
+                        if line_str.startswith('data: '):
+                            try:
+                                data = json.loads(line_str[6:])
+                                if 'choices' in data and data['choices']:
+                                    delta = data['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        chunk = delta['content']
+                                        full_response += chunk
+                                        yield chunk
+                            except json.JSONDecodeError:
+                                continue
+            else:
+                # Non-streaming response (Gemini)
+                try:
+                    data = response.json()
+                    if 'candidates' in data and data['candidates']:
+                        candidate = data['candidates'][0]
+                        if 'content' in candidate and 'parts' in candidate['content']:
+                            for part in candidate['content']['parts']:
+                                if 'text' in part:
+                                    full_response = part['text']
+                                    words = full_response.split()
+                                    chunk_buffer = ""
+                                    for word in words:
+                                        chunk_buffer += word + " "
+                                        if len(chunk_buffer) > 50:
+                                            yield chunk_buffer
+                                            chunk_buffer = ""
+                                    if chunk_buffer:
+                                        yield chunk_buffer
+                except json.JSONDecodeError:
+                    yield "Error parsing response. Please try again."
+                    return
+            
+            if not full_response:
+                yield "I couldn't generate a response. Please try again."
+                return
+            
+            # Save bot response
+            trimmed_history.append({"type": "bot", "text": full_response, "timestamp": time.time()})
+            save_chat_history_to_file(user_id, chat_id, trimmed_history)
+            
+        except Exception as e:
+            print(f"Error in /ask: {e}")
+            import traceback
+            traceback.print_exc()
+            yield f"An error occurred: {str(e)}"
+    
+    return app.response_class(generate_response(), mimetype='text/event-stream')
+
+# ============================================================================
+# 💬 CHAT ENDPOINT
+# ============================================================================
+
+@app.route('/index', methods=['GET'])
+@app.route('/chat', methods=['GET'])
 def chat():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    """Chat page (index.html)."""
+    if 'user_id' not in session and 'temp_user_id' not in session:
+        return redirect(url_for('home'))
     return render_template('index.html')
 
-@app.route('/login')
+# ============================================================================
+
+# ============================================================================
+# 🔐 AUTHENTICATION ENDPOINTS
+# ============================================================================
+
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'user_id' in session:
+    if request.method == 'POST':
+        user_input = request.form.get('user_input')
+        session['user'] = user_input
+        session['user_id'] = f"user_{uuid.uuid4()}"
         return redirect(url_for('chat'))
     return render_template('login.html')
 
@@ -825,39 +1763,35 @@ def google_login_authorized():
         if user_info.ok:
             session['user'] = user_info.json().get("email")
             session['user_id'] = f"google_{user_info.json().get('id')}"
-            return redirect(url_for('index'))
+            return redirect(url_for('chat'))
         else:
             return redirect(url_for('login'))
     except Exception as e:
         print(f"Error during Google login: {e}")
         return redirect(url_for('login'))
+
 @app.route('/microsoft_login/authorized')
 def microsoft_login_authorized():
     try:
-        # Get user info from Microsoft Graph API
         resp = microsoft.get("https://graph.microsoft.com/v1.0/me")
-
         if not resp.ok:
             print("Microsoft API Error:", resp.text)
             return redirect(url_for("login"))
-
         user_data = resp.json()
-
-        session['user'] = (
-            user_data.get("mail")
-            or user_data.get("userPrincipalName")
-        )
-
+        session['user'] = user_data.get("mail") or user_data.get("userPrincipalName")
         session['user_id'] = f"microsoft_{user_data.get('id')}"
-
-        return redirect(url_for('index'))
-
+        return redirect(url_for('chat'))
     except Exception as e:
         print(f"Error during Microsoft login: {e}")
         return redirect(url_for('login'))
+
 @app.route('/')
 def home():
     return render_template('login.html')
+
+# ============================================================================
+# 📄 STATIC PAGE ROUTES
+# ============================================================================
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -885,159 +1819,110 @@ def robots():
 def sitemap():
     return send_from_directory(os.path.join(BASE_DIR, 'static'), 'sitemap.xml')
 
-@app.route('/debug/test-gemini', methods=['GET'])
-def debug_test_gemini():
-    """Test Gemini API directly for debugging."""
-    test_messages = [
-        {
-            "role": "user",
-            "parts": [{"text": "What is 2+2? Answer in one sentence."}]
-        }
-    ]
-    
-    response = call_gemini_api(test_messages, stream=False)
-    
-    if not response or response.status_code != 200:
-        return jsonify({
-            "error": f"Gemini API failed with status {response.status_code if response else 'No response'}", 
-            "key_set": bool(GOOGLE_GEMINI_API_KEY),
-            "full_response": response.text if response else "No response"
-        })
-    
-    try:
-        data = response.json()
-        print(f"[DEBUG] Full Gemini response: {json.dumps(data, indent=2)[:500]}")
-        
-        if 'candidates' in data and len(data['candidates']) > 0:
-            candidate = data['candidates'][0]
-            if 'content' in candidate and 'parts' in candidate['content']:
-                for part in candidate['content']['parts']:
-                    if 'text' in part:
-                        return jsonify({
-                            "success": True,
-                            "response": part['text'],
-                            "status_code": response.status_code
-                        })
-        
-        return jsonify({
-            "error": "No text found in response",
-            "response_structure": str(data)[:200]
-        })
-    except Exception as e:
-        return jsonify({
-            "error": f"Error parsing response: {str(e)}",
-            "response_text": response.text[:500] if response else "No response"
-        })
+# ============================================================================
+# 🔧 API HEALTH & STATUS ENDPOINTS
+# ============================================================================
 
-# --- IMAGE UPLOAD & VISION ENDPOINT ---
-@app.route('/upload_image', methods=['POST'])
-def upload_image_endpoint():
-    """Handle image upload and vision-based math problem solving."""
-    user_id = get_user_id()
-    chat_id = request.form.get('chat_id')
-    caption = request.form.get('caption', '').strip()
+@app.route('/api/providers/status', methods=['GET'])
+def get_providers_status():
+    """Get status of all API providers."""
+    status = {}
+    for provider_name in api_provider.PROVIDERS.keys():
+        status[provider_name] = api_provider.get_provider_status(provider_name)
+    return jsonify(status)
+
+@app.route('/api/providers/test', methods=['POST'])
+def test_providers():
+    """Test all providers with a simple request."""
+    mode = request.get_json().get('mode', 'normal')
+    test_prompt = "Say 'Provider is working' briefly."
+    test_messages = [{"role": "user", "content": test_prompt}]
     
-    if not chat_id:
-        return jsonify({"error": "Chat ID not provided."}), 400
-    
-    if 'image' not in request.files:
-        return jsonify({"error": "No image file provided."}), 400
-    
-    file = request.files['image']
-    if file.filename == '':
-        return jsonify({"error": "No file selected."}), 400
-    
-    if not file.filename.lower().endswith(('png', 'jpg', 'jpeg', 'gif', 'webp')):
-        return jsonify({"error": "File must be an image (PNG, JPG, GIF, WebP)."}), 400
-    
-    current_message_count = get_daily_message_count(user_id)
-    if current_message_count >= DAILY_MESSAGE_LIMIT:
-        return jsonify({"response": f"You have reached your daily message limit of {DAILY_MESSAGE_LIMIT}. Please try again tomorrow."}), 429
-    
-    try:
-        image_data = base64.standard_b64encode(file.read()).decode('utf-8')
-    except Exception as e:
-        print(f"Error reading file: {e}")
-        return jsonify({"error": f"Error reading image file: {str(e)}"}), 400
-    
-    def stream_image_response():
+    results = {}
+    for provider in api_provider.FALLBACK_CHAIN.get(mode, []):
         try:
-            current_chat_history = load_chat_history_from_file(user_id, chat_id)
-            
-            vision_prompt = f"""You are a math tutor specializing in SEE exam preparation for Class 10 students in Nepal.
-
-A student has uploaded an image of a math problem. Your task is to:
-1. Analyze the image and identify the math problem
-2. Explain what the problem is asking (in simple terms)
-3. Solve it step-by-step
-4. Explain the concept behind it
-5. Provide the final answer clearly
-
-The student's caption/note about this problem: {caption if caption else 'None provided'}
-
-Follow the same format as you would for text-based questions - make it educational and SEE-exam focused."""
-            
-            vision_messages = [
-                {
-                    "role": "user",
-                    "parts": [
-                        {"text": vision_prompt},
-                        {
-                            "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": image_data
-                            }
-                        }
-                    ]
-                }
-            ]
-            
-            vision_response = call_gemini_api(vision_messages, stream=False)
-            
-            if not vision_response or vision_response.status_code != 200:
-                yield f"Error: Could not process image. Status: {vision_response.status_code if vision_response else 'None'}"
-                return
-            
-            try:
-                data = vision_response.json()
-                
-                if 'candidates' in data and len(data['candidates']) > 0:
-                    candidate = data['candidates'][0]
-                    if 'content' in candidate and 'parts' in candidate['content']:
-                        for part in candidate['content']['parts']:
-                            if 'text' in part:
-                                full_response = part['text']
-                                
-                                user_message = f"[Image Upload] {caption if caption else 'Math problem image'}"
-                                current_chat_history.append({"type": "user", "text": user_message, "timestamp": time.time()})
-                                current_chat_history.append({"type": "bot", "text": full_response, "timestamp": time.time()})
-                                save_chat_history_to_file(user_id, chat_id, current_chat_history)
-                                
-                                increment_daily_message_count(user_id)
-                                
-                                words = full_response.split(' ')
-                                chunk = ""
-                                for word in words:
-                                    chunk += word + " "
-                                    if len(chunk) > 50:
-                                        yield chunk
-                                        chunk = ""
-                                if chunk:
-                                    yield chunk
-                                return
-                
-                yield "Error: No text extracted from image analysis."
-            except Exception as e:
-                print(f"Vision response parse error: {e}")
-                yield f"Error parsing vision response: {str(e)}"
-        
+            response, err = api_provider.call_provider(
+                provider, mode, test_prompt, test_messages, stream=False
+            )
+            if response and response.status_code == 200:
+                results[provider] = {"status": "working", "code": 200}
+            else:
+                code = response.status_code if response else None
+                results[provider] = {"status": "failed", "code": code, "error": err}
         except Exception as e:
-            print(f"Image processing error: {e}")
-            import traceback
-            traceback.print_exc()
-            yield f"Error: {str(e)}"
+            results[provider] = {"status": "error", "error": str(e)}
     
-    return app.response_class(stream_image_response(), mimetype='text/event-stream')
+    return jsonify(results)
 
+# ============================================================================
+# 🔧 DEBUG ENDPOINTS
+# ============================================================================
+
+@app.route('/debug/kb_status', methods=['GET'])
+def debug_kb_status():
+    """Check knowledge base status."""
+    return jsonify({
+        "chunks_loaded": len(KNOWLEDGE_BASE.chunks),
+        "config": KNOWLEDGE_BASE.config,
+        "metadata": KNOWLEDGE_BASE.metadata,
+        "sample_chunks": [
+            {"id": c.get('id'), "subject": c.get('subject'), "chapter": c.get('chapter'), "topic": c.get('topic')}
+            for c in KNOWLEDGE_BASE.chunks[:5]
+        ]
+    })
+
+@app.route('/debug/search', methods=['POST'])
+def debug_search():
+    """Test KB search with a query."""
+    data = request.get_json()
+    query = data.get('query', '')
+    subject, chapter, context, confidence, num_chunks = KNOWLEDGE_BASE.retrieve(query)
+    return jsonify({
+        "query": query,
+        "subject": subject,
+        "chapter": chapter,
+        "confidence": confidence,
+        "chunks_used": num_chunks,
+        "context_preview": context[:500] if context else None
+    })
+
+@app.route('/debug/api_config', methods=['GET'])
+def debug_api_config():
+    """Get API configuration status."""
+    config = {
+        "providers": {},
+        "fallback_chains": api_provider.FALLBACK_CHAIN,
+        "rate_limits": {}
+    }
+    
+    for provider_name, provider_info in api_provider.PROVIDERS.items():
+        config["providers"][provider_name] = {
+            "type": provider_info.get("type"),
+            "api_key_configured": bool(provider_info.get("api_key")),
+            "models": provider_info.get("models"),
+            "status": api_provider.get_provider_status(provider_name)
+        }
+        config["rate_limits"][provider_name] = api_provider.RATE_LIMITS.get(provider_name, {})
+    
+    return jsonify(config)
+
+# ============================================================================
+# 🚀 MAIN
+# ============================================================================
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+    print("""
+    ╔════════════════════════════════════════════════════════════════╗
+    ║        VEXARA v4.1 - AI TUTOR WITH INTELLIGENT FALLBACK       ║
+    ╠════════════════════════════════════════════════════════════════╣
+    ║  ✓ Groq (Llama 3.1-8B / Llama 3.3-70B)                        ║
+    ║  ✓ Cerebras (Llama 3.1-8B / Qwen-QVQ-32B)                     ║
+    ║  ✓ Gemini (2.0-Flash)                                         ║
+    ║  ✓ OpenRouter (Mistral / Gemma)                               ║
+    ║                                                                ║
+    ║  📊 Intelligent Fallback Chain                                 ║
+    ║  🔄 Rate Limit Tracking                                        ║
+    ║  📚 External Knowledge Base (Curriculum)                       ║
+    ║  🎯 Auto Mode Detection                                        ║
+    ╚════════════════════════════════════════════════════════════════╝
+    """)
