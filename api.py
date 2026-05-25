@@ -9,6 +9,7 @@ VEXARA v4.1 - PRODUCTION RAG WITH INTELLIGENT FALLBACK SYSTEM
 - INTEGRATED: Cerebras API as primary fallback
 - FIXED: Gemini API with proper error handling
 - IMPROVED: Intelligent API selection and rate limit handling
+- ENHANCED: Persistent Session Management for Google/Microsoft Login (NEW)
 """
 
 import json
@@ -47,6 +48,13 @@ CORS(app, resources={
     }
 })
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
+# ============================================================================
+# 🔐 PERSISTENT SESSION CONFIGURATION
+# ============================================================================
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
 # ============================================================================
 # 🔑 API KEYS & CONFIGURATION
@@ -790,25 +798,24 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # ============================================================================
 
 class ChunkedKnowledgeBase:
-    """Loads chunks from external JSON file with weighted retrieval."""
+    """
+    Load and query external curriculum_chunks.json with advanced matching.
+    Supports weighted keywords, intent patterns, fuzzy matching, negative keywords.
+    """
     
-    def __init__(self, json_path=None):
-        if json_path is None:
-            json_path = os.path.join(current_dir, 'curriculum_chunks.json')
-        
+    def __init__(self, chunks_file='curriculum_chunks.json'):
         self.chunks = []
         self.config = {}
         self.metadata = {}
-        self._load_from_file(json_path)
+        self.load_chunks(chunks_file)
     
-    def _load_from_file(self, path):
+    def load_chunks(self, path='curriculum_chunks.json'):
         """Load chunks from external JSON file."""
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            
             self.chunks = data.get('chunks', [])
-            self.config = data.get('retrieval_config', {
+            self.config = data.get('config', {
                 "min_confidence_threshold": 0.15,
                 "max_chunks_per_query": 3,
                 "keyword_match_weight": 1.0,
@@ -1193,16 +1200,12 @@ DEEPTHINK_BASE_PROMPT = """You are Vexara, an expert SEE exam tutor specializing
 6. **SEE Tip:** Include one exam tip from the retrieved knowledge
 
 **IMPORTANT:**
-Use the "Retrieved Knowledge" section below for exact formulas, solved examples, and common mistakes.
-Do not invent formulas - use provided knowledge.
+Use retrieved knowledge (formulas, patterns, examples) as your source.
+Do NOT invent formulas or make up information.
 """
 
-# ============================================================================
-# 🎯 PROMPT BUILDING WITH RETRIEVED CHUNKS
-# ============================================================================
-
 def build_enhanced_prompt(question, chat_history, mode="normal"):
-    """Build prompt with retrieved chunks from external KB."""
+    """Build system prompt with RAG context injection."""
     # Retrieve relevant chunks
     subject, chapter, context, confidence, num_chunks = KNOWLEDGE_BASE.retrieve(question)
     
@@ -1337,14 +1340,6 @@ def call_api_with_intelligent_fallback(mode, system_prompt, messages, image_data
     
     return response, provider_used, False
 
-# ============================================================================
-# 🖼️ IMAGE UPLOAD ENDPOINT
-# ============================================================================
-
-# @app.route('/upload_image', methods=['POST'])
-# def upload_image_endpoint():
-#     """Upload and process images with compression and vision models."""
- 
 # ============================================================================
 # 🖼️ IMAGE UPLOAD ENDPOINT - HYBRID INTELLIGENT STRATEGY
 # ============================================================================
@@ -1715,12 +1710,27 @@ def ask_endpoint():
 @app.route('/index', methods=['GET'])
 @app.route('/chat', methods=['GET'])
 def chat():
-    """Chat page (index.html)."""
-    if 'user_id' not in session and 'temp_user_id' not in session:
-        return redirect(url_for('home'))
+    """Chat page (index.html) - redirect to login if not authenticated."""
+    if not is_user_logged_in():
+        return redirect(url_for('login'))
+    session.permanent = True
     return render_template('index.html')
 
 # ============================================================================
+# 🔐 SESSION PERSISTENCE CHECK
+# ============================================================================
+
+def is_user_logged_in():
+    """Check if user has an active session."""
+    return 'user_id' in session and 'user' in session
+
+@app.before_request
+def check_session_persistence():
+    """Check and restore persistent sessions on every request."""
+    if request.endpoint not in ['login', 'guest_login', 'google_login_authorized', 'microsoft_login_authorized', 'home', 'static']:
+        # Make session permanent for authenticated users
+        if is_user_logged_in():
+            session.permanent = True
 
 # ============================================================================
 # 🔐 AUTHENTICATION ENDPOINTS
@@ -1728,65 +1738,112 @@ def chat():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Login page with multiple authentication options."""
+    # If already logged in, redirect to chat
+    if is_user_logged_in():
+        session.permanent = True
+        return redirect(url_for('chat'))
+    
     if request.method == 'POST':
         user_input = request.form.get('user_input')
+        if not user_input:
+            return render_template('login.html', error="Username cannot be empty")
+        
+        session.permanent = True
         session['user'] = user_input
         session['user_id'] = f"user_{uuid.uuid4()}"
         return redirect(url_for('chat'))
+    
     return render_template('login.html')
 
 @app.route('/guest_login')
 def guest_login():
+    """Guest login - creates temporary session."""
     session.clear()
     temp_id = str(uuid.uuid4())
     session['temp_user_id'] = temp_id
     session['user_id'] = temp_id
     session['is_guest'] = True
+    session['user'] = 'Guest'
     return redirect(url_for('chat'))
 
 @app.route('/logout')
 def logout():
+    """Logout and clear session."""
     session.clear()
     return redirect(url_for('home'))
 
 @app.route('/user_info', methods=['GET'])
 def user_info():
+    """Get current user information."""
+    if not is_user_logged_in():
+        return jsonify({"error": "Not authenticated"}), 401
+    
     user_email = session.get('user', None)
-    return jsonify({"user_email": user_email})
+    return jsonify({
+        "user_email": user_email,
+        "user_id": session.get('user_id'),
+        "is_guest": session.get('is_guest', False)
+    })
 
 @app.route('/google_login/authorized')
 def google_login_authorized():
+    """Handle Google OAuth callback - creates persistent session."""
     if not google.authorized:
         return redirect(url_for("login"))
+    
     try:
         user_info = google.get("/oauth2/v2/userinfo")
         if user_info.ok:
-            session['user'] = user_info.json().get("email")
-            session['user_id'] = f"google_{user_info.json().get('id')}"
+            user_data = user_info.json()
+            session.permanent = True
+            session['user'] = user_data.get("email")
+            session['user_id'] = f"google_{user_data.get('id')}"
+            session['auth_provider'] = 'google'
+            session['user_name'] = user_data.get("name")
+            
+            print(f"[AUTH] Google login successful for {user_data.get('email')}")
+            
             return redirect(url_for('chat'))
         else:
+            print(f"[AUTH] Google API error: {user_info.status_code}")
             return redirect(url_for('login'))
+    
     except Exception as e:
-        print(f"Error during Google login: {e}")
+        print(f"[AUTH] Error during Google login: {e}")
         return redirect(url_for('login'))
 
 @app.route('/microsoft_login/authorized')
 def microsoft_login_authorized():
+    """Handle Microsoft OAuth callback - creates persistent session."""
     try:
         resp = microsoft.get("https://graph.microsoft.com/v1.0/me")
         if not resp.ok:
-            print("Microsoft API Error:", resp.text)
+            print(f"[AUTH] Microsoft API Error: {resp.text}")
             return redirect(url_for("login"))
+        
         user_data = resp.json()
+        session.permanent = True
         session['user'] = user_data.get("mail") or user_data.get("userPrincipalName")
         session['user_id'] = f"microsoft_{user_data.get('id')}"
+        session['auth_provider'] = 'microsoft'
+        session['user_name'] = user_data.get("displayName")
+        
+        print(f"[AUTH] Microsoft login successful for {session['user']}")
+        
         return redirect(url_for('chat'))
+    
     except Exception as e:
-        print(f"Error during Microsoft login: {e}")
+        print(f"[AUTH] Error during Microsoft login: {e}")
         return redirect(url_for('login'))
 
 @app.route('/')
 def home():
+    """Home page - redirects to chat if logged in, otherwise to login."""
+    if is_user_logged_in():
+        session.permanent = True
+        return redirect(url_for('chat'))
+    
     return render_template('login.html')
 
 # ============================================================================
@@ -1924,5 +1981,6 @@ if __name__ == '__main__':
     ║  🔄 Rate Limit Tracking                                        ║
     ║  📚 External Knowledge Base (Curriculum)                       ║
     ║  🎯 Auto Mode Detection                                        ║
+    ║  🔐 Persistent Session Management (NEW)                        ║
     ╚════════════════════════════════════════════════════════════════╝
     """)
