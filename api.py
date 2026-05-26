@@ -1935,9 +1935,44 @@ def see_exam_preparation():
 def robots():
     return send_from_directory(os.path.join(BASE_DIR, 'static'), 'robots.txt')
 
-@app.route('/sitemap.xml')
+@app.route("/sitemap.xml")
 def sitemap():
-    return send_from_directory(os.path.join(BASE_DIR, 'static'), 'sitemap.xml')
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <url>
+    <loc>https://aivexara.xyz/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://aivexara.xyz/see-maths-ai</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://aivexara.xyz/science-helper</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://aivexara.xyz/homework-ai</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://aivexara.xyz/see-exam-preparation</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+</urlset>"""
+
+    return Response(xml, mimetype="application/xml")
 
 # ============================================================================
 # 🔧 API HEALTH & STATUS ENDPOINTS
