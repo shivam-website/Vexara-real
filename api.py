@@ -10,6 +10,7 @@ VEXARA v4.1 - PRODUCTION RAG WITH INTELLIGENT FALLBACK SYSTEM
 - FIXED: Gemini API with proper error handling
 - IMPROVED: Intelligent API selection and rate limit handling
 - ENHANCED: Persistent Session Management for Google/Microsoft Login (NEW)
+- ENHANCED: Daily Message Limit Tracking Per Google Account (NEW)
 """
 
 import json
@@ -79,12 +80,12 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 class ImageOptimizer:
     """Compress images for token efficiency - resize to 1200px, 85% JPEG quality for vision."""
     MAX_WIDTH = 1200
-    JPEG_QUALITY = 85  # Increased from 75 for better vision model quality
+    JPEG_QUALITY = 85
     MAX_SIZE_MB = 5
     
     @staticmethod
     def compress_image(file_obj):
-        """Compress image: resize to 1200px width, 75% JPEG quality."""
+        """Compress image: resize to 1200px width, 85% JPEG quality."""
         try:
             img = Image.open(file_obj)
             
@@ -173,7 +174,7 @@ Answer ONE WORD: TEXT / GEOMETRIC / MIXED"""
             
             if not response or not success:
                 print(f"[ANALYZER] Detection failed, defaulting to GEOMETRIC (safer fallback)")
-                return 'geometric'  # Safe default: use vision directly for geometric
+                return 'geometric'
             
             detected_text = ""
             
@@ -212,7 +213,7 @@ Answer ONE WORD: TEXT / GEOMETRIC / MIXED"""
             elif 'MIXED' in detected_type:
                 return 'mixed'
             else:
-                return 'geometric'  # Default to geometric if unclear
+                return 'geometric'
         
         except Exception as e:
             print(f"[ANALYZER] Detection error: {e}, defaulting to GEOMETRIC")
@@ -320,7 +321,7 @@ Analyze the image carefully and solve the problem step-by-step."""
             print(f"[SOLVE_VISION] Solving directly with vision model (image included)...")
             response, provider, success = call_api_with_intelligent_fallback(
                 "deepthink", system_msg, solving_messages, 
-                image_data=image_data  # Keep image in context
+                image_data=image_data
             )
             
             if not response or not success:
@@ -416,7 +417,7 @@ Provide:
             print(f"[SOLVE_TEXT] RAG Context: {rag_subject}/{rag_chapter if rag_context else 'None'}")
             response, provider, success = call_api_with_intelligent_fallback(
                 "deepthink", solving_system, solving_messages, 
-                image_data=None  # Text-only: no image needed
+                image_data=None
             )
             
             if not response or not success:
@@ -606,7 +607,7 @@ class APIProvider:
         try:
             if prov['type'] == 'gemini':
                 response = cls._call_gemini(prov['url'], api_key, system_prompt, messages, model, image_data)
-            else:  # openai_compatible
+            else:
                 response = cls._call_openai_compatible(prov['url'], api_key, model, messages, image_data, stream)
             
             if response:
@@ -794,6 +795,71 @@ UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ============================================================================
+# 📊 USER MESSAGE QUOTA TRACKING WITH GOOGLE ACCOUNT PERSISTENCE
+# ============================================================================
+
+QUOTA_FILE = os.path.join(app.root_path, 'user_quotas.json')
+DAILY_MESSAGE_LIMIT = 20
+
+def load_user_quotas():
+    """Load user quotas from persistent file."""
+    if os.path.exists(QUOTA_FILE):
+        try:
+            with open(QUOTA_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_user_quotas(quotas):
+    """Save user quotas to persistent file."""
+    try:
+        with open(QUOTA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(quotas, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[QUOTA] Error saving quotas: {e}")
+
+def get_daily_message_count(user_id):
+    """Get daily message count for user."""
+    today_str = date.today().isoformat()
+    quotas = load_user_quotas()
+    
+    if user_id not in quotas:
+        quotas[user_id] = {}
+    
+    if today_str not in quotas[user_id]:
+        quotas[user_id][today_str] = 0
+    
+    return quotas[user_id][today_str]
+
+def increment_daily_message_count(user_id):
+    """Increment daily message count for user."""
+    today_str = date.today().isoformat()
+    quotas = load_user_quotas()
+    
+    if user_id not in quotas:
+        quotas[user_id] = {}
+    
+    if today_str not in quotas[user_id]:
+        quotas[user_id][today_str] = 0
+    
+    quotas[user_id][today_str] += 1
+    
+    # Clean up old quota data (older than 30 days)
+    thirty_days_ago = (date.today() - timedelta(days=30)).isoformat()
+    for date_key in list(quotas[user_id].keys()):
+        if date_key < thirty_days_ago:
+            del quotas[user_id][date_key]
+    
+    save_user_quotas(quotas)
+    print(f"[QUOTA] User {user_id}: {quotas[user_id][today_str]} messages today")
+
+def get_remaining_messages(user_id):
+    """Get remaining message count for user today."""
+    current_count = get_daily_message_count(user_id)
+    return max(0, DAILY_MESSAGE_LIMIT - current_count)
+
+# ============================================================================
 # 📚 EXTERNAL CHUNKED KNOWLEDGE BASE (FULLY UPDATED)
 # ============================================================================
 
@@ -920,7 +986,7 @@ class ChunkedKnowledgeBase:
             word = kw.get('word', '').lower()
             if len(word) > 3:
                 if word in question_lower:
-                    continue  # Already matched exactly
+                    continue
                 ratio = SequenceMatcher(None, word, question_lower).ratio()
                 if ratio > threshold:
                     score += kw.get('weight', 5) * ratio * 0.5
@@ -1117,33 +1183,6 @@ def get_chat_context_string(chat_history, max_messages=4):
         context_lines.append(f"{role}: {text}")
     
     return "\n".join(context_lines)
-
-# ============================================================================
-# 📊 QUOTA TRACKING
-# ============================================================================
-
-user_message_counts = {}
-DAILY_MESSAGE_LIMIT = 20
-
-def get_daily_message_count(user_id):
-    today_str = date.today().isoformat()
-    if user_id not in user_message_counts:
-        user_message_counts[user_id] = {}
-    if today_str not in user_message_counts[user_id]:
-        user_message_counts[user_id][today_str] = 0
-    return user_message_counts[user_id][today_str]
-
-def increment_daily_message_count(user_id):
-    today_str = date.today().isoformat()
-    if user_id not in user_message_counts:
-        user_message_counts[user_id] = {}
-    if today_str not in user_message_counts[user_id]:
-        user_message_counts[user_id][today_str] = 0
-    user_message_counts[user_id][today_str] += 1
-    one_week_ago = (date.today() - timedelta(days=7)).isoformat()
-    for d_str in list(user_message_counts[user_id].keys()):
-        if d_str < one_week_ago:
-            del user_message_counts[user_id][d_str]
 
 # ============================================================================
 # 🔐 OAUTH CONFIGURATION
@@ -1379,7 +1418,8 @@ def upload_image_endpoint():
     # Check quota
     current_count = get_daily_message_count(user_id)
     if current_count >= DAILY_MESSAGE_LIMIT:
-        return jsonify({"response": f"Daily limit ({DAILY_MESSAGE_LIMIT}) reached. You can use {DAILY_MESSAGE_LIMIT} more messages tomorrow."}), 429
+        remaining = get_remaining_messages(user_id)
+        return jsonify({"response": f"Daily limit ({DAILY_MESSAGE_LIMIT}) reached. You have {remaining} messages left. Please try again tomorrow."}), 429
     
     # Compress image
     try:
@@ -1409,8 +1449,6 @@ def upload_image_endpoint():
             rag_confidence = None
             
             # ================== STEP 1: EXTRACT QUESTION FROM IMAGE ==================
-            # This is done FIRST for all image types
-            # The extracted question is used for RAG retrieval (not user keywords like "solve 1 a")
             print(f"[HYBRID] Step 1: Extracting question from image...")
             question_text, _, _ = ImageAnalyzer.extract_text_from_image(image_data)
             
@@ -1420,8 +1458,7 @@ def upload_image_endpoint():
                 question_text = caption if caption else "math problem"
                 print(f"[HYBRID] Using caption as fallback: '{question_text}'")
             
-            # STEP 2: RETRIEVE RAG CONTEXT BASED ON EXTRACTED QUESTION (NOT KEYWORDS)
-            # This ensures we match by actual problem content, not command keywords
+            # STEP 2: RETRIEVE RAG CONTEXT BASED ON EXTRACTED QUESTION
             print(f"[HYBRID] Step 2: Retrieving curriculum context...")
             rag_subject, rag_chapter, rag_context, rag_confidence, num_chunks = KNOWLEDGE_BASE.retrieve(question_text)
             
@@ -1431,11 +1468,10 @@ def upload_image_endpoint():
                 yield f"📚 Found relevant chapter: {rag_subject} - {rag_chapter}\n\n"
             else:
                 rag_context = None
-                print(f"[RAG] No relevant context found (threshold: {KNOWLEDGE_BASE.config.get('min_confidence_threshold', 0.15):.0%})")
+                print(f"[RAG] No relevant context found")
                 yield "📚 No specific chapter context found - using general knowledge\n\n"
             
             # ================== STRATEGY 1: TEXT-ONLY ==================
-            # Extract text → Deepthink solve (CHEAPER: saves 75% cost)
             if content_type == 'text_only':
                 print(f"[HYBRID] Using TEXT-ONLY strategy (extract + deepthink)")
                 yield "✓ Text-based problem detected\n\n"
@@ -1458,7 +1494,6 @@ def upload_image_endpoint():
                     yield chunk
                 
             # ================== STRATEGY 2: GEOMETRIC/MIXED ==================
-            # Direct vision solve (PRESERVE DIAGRAM CONTEXT)
             elif content_type in ('geometric', 'mixed'):
                 print(f"[HYBRID] Using {content_type.upper()} strategy (direct vision solve)")
                 strategy_text = "geometric" if content_type == 'geometric' else "mixed (text + diagram)"
@@ -1610,7 +1645,8 @@ def ask_endpoint():
     # Check quota
     current_count = get_daily_message_count(user_id)
     if current_count >= DAILY_MESSAGE_LIMIT:
-        return jsonify({"response": f"Daily limit ({DAILY_MESSAGE_LIMIT}) reached."}), 429
+        remaining = get_remaining_messages(user_id)
+        return jsonify({"response": f"Daily limit ({DAILY_MESSAGE_LIMIT}) reached. {remaining} messages left. Try again tomorrow."}), 429
     
     # Load and trim chat history
     full_history = load_chat_history_from_file(user_id, chat_id)
@@ -1780,15 +1816,23 @@ def user_info():
         return jsonify({"error": "Not authenticated"}), 401
     
     user_email = session.get('user', None)
+    user_id = session.get('user_id')
+    remaining_messages = get_remaining_messages(user_id)
+    current_count = get_daily_message_count(user_id)
+    
     return jsonify({
         "user_email": user_email,
-        "user_id": session.get('user_id'),
-        "is_guest": session.get('is_guest', False)
+        "user_id": user_id,
+        "is_guest": session.get('is_guest', False),
+        "auth_provider": session.get('auth_provider', 'default'),
+        "messages_used": current_count,
+        "messages_remaining": remaining_messages,
+        "daily_limit": DAILY_MESSAGE_LIMIT
     })
 
 @app.route('/google_login/authorized')
 def google_login_authorized():
-    """Handle Google OAuth callback - creates persistent session."""
+    """Handle Google OAuth callback - creates persistent session with quota tracking."""
     if not google.authorized:
         return redirect(url_for("login"))
     
@@ -1796,13 +1840,22 @@ def google_login_authorized():
         user_info = google.get("/oauth2/v2/userinfo")
         if user_info.ok:
             user_data = user_info.json()
+            user_email = user_data.get("email")
+            google_id = user_data.get('id')
+            
+            # Create persistent user ID based on Google account
+            persistent_user_id = f"google_{google_id}"
+            
             session.permanent = True
-            session['user'] = user_data.get("email")
-            session['user_id'] = f"google_{user_data.get('id')}"
+            session['user'] = user_email
+            session['user_id'] = persistent_user_id
             session['auth_provider'] = 'google'
             session['user_name'] = user_data.get("name")
+            session['google_id'] = google_id
             
-            print(f"[AUTH] Google login successful for {user_data.get('email')}")
+            print(f"[AUTH] Google login successful for {user_email}")
+            print(f"[AUTH] Persistent User ID: {persistent_user_id}")
+            print(f"[QUOTA] Messages today: {get_daily_message_count(persistent_user_id)}/{DAILY_MESSAGE_LIMIT}")
             
             return redirect(url_for('chat'))
         else:
@@ -1815,7 +1868,7 @@ def google_login_authorized():
 
 @app.route('/microsoft_login/authorized')
 def microsoft_login_authorized():
-    """Handle Microsoft OAuth callback - creates persistent session."""
+    """Handle Microsoft OAuth callback - creates persistent session with quota tracking."""
     try:
         resp = microsoft.get("https://graph.microsoft.com/v1.0/me")
         if not resp.ok:
@@ -1823,13 +1876,22 @@ def microsoft_login_authorized():
             return redirect(url_for("login"))
         
         user_data = resp.json()
+        user_email = user_data.get("mail") or user_data.get("userPrincipalName")
+        microsoft_id = user_data.get('id')
+        
+        # Create persistent user ID based on Microsoft account
+        persistent_user_id = f"microsoft_{microsoft_id}"
+        
         session.permanent = True
-        session['user'] = user_data.get("mail") or user_data.get("userPrincipalName")
-        session['user_id'] = f"microsoft_{user_data.get('id')}"
+        session['user'] = user_email
+        session['user_id'] = persistent_user_id
         session['auth_provider'] = 'microsoft'
         session['user_name'] = user_data.get("displayName")
+        session['microsoft_id'] = microsoft_id
         
-        print(f"[AUTH] Microsoft login successful for {session['user']}")
+        print(f"[AUTH] Microsoft login successful for {user_email}")
+        print(f"[AUTH] Persistent User ID: {persistent_user_id}")
+        print(f"[QUOTA] Messages today: {get_daily_message_count(persistent_user_id)}/{DAILY_MESSAGE_LIMIT}")
         
         return redirect(url_for('chat'))
     
@@ -1963,6 +2025,16 @@ def debug_api_config():
     
     return jsonify(config)
 
+@app.route('/debug/quotas', methods=['GET'])
+def debug_quotas():
+    """Get all user quotas (debug only)."""
+    quotas = load_user_quotas()
+    return jsonify({
+        "total_users": len(quotas),
+        "daily_limit": DAILY_MESSAGE_LIMIT,
+        "sample_quotas": {k: v for k, v in list(quotas.items())[:5]}
+    })
+
 # ============================================================================
 # 🚀 MAIN
 # ============================================================================
@@ -1974,7 +2046,7 @@ if __name__ == '__main__':
     ╠════════════════════════════════════════════════════════════════╣
     ║  ✓ Groq (Llama 3.1-8B / Llama 3.3-70B)                        ║
     ║  ✓ Cerebras (Llama 3.1-8B / Qwen-QVQ-32B)                     ║
-    ║  ✓ Gemini (2.0-Flash)                                         ║
+    ║  ✓ Gemini (3.1-Flash-Lite)                                    ║
     ║  ✓ OpenRouter (Mistral / Gemma)                               ║
     ║                                                                ║
     ║  📊 Intelligent Fallback Chain                                 ║
@@ -1982,5 +2054,6 @@ if __name__ == '__main__':
     ║  📚 External Knowledge Base (Curriculum)                       ║
     ║  🎯 Auto Mode Detection                                        ║
     ║  🔐 Persistent Session Management (NEW)                        ║
+    ║  📈 Daily Message Quota Per Google Account (NEW)               ║
     ╚════════════════════════════════════════════════════════════════╝
     """)
