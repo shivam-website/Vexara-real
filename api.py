@@ -799,7 +799,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # ============================================================================
 
 QUOTA_FILE = os.path.join(app.root_path, 'user_quotas.json')
-DAILY_MESSAGE_LIMIT = 2
+DAILY_MESSAGE_LIMIT = 10
 
 def load_user_quotas():
     """Load user quotas from persistent file."""
@@ -820,38 +820,40 @@ def save_user_quotas(quotas):
         print(f"[QUOTA] Error saving quotas: {e}")
 
 def get_daily_message_count(user_id):
-    """Get message count for current time window."""
-    current_window = str(int(time.time() // (120)))  # 120 seconds = 2 minutes
+    """Get daily message count for user."""
+    today_str = date.today().isoformat()
     quotas = load_user_quotas()
     
     if user_id not in quotas:
         quotas[user_id] = {}
     
-    if current_window not in quotas[user_id]:
-        quotas[user_id][current_window] = 0
+    if today_str not in quotas[user_id]:
+        quotas[user_id][today_str] = 0
     
-    return quotas[user_id][current_window]
+    return quotas[user_id][today_str]
+
 
 def increment_daily_message_count(user_id):
-    """Increment message count for current time window."""
-    current_window = str(int(time.time() // (120)))  # 120 seconds = 2 minutes
+    """Increment daily message count for user."""
+    today_str = date.today().isoformat()
     quotas = load_user_quotas()
     
     if user_id not in quotas:
         quotas[user_id] = {}
     
-    if current_window not in quotas[user_id]:
-        quotas[user_id][current_window] = 0
+    if today_str not in quotas[user_id]:
+        quotas[user_id][today_str] = 0
     
-    quotas[user_id][current_window] += 1
+    quotas[user_id][today_str] += 1
     
-    # Clean up old windows (keep last 100)
-    windows = sorted(quotas[user_id].keys(), reverse=True)
-    for old_window in windows[100:]:
-        del quotas[user_id][old_window]
+    # Clean up old quota data (older than 30 days)
+    thirty_days_ago = (date.today() - timedelta(days=30)).isoformat()
+    for date_key in list(quotas[user_id].keys()):
+        if date_key < thirty_days_ago:
+            del quotas[user_id][date_key]
     
     save_user_quotas(quotas)
-    print(f"[QUOTA] User {user_id}: {quotas[user_id][current_window]} messages this period")
+    print(f"[QUOTA] User {user_id}: {quotas[user_id][today_str]} messages today")
 
 def get_remaining_messages(user_id):
     """Get remaining message count for user today."""
