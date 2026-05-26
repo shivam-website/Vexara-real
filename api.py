@@ -799,7 +799,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # ============================================================================
 
 QUOTA_FILE = os.path.join(app.root_path, 'user_quotas.json')
-DAILY_MESSAGE_LIMIT = 20
+DAILY_MESSAGE_LIMIT = 2
 
 def load_user_quotas():
     """Load user quotas from persistent file."""
