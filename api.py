@@ -22,7 +22,7 @@ import os
 import re
 from io import BytesIO
 from PIL import Image
-from flask import Flask, render_template, request, jsonify, redirect, session, url_for, make_response
+from flask import Flask, render_template, request, jsonify, redirect, session, url_for, make_response,Response
 from flask_dance.contrib.google import make_google_blueprint, google
 from authlib.integrations.flask_client import OAuth
 from flask import send_from_directory, send_file
@@ -1935,43 +1935,28 @@ def see_exam_preparation():
 def robots():
     return send_from_directory(os.path.join(BASE_DIR, 'static'), 'robots.txt')
 
-@app.route("/sitemap.xml")
+@app.route('/sitemap.xml')
 def sitemap():
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-
-  <url>
-    <loc>https://aivexara.xyz/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-
-  <url>
-    <loc>https://aivexara.xyz/see-maths-ai</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://aivexara.xyz/science-helper</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://aivexara.xyz/homework-ai</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://aivexara.xyz/see-exam-preparation</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-</urlset>"""
-
+    pages = [
+        {"loc": "https://aivexara.xyz/", "freq": "daily", "priority": "1.0"},
+        {"loc": "https://aivexara.xyz/see-maths-ai", "freq": "weekly", "priority": "0.9"},
+        {"loc": "https://aivexara.xyz/science-helper", "freq": "weekly", "priority": "0.9"},
+        {"loc": "https://aivexara.xyz/homework-ai", "freq": "weekly", "priority": "0.8"},
+        {"loc": "https://aivexara.xyz/see-exam-preparation", "freq": "weekly", "priority": "0.8"},
+    ]
+    
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    
+    for page in pages:
+        xml += '  <url>\n'
+        xml += f'    <loc>{page["loc"]}</loc>\n'
+        xml += f'    <changefreq>{page["freq"]}</changefreq>\n'
+        xml += f'    <priority>{page["priority"]}</priority>\n'
+        xml += '  </url>\n'
+    
+    xml += '</urlset>'
+    
     return Response(xml, mimetype="application/xml")
 
 # ============================================================================
