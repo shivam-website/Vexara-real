@@ -43,7 +43,11 @@ app = Flask(app_name, template_folder=template_path, static_folder=static_path)
 
 CORS(app, resources={
     r"/*": {
-        "origins": ["https://aivexara.xyz", "https://www.aivexara.xyz"],
+        "origins": [
+            "https://aivexara.xyz", 
+            "https://www.aivexara.xyz",
+            "https://status.aivexara.xyz"
+        ],
         "methods": ["GET", "POST"],
         "allow_headers": ["Content-Type"]
     }
