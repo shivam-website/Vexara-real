@@ -1,4 +1,5 @@
 
+@import url('https://cdn-uicons.flaticon.com/4.0.0/uicons-thin-rounded/css/uicons-thin-rounded.css');
 :root {
     --primary-color: #8a8a8b; /* ChatGPT green */
     --primary-light: #18cd9f;
@@ -566,7 +567,10 @@
   }
   
   .dark-mode .sidebar.collapsed .sidebar-btn:hover {
-    background: #212327;
+    background: #404244;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+    color: white;
   }
   
   .sidebar.collapsed .sidebar-btn i {
@@ -1829,7 +1833,7 @@
   
   /* Active DeepThink toggle */
   .model-option[data-active="true"] {
-    background: var(--accent-color, #6a0dad);
+    background: var(--accent-color, #d0c0db);
     color: #fff;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
     transform: translateY(-1px);
@@ -1838,7 +1842,7 @@
   
   /* Hover effect (desktop only) */
   @media (hover: hover) {
-    /* .model-option:hover, */
+    .model-option:hover,
     #web-search-btn:hover {
       background-color: rgba(16, 163, 127, 0.06);
       border-color: var(--primary-color);
@@ -1846,8 +1850,8 @@
   }
   
   /* Icons */
-  .model-option svg,
-  #web-search-btn svg {
+  .model-option i,
+  #web-search-btn i{
     width: 18px; /* slightly smaller */
     height: 18px;
     flex-shrink: 0;
@@ -2131,7 +2135,7 @@
   .chat-container {
     flex: 1;
     width: 100%;
-    max-width: 800px;
+    max-width: 875px;
     padding: 20px 0;
     overflow-y: auto;
     background-color: var(--chat-bg);
@@ -3451,3 +3455,87 @@
     min-height: 10px;
     transition: all 0.3s ease;
   }
+
+/* ============================
+   Web Search Toggle (was inline in index.html)
+   ============================ */
+.web-search-toggle {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 30px;
+  border: 1px solid var(--web-search);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease,
+    color 0.12s ease;
+  background: transparent;
+  color: var(--text-color, #111);
+}
+
+.web-search-toggle .web-search-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
+.web-search-toggle input {
+  display: none;
+}
+
+.web-search-toggle.selected {
+  background: var(--accent-color, #6a0dad);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+  border: none;
+}
+
+.web-search-toggle:hover {
+  transform: translateY(-0.5px);
+}
+
+.web-search-label {
+  line-height: 1;
+}
+
+@media (max-width: 600px) {
+  .web-search-toggle {
+    font-size: 12px}
+  }
+
+/* Feedback Button Style */
+.feedback-btn {
+  background: var(--bg-color);
+  color: var(--text-color);
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+  .feedback-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+    
+  }
+  .dark-mode .feedback-btn:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+    color: white;
+  }
+.feedback-btn i {
+  font-size: 1rem;
+}
