@@ -22,7 +22,7 @@ import os
 import re
 from io import BytesIO
 from PIL import Image
-from flask import Flask, render_template, request, jsonify, redirect, session, url_for, make_response,Response
+from flask import Flask, render_template, request, jsonify, redirect, session, url_for, make_response
 from flask_dance.contrib.google import make_google_blueprint, google
 from authlib.integrations.flask_client import OAuth
 from flask import send_from_directory, send_file
@@ -492,8 +492,8 @@ class APIProvider:
             'api_key': CEREBRAS_API_KEY,
             'type': 'openai_compatible',
             'models': {
-                'normal': 'llama-3.1-8b',
-                'deepthink': 'qwen-qvq-32b-preview',
+                'normal': 'gpt-oss-120b',
+                'deepthink': 'zai-glm-4.7',
                 'vision': None
             },
             'supports_vision': False,
@@ -516,11 +516,11 @@ class APIProvider:
             'api_key': OPENROUTER_API_KEY,
             'type': 'openai_compatible',
             'models': {
-                'normal': 'mistralai/mistral-small-3.2-24b-instruct:free',
-                'deepthink': 'google/gemma-4-31b-it:free',
-                'vision': None
+                'normal': 'google/gemma-4-26b-a4b-it:free',
+                'deepthink': 'deepseek/deepseek-v4-flash:free',
+                'vision': 'google/gemma-4-31b-it:free'
             },
-            'supports_vision': False,
+            'supports_vision': True,
             'status': 'active'
         }
     }
@@ -529,7 +529,7 @@ class APIProvider:
     FALLBACK_CHAIN = {
         'normal': ['groq', 'cerebras', 'openrouter', 'gemini'],
         'deepthink': ['groq', 'cerebras', 'openrouter', 'gemini'],
-        'vision': ['groq', 'gemini', 'cerebras', 'openrouter']
+        'vision': ['gemini','groq', 'cerebras', 'openrouter']
     }
     
     # Rate limit tracking
@@ -610,7 +610,7 @@ class APIProvider:
         
         try:
             if prov['type'] == 'gemini':
-                response = cls._call_gemini(prov['url'], api_key, system_prompt, messages, model, image_data)
+                response = cls._call_gemini(prov['url'], api_key, system_prompt, messages, model, image_data,stream=False)
             else:
                 response = cls._call_openai_compatible(prov['url'], api_key, model, messages, image_data, stream)
             
@@ -682,7 +682,7 @@ class APIProvider:
             return None
     
     @classmethod
-    def _call_gemini(cls, url, api_key, system_prompt, messages, model, image_data=None):
+    def _call_gemini(cls, url, api_key, system_prompt, messages, model, image_data=None,stream=False):
         """Call Gemini API with proper format and optional image support."""
         # Convert messages to Gemini format
         contents = []
@@ -720,22 +720,23 @@ class APIProvider:
                 "topK": 40,
                 "topP": 0.95,
                 "maxOutputTokens": 2048,
-            },
-            "safetySettings": [
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_UNSPECIFIED", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_VIOLENCE", "threshold": "BLOCK_NONE"},
-            ]
+            }
         }
         
-        full_url = f"{url}?key={api_key}"
+        headers = {
+            "x-goog-api-key": api_key,
+            "Content-Type": "application/json"
+        }
         
         try:
-            response = requests.post(full_url, json=payload, timeout=60)
+            response = requests.post(url, json=payload, headers=headers, timeout=60)
             print(f"[GEMINI] Response status: {response.status_code}")
+            if response.status_code != 200:
+                try:
+                    error_detail = response.json()
+                    print(f"[GEMINI] Error details: {error_detail}")
+                except:
+                    print(f"[GEMINI] Error body: {response.text[:500]}")
             return response
         except requests.exceptions.Timeout:
             print(f"[TIMEOUT] Gemini API timeout")
@@ -803,7 +804,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # ============================================================================
 
 QUOTA_FILE = os.path.join(app.root_path, 'user_quotas.json')
-DAILY_MESSAGE_LIMIT = 10
+DAILY_MESSAGE_LIMIT = 20
 
 def load_user_quotas():
     """Load user quotas from persistent file."""
@@ -835,7 +836,6 @@ def get_daily_message_count(user_id):
         quotas[user_id][today_str] = 0
     
     return quotas[user_id][today_str]
-
 
 def increment_daily_message_count(user_id):
     """Increment daily message count for user."""
@@ -1391,17 +1391,18 @@ def call_api_with_intelligent_fallback(mode, system_prompt, messages, image_data
 @app.route('/upload_image', methods=['POST'])
 def upload_image_endpoint():
     """
-    Upload and process images with HYBRID strategy:
+    Upload and process images with GEMINI-FIRST strategy:
     
-    1. DETECT: Is image text-only or geometric?
-    2. TEXT-ONLY: Extract text → Deepthink solve (CHEAP: 2 calls, saves 75%)
-    3. GEOMETRIC: Direct vision solve (QUALITY: keeps diagram context)
+    1. SOLVE: Send image directly to Gemini (PRIMARY - highest quality vision)
+    2. FALLBACK: If Gemini fails, use Groq vision (FALLBACK - acceptable quality)
+    3. RAG: Extract question for curriculum context retrieval
     4. ERROR: Smart fallback with helpful messages
     
-    Cost optimization for startup:
-    - Text-only: ~$0.0006 per solve
-    - Geometric: ~$0.0025 per solve
-    - Mixed: ~$0.0025 per solve (safe to not lose data)
+    Launch strategy with $300 Google Cloud credit:
+    - Gemini vision: ~$0.0025 per solve (premium quality)
+    - Groq vision fallback: ~$0.0001 per solve (acceptable fallback)
+    - Covers all image types: text-only, geometric, mixed
+    - One clean code path, maximum reliability on first impression
     """
     user_id = get_user_id()
     chat_id = request.form.get('chat_id')
@@ -1434,96 +1435,148 @@ def upload_image_endpoint():
     except Exception as e:
         return jsonify({"error": f"Image compression failed: {str(e)}"}), 400
     
-    def stream_hybrid_response():
+    def stream_gemini_first_response():
         try:
             current_history = load_chat_history_from_file(user_id, chat_id)
             
-            # STEP 0: DETECT image content type (text vs geometric)
-            print(f"[HYBRID] Starting image analysis...")
-            yield "🔍 Analyzing image...\n"
+            # STEP 0: Inform user
+            print(f"[GEMINI_FIRST] Starting image processing with Gemini primary...")
+            yield "🔍 Analyzing image with vision model...\n"
             
-            content_type = ImageAnalyzer.detect_content_type(image_data)
-            print(f"[HYBRID] Detected content: {content_type}")
-            
-            extracted_text = None
             full_response = None
-            solving_method = None
+            question_text = None
             rag_context = None
             rag_chapter = None
             rag_subject = None
             rag_confidence = None
+            provider_used = None
             
-            # ================== STEP 1: EXTRACT QUESTION FROM IMAGE ==================
-            print(f"[HYBRID] Step 1: Extracting question from image...")
-            question_text, _, _ = ImageAnalyzer.extract_text_from_image(image_data)
+            # ================== STEP 1: SOLVE DIRECTLY WITH GEMINI PRIMARY ==================
+            # Build a solving prompt that handles all image types
+            solving_prompt = """Solve this math problem from the image:
+
+Provide a complete solution with:
+1. **Problem Statement:** Clearly state what the problem is asking (extract from image)
+2. **Given:** Information from the image
+3. **To Find:** What needs to be calculated
+4. **Solution:** Step-by-step with explanations
+5. **Answer:** Final result with units
+6. **SEE Tip:** Exam preparation tip for this type of problem
+
+IMPORTANT: 
+- If the image contains text, extract it accurately
+- If there are diagrams, analyze them carefully
+- For geometric problems, preserve all angle/measurement information
+- For text-only problems, solve step-by-step using correct formulas"""
             
-            if question_text:
-                print(f"[HYBRID] Extracted question: '{question_text[:80]}'")
-            else:
-                question_text = caption if caption else "math problem"
-                print(f"[HYBRID] Using caption as fallback: '{question_text}'")
+            solving_messages = [{"role": "user", "content": solving_prompt}]
+            system_msg = """You are Vexara, an expert SEE Math tutor specializing in solving problems from images.
+
+IMPORTANT:
+- Analyze images carefully for both text and diagrams
+- Extract questions accurately from images
+- Preserve all mathematical notation and symbols
+- Provide step-by-step solutions following SEE exam format
+- Use clear formatting with sections for Problem Statement, Given, To Find, Solution, Answer, and Tips
+- For any image type (text-only, geometric, mixed), provide a complete solution"""
             
-            # STEP 2: RETRIEVE RAG CONTEXT BASED ON EXTRACTED QUESTION
-            print(f"[HYBRID] Step 2: Retrieving curriculum context...")
-            rag_subject, rag_chapter, rag_context, rag_confidence, num_chunks = KNOWLEDGE_BASE.retrieve(question_text)
+            print(f"[GEMINI_FIRST] Step 1: Solving with Gemini (PRIMARY via intelligent fallback)...")
+            response, provider_used, success = call_api_with_intelligent_fallback(
+                "deepthink", system_msg, solving_messages, 
+                image_data=image_data
+            )
             
-            if rag_context and rag_confidence >= KNOWLEDGE_BASE.config.get('min_confidence_threshold', 0.15):
-                print(f"[RAG] Retrieved {num_chunks} chunks (confidence: {rag_confidence:.2f})")
-                print(f"[RAG] Subject/Chapter: {rag_subject} / {rag_chapter}")
-                yield f"📚 Found relevant chapter: {rag_subject} - {rag_chapter}\n\n"
-            else:
-                rag_context = None
-                print(f"[RAG] No relevant context found")
-                yield "📚 No specific chapter context found - using general knowledge\n\n"
+            print(f"[GEMINI_FIRST] Response received from provider: {provider_used}, Success: {success}")
             
-            # ================== STRATEGY 1: TEXT-ONLY ==================
-            if content_type == 'text_only':
-                print(f"[HYBRID] Using TEXT-ONLY strategy (extract + deepthink)")
-                yield "✓ Text-based problem detected\n\n"
-                yield "📝 Processing...\n\n"
-                
-                extracted_text = question_text
-                
-                if not extracted_text.strip():
-                    yield "❌ Could not read text from image.\n\n💡 Please try uploading a clearer image or type the problem directly.\n"
-                    return
-                
-                yield f"🧠 Solving with deepthink...\n\n"
-                
-                # Now solve using deepthink with RAG context
-                full_response_gen = ImageAnalyzer.solve_with_deepthink(extracted_text, current_history, rag_context, rag_subject, rag_chapter, rag_confidence)
-                full_response = None
-                for chunk in full_response_gen:
-                    if chunk:
-                        full_response = chunk if full_response is None else full_response
-                    yield chunk
-                
-            # ================== STRATEGY 2: GEOMETRIC/MIXED ==================
-            elif content_type in ('geometric', 'mixed'):
-                print(f"[HYBRID] Using {content_type.upper()} strategy (direct vision solve)")
-                strategy_text = "geometric" if content_type == 'geometric' else "mixed (text + diagram)"
-                yield f"✓ {strategy_text.title()} problem detected\n\n"
-                yield "🔍 Analyzing with vision model...\n\n"
-                
-                # Solve directly with image context and RAG
-                full_response_gen = ImageAnalyzer.solve_with_vision_directly(image_data, question_text, current_history, rag_context, rag_subject, rag_chapter, rag_confidence)
-                full_response = None
-                for chunk in full_response_gen:
-                    if chunk:
-                        full_response = chunk if full_response is None else full_response
-                    yield chunk
-            
-            else:
-                yield "❌ Could not determine image type. Please try again.\n"
+            if not response or not success:
+                print(f"[GEMINI_FIRST] All providers failed - cannot recover")
+                yield "❌ Could not analyze this image. Please try uploading a clearer image or type the problem directly.\n"
                 return
+            
+            # Parse response (handles both streaming and non-streaming)
+            full_response = ""
+            
+            # Handle streaming (typically Groq/Cerebras fallback)
+            if response.headers.get('content-type', '').startswith('text/event-stream'):
+                print(f"[GEMINI_FIRST] Received streaming response from {provider_used}")
+                for line in response.iter_lines():
+                    if line:
+                        line_str = line.decode('utf-8').strip() if isinstance(line, bytes) else line.strip()
+                        if line_str.startswith('data: '):
+                            try:
+                                data = json.loads(line_str[6:])
+                                if 'choices' in data and data['choices']:
+                                    delta = data['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        chunk = delta['content']
+                                        full_response += chunk
+                                        yield chunk
+                            except json.JSONDecodeError:
+                                continue
+            # Handle non-streaming (typically Gemini primary)
+            else:
+                print(f"[GEMINI_FIRST] Received non-streaming response from {provider_used}")
+                try:
+                    data = response.json()
+                    if 'candidates' in data and data['candidates']:
+                        candidate = data['candidates'][0]
+                        if 'content' in candidate and 'parts' in candidate['content']:
+                            for part in candidate['content']['parts']:
+                                if 'text' in part:
+                                    full_response = part['text']
+                                    yield full_response
+                except Exception as e:
+                    print(f"[GEMINI_FIRST] Error parsing response: {e}")
+                    yield f"❌ Error processing response: {str(e)}\n"
+                    return
+            
+            if not full_response or not full_response.strip():
+                print(f"[GEMINI_FIRST] No response content generated")
+                yield "❌ No response generated. Please try again."
+                return
+            
+            # ================== STEP 2: EXTRACT QUESTION FOR RAG ==================
+            # Best-effort extraction for curriculum context
+            print(f"[GEMINI_FIRST] Step 2: Extracting question for curriculum context...")
+            
+            # Simple heuristic: look for "Problem Statement:" or use caption
+            try:
+                if "Problem Statement:" in full_response:
+                    question_text = full_response.split("Problem Statement:")[1].split("\n")[0].strip()
+                elif "problem:" in full_response.lower():
+                    parts = full_response.lower().split("problem:")
+                    if len(parts) > 1:
+                        question_text = parts[1].split("\n")[0].strip()[:100]
+                    else:
+                        question_text = caption if caption else "math problem"
+                else:
+                    question_text = caption if caption else "math problem"
+            except:
+                question_text = caption if caption else "math problem"
+            
+            print(f"[GEMINI_FIRST] Extracted question: '{question_text[:80]}'")
+            
+            # STEP 3: RETRIEVE RAG CONTEXT BASED ON EXTRACTED QUESTION (OPTIONAL)
+            print(f"[GEMINI_FIRST] Step 3: Retrieving curriculum context...")
+            try:
+                rag_subject, rag_chapter, rag_context, rag_confidence, num_chunks = KNOWLEDGE_BASE.retrieve(question_text)
+                
+                if rag_context and rag_confidence >= KNOWLEDGE_BASE.config.get('min_confidence_threshold', 0.15):
+                    print(f"[RAG] Retrieved {num_chunks} chunks (confidence: {rag_confidence:.2f})")
+                    print(f"[RAG] Subject/Chapter: {rag_subject} / {rag_chapter}")
+                    # Append RAG context to response
+                    rag_addendum = f"\n\n---\n📚 **Related Chapter:** {rag_subject} - {rag_chapter}\n*Note: This chapter covers the formulas and concepts used above.*"
+                    full_response += rag_addendum
+                    yield rag_addendum
+                else:
+                    print(f"[RAG] No relevant context found (not critical)")
+            except Exception as e:
+                print(f"[RAG] Error retrieving context: {e}")
             
             # ================== SAVE TO HISTORY ==================
             if full_response and full_response.strip():
                 # Build user message for history
-                if extracted_text:
-                    user_msg = f"[Image] {caption}\n[Extracted]: {extracted_text}"
-                else:
-                    user_msg = f"[Image] {caption or 'Math problem'}\n[Question]: {question_text}"
+                user_msg = f"[Image] {caption or 'Math problem'}\n[Solved via Gemini Vision]"
                 
                 # Save to history
                 current_history.append({
@@ -1540,18 +1593,19 @@ def upload_image_endpoint():
                 save_chat_history_to_file(user_id, chat_id, current_history)
                 increment_daily_message_count(user_id)
                 
-                print(f"[HYBRID] ✓ Complete using {content_type} strategy")
-                print(f"[HYBRID] RAG Used: {rag_context is not None}, Chapter: {rag_chapter if rag_context else 'None'}")
+                print(f"[GEMINI_FIRST] ✓ Complete. Provider used: {provider_used}")
+                print(f"[GEMINI_FIRST] RAG Used: {rag_context is not None}, Chapter: {rag_chapter if rag_context else 'None'}")
             else:
+                print(f"[GEMINI_FIRST] Empty response - not saving")
                 yield "\n❌ Could not generate solution. Please try again."
             
         except Exception as e:
-            print(f"[HYBRID] Fatal error: {e}")
+            print(f"[GEMINI_FIRST] Fatal error: {e}")
             import traceback
             traceback.print_exc()
             yield f"\n❌ Unexpected error: {str(e)}"
     
-    return app.response_class(stream_hybrid_response(), mimetype='text/event-stream')
+    return app.response_class(stream_gemini_first_response(), mimetype='text/event-stream')
  
 # 📋 CHAT MANAGEMENT ENDPOINTS
 # ============================================================================
@@ -1941,48 +1995,8 @@ def robots():
 
 @app.route('/sitemap.xml')
 def sitemap():
-    """Dynamic sitemap.xml generator"""
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    return send_from_directory(os.path.join(BASE_DIR, 'static'), 'sitemap.xml')
 
-  <url>
-    <loc>https://aivexara.xyz/</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-
-  <url>
-    <loc>https://aivexara.xyz/see-maths-ai</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://aivexara.xyz/science-helper</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://aivexara.xyz/homework-ai</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://aivexara.xyz/see-exam-preparation</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-</urlset>"""
-    
-    return Response(xml, mimetype="application/xml")
 # ============================================================================
 # 🔧 API HEALTH & STATUS ENDPOINTS
 # ============================================================================
