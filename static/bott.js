@@ -434,94 +434,121 @@ async function finalizeStreamingBotMessage(image_urls = []) {
 
 
 // AI Function Calls (stubs, assume backend handles actual API calls)
-async function askAI(instruction, modelChoice, performSearch = false) {
-  // Added performSearch parameter
+// ==================== REPLACE EXISTING askAI FUNCTION ====================
+async function askAI(instruction, modelChoice, performSearch = false, isRegenerate = false) {
   const textInput = document.getElementById("text-input");
   const loader = document.getElementById("loader");
 
   // Show loader BEFORE creating the streaming message
   loader.style.display = "block";
-  showStopButton(); // Show stop button, hide send button
-  stopSpeaking(); // Stop AI speech if any
+  showStopButton();
+  stopSpeaking();
 
   // Initialize AbortController for this request
   abortController = new AbortController();
   const signal = abortController.signal;
 
   try {
-    const formData = new FormData();
-    formData.append("instruction", instruction);
-    formData.append("chat_id", currentChatId);
-    formData.append("model_choice", modelChoice); // Append model choice
-    formData.append("web_search", performSearch); // Pass the web_search flag
+      const formData = new FormData();
+      
+      // If it's a regenerate request, add cache-busting parameter
+      const finalInstruction = isRegenerate
+          ? `${instruction} [regenerate:${Date.now()}]`
+          : instruction;
 
-    const response = await fetch(`${window.location.origin}/ask`, {
-      method: "POST",
-      body: formData,
-      signal: signal, // Pass the abort signal to the fetch request
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Server error: ${response.status} ${response.statusText} - ${errorText}`
-      );
-    }
-
-    // Hide loader once the actual streaming starts
-    loader.style.display = "none";
-
-    // Create the initial message container for streaming
-    createStreamingBotMessage(new Date());
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let done = false;
-
-    while (!done) {
-      const { value, done: readerDone } = await reader.read();
-      done = readerDone;
-      const chunk = decoder.decode(value, { stream: true });
-      if (chunk) {
-        await appendToStreamingBotMessage(chunk);
+      formData.append("instruction", finalInstruction);
+      formData.append("chat_id", currentChatId);
+      
+      // ===== MAP MODEL CHOICE TO BACKEND MODE =====
+      let backendMode = 'auto';
+      
+      // First check if we're in manual mode (user selected radio button)
+      const modelDeepThinkRadio = document.getElementById("modelDeepThink");
+      const modelGeneralRadio = document.getElementById("modelGeneral");
+      
+      if (modelDeepThinkRadio && modelDeepThinkRadio.checked) {
+          backendMode = 'deepthink'; // Solve mode
+      } else if (modelGeneralRadio && modelGeneralRadio.checked) {
+          backendMode = 'normal'; // Normal mode
+      } else if (currentMode === 'solve') {
+          backendMode = 'deepthink';
+      } else if (currentMode === 'normal') {
+          backendMode = 'normal';
+      } else {
+          // Auto-detect mode
+          backendMode = detectIfNeedsSolveMode(instruction) ? 'deepthink' : 'normal';
       }
-    }
+      
+      formData.append("model_choice", backendMode);
+      formData.append("web_search", performSearch);
+      
+      console.log(`[MODE] Using ${backendMode} mode for: "${instruction.substring(0, 50)}..."`);
 
-    // Finalize the streaming message after stream finishes
-    finalizeStreamingBotMessage();
+      const response = await fetch(`${window.location.origin}/ask`, {
+          method: "POST",
+          body: formData,
+          signal: signal,
+      });
+
+      if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+              `Server error: ${response.status} ${response.statusText} - ${errorText}`
+          );
+      }
+
+      // Hide loader once the actual streaming starts
+      loader.style.display = "none";
+
+      // Create the initial message container for streaming
+      createStreamingBotMessage(new Date());
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          const chunk = decoder.decode(value, { stream: true });
+          if (chunk) {
+              await appendToStreamingBotMessage(chunk);
+          }
+      }
+
+      // Finalize the streaming message after stream finishes
+      finalizeStreamingBotMessage();
   } catch (error) {
-    loader.style.display = "none"; // Hide loader on error
-    if (error.name === "AbortError") {
-      console.log("Fetch aborted by user.");
-      if (currentBotMessageContentDiv) {
-        currentBotMessageContentDiv.innerHTML += `<p>*(Response stopped by user)*</p>`;
+      loader.style.display = "none";
+      if (error.name === "AbortError") {
+          console.log("Fetch aborted by user.");
+          if (currentBotMessageContentDiv) {
+              currentBotMessageContentDiv.innerHTML += `<p>*(Response stopped by user)*</p>`;
+          } else {
+              addMessage(`Response stopped by user.`, "bot", null, new Date());
+          }
       } else {
-        addMessage(`Response stopped by user.`, "bot", null, new Date());
+          console.error("Error asking AI:", error);
+          if (currentBotMessageContentDiv) {
+              currentBotMessageContentDiv.innerHTML += `<p>Error: ${error.message}</p>`;
+          } else {
+              addMessage(
+                  `Sorry, there was an error processing your request: ${error.message}. Please try again.`,
+                  "bot",
+                  null,
+                  new Date()
+              );
+          }
       }
-    } else {
-      console.error("Error asking AI:", error);
-      // If an error occurs, ensure the message is still added or updated
-      if (currentBotMessageContentDiv) {
-        currentBotMessageContentDiv.innerHTML += `<p>Error: ${error.message}</p>`;
-      } else {
-        addMessage(
-          `Sorry, there was an error processing your request: ${error.message}. Please try again.`,
-          "bot",
-          null,
-          new Date()
-        );
-      }
-    }
-    finalizeStreamingBotMessage(); // Attempt to finalize even on error
+      finalizeStreamingBotMessage();
   } finally {
-    textInput.value = "";
-    textInput.style.height = "auto"; // Reset textarea height
-    textInput.focus();
-    showSendButton(); // Show send button, hide stop button
-    abortController = null; // Clear the controller
+      textInput.value = "";
+      textInput.style.height = "auto";
+      textInput.focus();
+      showSendButton();
+      abortController = null;
   }
 }
-
 async function generateImage(prompt) {
   const textInput = document.getElementById("text-input");
   const loader = document.getElementById("loader");
@@ -1060,22 +1087,22 @@ function updateSidebarToggleButtonVisibility() {
     if (sidebar.classList.contains("visible")) {
       showSidebarBtn.style.display = "none";
       sidebarToggleButton.style.display = "block";
-      sidebarToggleButton.querySelector("i").className = "fi fi-rr-sidebar"; // Same icon
+      sidebarToggleButton.querySelector("i").className = "fi fi-tr-sidebar"; // Same icon
     } else {
       showSidebarBtn.style.display = "flex";
       sidebarToggleButton.style.display = "none";
-      showSidebarBtn.querySelector("i").className = "fi fi-rr-sidebar"; // Same icon
+      showSidebarBtn.querySelector("i").className = "fi fi-tr-sidebar"; // Same icon
     }
   } else {
     // Desktop
     if (sidebar.classList.contains("collapsed")) {
       showSidebarBtn.style.display = "flex"; // Show floating button to expand
       sidebarToggleButton.style.display = "none"; // Hide internal toggle
-      showSidebarBtn.querySelector("i").className = "fi fi-rr-sidebar"; // Same icon
+      showSidebarBtn.querySelector("i").className = "fi fi-tr-sidebar"; // Same icon
     } else {
       showSidebarBtn.style.display = "none"; // Hide floating button
       sidebarToggleButton.style.display = "block"; // Show internal toggle
-      sidebarToggleButton.querySelector("i").className = "fi fi-rr-sidebar"; // Same icon
+      sidebarToggleButton.querySelector("i").className = "fi fi-tr-sidebar"; // Same icon
     }
   }
 }
@@ -2018,11 +2045,8 @@ document.addEventListener("DOMContentLoaded", async function () {
           const lowerCaseText = userText.toLowerCase();
 
           if (
-            lowerCaseText.startsWith("generate image of") ||
-            lowerCaseText.startsWith("create an image of") ||
-            lowerCaseText.startsWith("picture of") ||
-            lowerCaseText.startsWith("draw a") ||
-            lowerCaseText.startsWith("make an image of")
+            lowerCaseText.startsWith("generate the  image of") ||
+            lowerCaseText.startsWith("create an image of") 
           ) {
             addMessage(userText, "user", null, new Date()); // Add user text message immediately
             await generateImage(userText);
@@ -3005,7 +3029,7 @@ function addMessageActions(messageElement) {
   if (isUser) {
     const editBtn = document.createElement("button");
     editBtn.innerHTML =
-      '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M9.94073 1.34948C10.7047 0.902375 11.6503 0.90248 12.4143 1.34948C12.706 1.52022 12.9687 1.79124 13.3104 2.1329C13.652 2.47454 13.9231 2.73727 14.0938 3.029C14.5408 3.79301 14.5409 4.73862 14.0938 5.50257C13.9231 5.79422 13.652 6.0571 13.3104 6.39867L6.65929 13.0498C6.28065 13.4284 6.00692 13.7108 5.6654 13.9097C5.32388 14.1085 4.94312 14.2074 4.42702 14.3498L3.24391 14.6762C2.77524 14.8054 2.34535 14.9263 2.00128 14.9685C1.65193 15.0112 1.17961 15.0014 0.810733 14.6326C0.44189 14.2637 0.432076 13.7914 0.474829 13.442C0.517004 13.098 0.63787 12.668 0.767151 12.1994L1.09349 11.0163C1.23585 10.5002 1.33478 10.1194 1.53356 9.77791C1.73246 9.43639 2.01487 9.16266 2.39352 8.78402L9.04463 2.1329C9.38622 1.79132 9.64908 1.52023 9.94073 1.34948ZM15.5427 14.8399H7.5522L8.96704 13.425H15.5427V14.8399ZM3.39379 9.78429C2.96497 10.2131 2.84241 10.3437 2.75706 10.4901C2.6718 10.6366 2.61858 10.8079 2.4573 11.3926L2.13096 12.5757C2.0018 13.0439 1.92191 13.3419 1.8886 13.5536C2.10038 13.5204 2.39869 13.4417 2.86761 13.3123L4.05072 12.986C4.63541 12.8247 4.80666 12.7715 4.9532 12.6862C5.09965 12.6009 5.23019 12.4783 5.65902 12.0495L10.721 6.9865L8.45574 4.72128L3.39379 9.78429ZM11.7 2.57085C11.3774 2.38205 10.9777 2.38205 10.6551 2.57085C10.5602 2.62653 10.4487 2.72937 10.0449 3.13317L9.45601 3.72101L11.7212 5.98623L12.3101 5.3984C12.7139 4.99464 12.8168 4.88314 12.8725 4.78825C13.0612 4.46567 13.0612 4.06592 12.8725 3.74333C12.8168 3.64834 12.7145 3.53758 12.3101 3.13317C11.9057 2.72869 11.795 2.62647 11.7 2.57085Z"></path></svg>';
+      '<i class="fi fi-tr-pencil"></i>';
     editBtn.style.cssText = buttonStyle;
     editBtn.onclick = () => editUserMessage(editBtn);
     actionsContainer.appendChild(editBtn);
@@ -3047,335 +3071,7 @@ if (chatbox) {
 // END: Code for Copy, Edit, Regenerate, and Read Aloud Functionality
 // ==========================================================
 // ==========================================================
-// ==========================================================
-// START: Academic Notebook Rendering for Students (Final Fixed)
-// ==========================================================
 
-// ✅ Load MathJax properly
-function loadMathJax() {
-  if (window.MathJax) return;
-
-  window.MathJax = {
-    tex: {
-      inlineMath: [
-        ["$", "$"],
-        ["\\(", "\\)"],
-      ],
-      displayMath: [
-        ["$$", "$$"],
-        ["\\[", "\\]"],
-      ],
-      processEscapes: true,
-      packages: { "[+]": ["ams", "color", "boldsymbol"] },
-    },
-    options: {
-      skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"],
-      renderActions: { addMenu: [0, "", ""] },
-    },
-    startup: {
-      typeset: true,
-      ready: () => {
-        console.log("✅ MathJax fully initialized");
-        MathJax.startup.defaultReady();
-      },
-    },
-    chtml: {
-      scale: 1.1,
-      mtextInheritFont: true,
-    },
-  };
-
-  const script = document.createElement("script");
-  script.src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js";
-  script.async = true;
-  document.head.appendChild(script);
-}
-// Wait for MathJax to finish loading before rendering content
-function waitForMathJaxReady(callback) {
-  if (window.MathJax && window.MathJax.typesetPromise) {
-    callback();
-  } else {
-    setTimeout(() => waitForMathJaxReady(callback), 300);
-  }
-}
-
-// ✅ Convert AI-like pseudo-LaTeX ([...], (...)) to real MathJax syntax
-function convertToMathJaxSyntax(element) {
-  if (!element) return;
-  let html = element.innerHTML;
-
-  // Convert [ ... ] to $$ ... $$ for block math
-  html = html.replace(/\[([^\[\]]+)\]/g, (match, expr) => {
-    return `$$${expr.trim()}$$`;
-  });
-
-  // Convert ( ... ) to \( ... \) for inline math
-  html = html.replace(/\(([^\(\)]+)\)/g, (match, expr) => {
-    // Avoid normal text like (Step 1)
-    if (/step|simplify|add|subtract|divide|multiply|years|ratio/i.test(expr))
-      return match;
-    return `\\(${expr.trim()}\\)`;
-  });
-
-  element.innerHTML = html;
-}
-
-// ✅ Chemical Equations
-function renderChemicalEquations(element) {
-  if (!element) return;
-  const pattern = /(\w+)\s*\+\s*(\w+)\s*→\s*(\w+)/g;
-  const html = element.innerHTML.replace(
-    pattern,
-    (m, r1, r2, p) => `
-      <div class="chemical-equation">
-          <span class="chemical-reactant">${r1}</span>
-          <span class="chemical-plus"> + </span>
-          <span class="chemical-reactant">${r2}</span>
-          <span class="chemical-arrow"> → </span>
-          <span class="chemical-product">${p}</span>
-      </div>
-  `
-  );
-  element.innerHTML = html;
-}
-
-// ✅ Fractions
-function renderFractions(element) {
-  if (!element) return;
-  const html = element.innerHTML.replace(
-    /(\d+)\/(\d+)/g,
-    (m, num, den) => `
-      <span class="math-fraction">
-          <span class="fraction-numerator">${num}</span>
-          <span class="fraction-bar"></span>
-          <span class="fraction-denominator">${den}</span>
-      </span>
-  `
-  );
-  element.innerHTML = html;
-}
-
-// ✅ Matrices
-function renderMatrices(element) {
-  if (!element) return;
-  const html = element.innerHTML.replace(
-    /matrix\[([\d\s,;]+)\]/g,
-    (m, content) => {
-      const rows = content.split(";").map((r) => r.trim());
-      const matrixHtml = rows
-        .map((r) => {
-          const cells = r.split(",").map((c) => c.trim());
-          return `<div class="matrix-row">${cells
-            .map((c) => `<span class="matrix-cell">${c}</span>`)
-            .join("")}</div>`;
-        })
-        .join("");
-      return `<div class="math-matrix">${matrixHtml}</div>`;
-    }
-  );
-  element.innerHTML = html;
-}
-
-// ✅ Physics Equations
-function renderPhysicsEquations(element) {
-  if (!element) return;
-  let html = element.innerHTML;
-  const patterns = [
-    {
-      pattern: /F\s*=\s*m\s*\*\s*a/g,
-      replacement: '<span class="physics-equation">F = m × a</span>',
-    },
-    {
-      pattern: /E\s*=\s*mc\^2/g,
-      replacement: '<span class="physics-equation">E = mc²</span>',
-    },
-    {
-      pattern: /V\s*=\s*I\s*\*\s*R/g,
-      replacement: '<span class="physics-equation">V = I × R</span>',
-    },
-  ];
-  patterns.forEach(
-    ({ pattern, replacement }) => (html = html.replace(pattern, replacement))
-  );
-  element.innerHTML = html;
-}
-
-// ✅ Geometry Figures
-function renderGeometryFigures(element) {
-  if (!element) return;
-  const html = element.innerHTML.replace(
-    /figure:(\w+)\[([^\]]+)\]/g,
-    (m, shape, params) => {
-      const paramObj = {};
-      params.split(",").forEach((p) => {
-        const [k, v] = p.split(":");
-        paramObj[k.trim()] = v.trim();
-      });
-      return createGeometryFigure(shape, paramObj);
-    }
-  );
-  element.innerHTML = html;
-}
-
-function createGeometryFigure(shape, params) {
-  const size = params.size || "100";
-  const color = params.color || "#4a90e2";
-  switch (shape.toLowerCase()) {
-    case "triangle":
-      return `<div class="geometry-figure triangle" style="width:${size}px;height:${size}px;border-bottom-color:${color}">
-                      <div class="geometry-label">Triangle</div></div>`;
-    case "circle":
-      return `<div class="geometry-figure circle" style="width:${size}px;height:${size}px;border-color:${color}">
-                      <div class="geometry-label">Circle</div></div>`;
-    case "rectangle":
-      return `<div class="geometry-figure rectangle" style="width:${size}px;height:${
-        parseInt(size) * 0.6
-      }px;border-color:${color}">
-                      <div class="geometry-label">Rectangle</div></div>`;
-    default:
-      return `<div class="geometry-figure unknown">Figure: ${shape}</div>`;
-  }
-}
-
-// ✅ Main Academic Rendering Function
-function renderAcademicContent(element) {
-  if (!element) return;
-
-  convertToMathJaxSyntax(element); // 🔥 Fix pseudo-LaTeX
-  renderFractions(element);
-  renderChemicalEquations(element);
-  renderMatrices(element);
-  renderPhysicsEquations(element);
-  renderGeometryFigures(element);
-
-  if (window.MathJax && window.MathJax.typesetPromise) {
-    window.MathJax.typesetPromise([element])
-      .then(() => console.log("✅ MathJax rendered equations"))
-      .catch((err) => console.warn("❌ MathJax render error:", err));
-  }
-}
-
-// ✅ Hook into chat message system
-const originalAddMessage = window.addMessage;
-window.addMessage = function (
-  text,
-  type = "bot",
-  optionalContent = null,
-  timestamp = new Date()
-) {
-  const messageElement = originalAddMessage(
-    text,
-    type,
-    optionalContent,
-    timestamp
-  );
-  waitForMathJaxReady(() => {
-    const contentElement = messageElement?.querySelector(".message-content");
-    if (contentElement) renderAcademicContent(contentElement);
-  });
-
-  return messageElement;
-};
-
-const originalAppendToStreamingBotMessage = window.appendToStreamingBotMessage;
-let streamingMathJaxRenderTimer = null;
-
-function scheduleStreamingMathJaxRender(element, delay = 120) {
-  if (!element) return;
-  clearTimeout(streamingMathJaxRenderTimer);
-  streamingMathJaxRenderTimer = setTimeout(() => {
-    waitForMathJaxReady(() => renderAcademicContent(element));
-  }, delay);
-}
-
-window.appendToStreamingBotMessage = async function (chunk) {
-  await originalAppendToStreamingBotMessage(chunk);
-
-  // Only update text during streaming
-};
-
-const originalFinalizeStreamingBotMessage = window.finalizeStreamingBotMessage;
-window.finalizeStreamingBotMessage = async function (image_urls = []) {
-  const messageElementBeforeFinalize = currentBotMessageElement;
-  const contentBeforeFinalize = currentBotMessageContentDiv;
-
-  await originalFinalizeStreamingBotMessage(image_urls);
-  clearTimeout(streamingMathJaxRenderTimer);
-
-  const contentElement =
-    contentBeforeFinalize ||
-    messageElementBeforeFinalize?.querySelector(".message-content");
-
-  if (contentElement) {
-    waitForMathJaxReady(() => renderAcademicContent(contentElement));
-  }
-};
-
-// ✅ Add Academic Notebook Styling
-function addAcademicStyles() {
-  const styles = `
-      .math-fraction { display:inline-flex; flex-direction:column; align-items:center; }
-      .fraction-bar { border-top:1px solid currentColor; width:100%; margin:1px 0; }
-      .chemical-equation { display:inline-flex; align-items:center; padding:6px 10px;
-          background:rgba(74,144,226,0.1); border-left:3px solid #4a90e2; border-radius:6px; }
-      .physics-equation { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-          color:white; padding:5px 8px; border-radius:4px; }
-      .math-matrix { display:inline-block; margin:8px 0; padding:10px; border:1px solid #ccc; }
-      .notebook-paper { background:linear-gradient(#eee .1em,transparent .1em);
-          padding:20px 30px; border-radius:8px; margin:10px 0; border-left:4px solid #4a90e2; }
-  `;
-  const styleSheet = document.createElement("style");
-  styleSheet.textContent = styles;
-  document.head.appendChild(styleSheet);
-}
-
-// ✅ Academic Prompt Enhancer
-const academicPrompts = {
-  math: "Provide step-by-step solutions in LaTeX. Use \\( ... \\) for inline math and $$ ... $$ for display math. Write equations clearly and neatly.",
-  chemistry:
-    "Write and balance chemical equations (e.g., H₂ + O₂ → H₂O) using proper notation.",
-  physics:
-    "Use correct formula notation and SI units, and show derivations step by step.",
-  geometry:
-    "Include geometric figures, theorems, and labeled notations where needed.",
-};
-
-function enhanceAcademicPrompt(prompt, subject) {
-  const subjectPrompt = academicPrompts[subject] || academicPrompts.math;
-  return `${prompt}\n\n${subjectPrompt}\n\nFormat answers neatly for students, as if written on a real notebook.`;
-}
-
-// ✅ Initialize
-document.addEventListener("DOMContentLoaded", () => {
-  loadMathJax();
-  addAcademicStyles();
-  setTimeout(() => {
-    document
-      .querySelectorAll(".message-content")
-      .forEach(renderAcademicContent);
-  }, 1200);
-  // Close sidebar when clicking on main screen (mobile)
-  const mainContentElement = document.querySelector(".main");
-
-  if (mainContentElement) {
-    mainContentElement.addEventListener("click", () => {
-      const sidebar = document.getElementById("sidebar");
-
-      // Only apply on mobile
-      if (window.innerWidth <= 768 && sidebar.classList.contains("visible")) {
-        sidebar.classList.remove("visible");
-        updateSidebarToggleButtonVisibility();
-      }
-    });
-  }
-});
-
-// ✅ Export
-window.renderAcademicContent = renderAcademicContent;
-window.enhanceAcademicPrompt = enhanceAcademicPrompt;
-
-// ==========================================================
-// END: Academic Notebook Rendering for Students (Final Fixed)
 // ==========================================================
 // ===========================================
 // 🔊 Live Talk using Piper TTS Streaming
@@ -3649,4 +3345,4 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.log('Service Worker Error:', err));
   });
 }
-// Also update the form submission handler to ensure it works with drag-dropped images
+// Also update the form submission handler to ensure it works with drag-dropped images+
