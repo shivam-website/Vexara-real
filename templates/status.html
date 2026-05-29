@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vexara Status - System Health</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0f172a;
+            --secondary: #1e293b;
+            --accent: #3b82f6;
+            --accent-bright: #60a5fa;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --border: #334155;
+            --bg-card: #1e293b;
+            --bg-hover: #2d3748;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, #0d1117 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Glow effect background */
+        body::after {
+            content: '';
+            position: fixed;
+            top: -50%;
+            right: -20%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 60px;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-bright) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 24px;
+            color: white;
+            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        .logo-text h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-bright) 0%, #93c5fd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+
+        .logo-text p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(30, 41, 59, 0.5) 100%);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            animation: fadeIn 0.5s ease-out backwards;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(30, 41, 59, 0.7));
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(59, 130, 246, 0.15);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stat-card:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .stat-card:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        .stat-card:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* API Providers Section */
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, var(--accent) 0%, var(--accent-bright) 100%);
+            border-radius: 2px;
+        }
+
+        .providers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .provider-card {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(30, 41, 59, 0.5) 100%);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            animation: fadeIn 0.5s ease-out backwards;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .provider-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--error);
+            transition: background 0.3s ease;
+        }
+
+        .provider-card.operational::before {
+            background: var(--success);
+        }
+
+        .provider-card.degraded::before {
+            background: var(--warning);
+        }
+
+        .provider-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(59, 130, 246, 0.15);
+        }
+
+        .provider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 16px;
+        }
+
+        .provider-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .provider-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        .provider-status.down {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+        }
+
+        .provider-status.degraded {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .status-dot-small {
+            width: 8px;
+            height: 8px;
+            background: currentColor;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .provider-details {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(52, 65, 83, 0.5);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+        }
+
+        .detail-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Loading states */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.1));
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding-top: 30px;
+            margin-top: 60px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .last-update {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 16px;
+            }
+
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .logo-text h1 {
+                font-size: 24px;
+            }
+
+            .stat-value {
+                font-size: 24px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .providers-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Error state */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            border-radius: 8px;
+            padding: 16px;
+            color: #fca5a5;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .success-message {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 16px;
+            color: #86efac;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-icon">V</div>
+                    <div class="logo-text">
+                        <h1>VEXARA</h1>
+                        <p>System Status Dashboard</p>
+                    </div>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="overall-status">All Systems Operational</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Active Providers</div>
+                <div class="stat-value" id="active-providers">-</div>
+                <div class="stat-description">API services operational</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">System Uptime</div>
+                <div class="stat-value" id="system-uptime">-</div>
+                <div class="stat-description">Last 30 days</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Response Time</div>
+                <div class="stat-value" id="response-time">-</div>
+                <div class="stat-description">Average latency</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Requests</div>
+                <div class="stat-value" id="total-requests">-</div>
+                <div class="stat-description">Since deployment</div>
+            </div>
+        </div>
+
+        <!-- API Providers Status -->
+        <section class="section">
+            <h2 class="section-title">API Providers</h2>
+            <div class="providers-grid" id="providers-container">
+                <div class="provider-card skeleton">
+                    <div style="height: 100px;"></div>
+                </div>
+                <div class="provider-card skeleton">
+                    <div style="height: 100px;"></div>
+                </div>
+                <div class="provider-card skeleton">
+                    <div style="height: 100px;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Knowledge Base Status -->
+        <section class="section">
+            <h2 class="section-title">Knowledge Base</h2>
+            <div class="providers-grid" id="kb-container">
+                <div class="provider-card skeleton">
+                    <div style="height: 100px;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div>Vexara AI Tutor • Status Dashboard</div>
+            <div class="last-update">Last updated: <span id="last-update">--:-- --</span></div>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE = 'https://aivexara.xyz'; // Update based on your backend URL
+
+        // Fetch provider status
+        async function fetchProviderStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/providers/status`);
+                if (!response.ok) throw new Error('Failed to fetch provider status');
+                return await response.json();
+            } catch (err) {
+                console.error('Provider status error:', err);
+                return null;
+            }
+        }
+
+        // Fetch KB status
+        async function fetchKBStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/debug/kb_status`);
+                if (!response.ok) throw new Error('Failed to fetch KB status');
+                return await response.json();
+            } catch (err) {
+                console.error('KB status error:', err);
+                return null;
+            }
+        }
+
+        // Render provider cards
+        function renderProviders(data) {
+            const container = document.getElementById('providers-container');
+            if (!data) {
+                container.innerHTML = '<div class="error-message">Unable to load provider status. Please refresh.</div>';
+                return;
+            }
+
+            let operationalCount = 0;
+            let html = '';
+
+            for (const [provider, status] of Object.entries(data)) {
+                const isOperational = status === 'operational';
+                const isDegraded = status === 'degraded';
+                if (isOperational) operationalCount++;
+
+                const statusClass = isOperational ? 'operational' : isDegraded ? 'degraded' : '';
+                const statusText = isOperational ? 'Operational' : isDegraded ? 'Degraded' : 'Down';
+                const statusBadgeClass = isDegraded ? 'degraded' : !isOperational ? 'down' : '';
+
+                html += `
+                    <div class="provider-card ${statusClass}">
+                        <div class="provider-header">
+                            <div class="provider-name">${provider.toUpperCase()}</div>
+                            <div class="provider-status ${statusBadgeClass}">
+                                <span class="status-dot-small"></span>
+                                ${statusText}
+                            </div>
+                        </div>
+                        <div class="provider-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Status</span>
+                                <span class="detail-value">${statusText}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Provider</span>
+                                <span class="detail-value">${provider}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+            document.getElementById('active-providers').textContent = operationalCount;
+
+            return operationalCount;
+        }
+
+        // Render KB status
+        function renderKBStatus(data) {
+            const container = document.getElementById('kb-container');
+            if (!data) {
+                container.innerHTML = '<div class="error-message">Unable to load knowledge base status.</div>';
+                return;
+            }
+
+            const { chunks_loaded, metadata } = data;
+            const isHealthy = chunks_loaded > 0;
+
+            const html = `
+                <div class="provider-card ${isHealthy ? 'operational' : ''}">
+                    <div class="provider-header">
+                        <div class="provider-name">SEE Mathematics Curriculum</div>
+                        <div class="provider-status ${isHealthy ? '' : 'down'}">
+                            <span class="status-dot-small"></span>
+                            ${isHealthy ? 'Loaded' : 'Error'}
+                        </div>
+                    </div>
+                    <div class="provider-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Chunks Loaded</span>
+                            <span class="detail-value">${chunks_loaded.toLocaleString()}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Config Status</span>
+                            <span class="detail-value">${metadata?.status || 'Ready'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Topics Covered</span>
+                            <span class="detail-value">7/7</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Update last update time
+        function updateLastUpdate() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            document.getElementById('last-update').textContent = timeStr;
+        }
+
+        // Generate mock stats (replace with real data from backend)
+        function generateStats(operationalCount) {
+            document.getElementById('system-uptime').textContent = '99.8%';
+            document.getElementById('response-time').textContent = '145ms';
+            document.getElementById('total-requests').textContent = '12.4K';
+
+            // Update overall status
+            const statusIndicator = document.getElementById('overall-status');
+            const statusCard = document.querySelector('.status-indicator');
+            
+            if (operationalCount >= 3) {
+                statusIndicator.textContent = 'All Systems Operational';
+                statusCard.style.borderColor = 'var(--success)';
+                statusCard.style.background = 'rgba(16, 185, 129, 0.1)';
+                statusCard.style.color = 'var(--success)';
+            } else if (operationalCount >= 2) {
+                statusIndicator.textContent = 'Degraded Performance';
+                statusCard.style.borderColor = 'var(--warning)';
+                statusCard.style.background = 'rgba(245, 158, 11, 0.1)';
+                statusCard.style.color = 'var(--warning)';
+            } else {
+                statusIndicator.textContent = 'Service Degradation';
+                statusCard.style.borderColor = 'var(--error)';
+                statusCard.style.background = 'rgba(239, 68, 68, 0.1)';
+                statusCard.style.color = 'var(--error)';
+            }
+        }
+
+        // Initialize
+        async function init() {
+            updateLastUpdate();
+
+            const providerData = await fetchProviderStatus();
+            const operationalCount = renderProviders(providerData) || 0;
+
+            const kbData = await fetchKBStatus();
+            renderKBStatus(kbData);
+
+            generateStats(operationalCount);
+
+            // Refresh every 30 seconds
+            setInterval(async () => {
+                updateLastUpdate();
+                const newProviderData = await fetchProviderStatus();
+                renderProviders(newProviderData);
+                const newKBData = await fetchKBStatus();
+                renderKBStatus(newKBData);
+            }, 30000);
+        }
+
+        // Run on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
