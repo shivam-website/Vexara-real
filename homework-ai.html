@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Homework Solver – Instant Help for All Subjects</title>
+    <meta name="description" content="Vexara AI Homework Solver for SEE students. Get instant homework solutions with step-by-step explanations for all subjects. Free homework AI for maths, science, English, coding, and more. Available 24/7.">
+    <meta name="keywords" content="homework AI, homework solver, homework help, do my homework, homework assistant, AI homework solver, free homework help, homework answers">
+    <link rel="canonical" href="https://aivexara.xyz/homework-ai">
+    <meta property="og:title" content="AI Homework Solver – Instant Help for All Subjects">
+    <meta property="og:description" content="Free AI homework help. Get instant solutions with explanations for all subjects. Available 24/7 for SEE students.">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --primary-light: #3b82f6;
+            --accent: #0ea5e9;
+            --dark: #0f172a;
+            --gray: #64748b;
+            --light: #f8fafc;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #ffffff;
+            color: var(--dark);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', sans-serif;
+            letter-spacing: -0.02em;
+        }
+        
+        a, button {
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 0.875rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            display: inline-block;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9375rem;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-outline {
+            border: 1.5px solid var(--dark);
+            color: var(--dark);
+            padding: 0.875rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            display: inline-block;
+            text-decoration: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.9375rem;
+        }
+        
+        .btn-outline:hover {
+            background: var(--dark);
+            color: white;
+        }
+        
+        .feature-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+            transform: translateY(-4px);
+        }
+        
+        .feature-icon {
+            width: 3rem;
+            height: 3rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        
+        .hero-section {
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1400px;
+            height: 1400px;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .nav-link {
+            position: relative;
+            color: var(--gray);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9375rem;
+        }
+        
+        .nav-link:hover {
+            color: var(--dark);
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        .testimonial-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .testimonial-card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-backdrop.active {
+            display: flex;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 3rem;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        
+        .close-button {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--gray);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .close-button:hover {
+            color: var(--dark);
+        }
+        
+        .login-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 1rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 0.5rem;
+            background: white;
+            color: var(--dark);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        
+        .login-btn:hover {
+            border-color: var(--primary);
+            background: #f8fafc;
+        }
+        
+        .faq-item {
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+        }
+        
+        .faq-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .faq-question {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: none;
+            border: none;
+            padding: 0.5rem 0;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--dark);
+            text-align: left;
+        }
+        
+        .faq-question:hover {
+            color: var(--primary);
+        }
+        
+        .faq-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .faq-icon.rotate {
+            transform: rotate(180deg);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            color: var(--gray);
+            line-height: 1.8;
+        }
+        
+        .faq-answer.active {
+            max-height: 500px;
+            opacity: 1;
+            padding-top: 1rem;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .section-padding {
+            padding-top: 5rem;
+            padding-bottom: 5rem;
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100 shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center max-w-7xl">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-graduation-cap text-2xl gradient-text"></i>
+                <span class="text-xl font-bold font-display">Vexara AI</span>
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="/" class="nav-link">Home</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#faq" class="nav-link">FAQ</a>
+            </div>
+            <button id="login-link" class="btn-primary">Get Homework Help</button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section pt-40 pb-24 px-4 mt-12">
+        <div class="container mx-auto text-center max-w-4xl">
+            <h1 class="text-5xl md:text-6xl font-bold mb-6 font-display text-slate-900">AI Homework Solver</h1>
+            <h2 class="text-2xl md:text-3xl font-semibold mb-4 text-gray-700">Instant Homework Help for All Subjects</h2>
+            <p class="text-xl md:text-2xl text-gray-700 mb-8 leading-relaxed">Get instant solutions with step-by-step explanations for homework questions. Maths, science, English, coding, and all subjects covered. Available 24/7, completely free.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button id="get-started-link" class="btn-primary text-lg px-8 py-4">Get Homework Help Now</button>
+                <button id="demo-link" class="btn-outline text-lg px-8 py-4">See How It Works</button>
+            </div>
+            <p class="text-gray-600 mt-6 text-sm">Free • 24/7 Available • All Subjects • Step-by-Step Explanations</p>
+        </div>
+    </section>
+
+    <!-- Trust Section -->
+    <section class="py-16 px-4 bg-slate-50">
+        <div class="container mx-auto max-w-7xl">
+            <div class="text-center">
+                <p class="text-gray-600 font-semibold uppercase tracking-wider mb-4">Trusted by Students</p>
+                <h2 class="text-3xl font-bold mb-12 font-display">Homework Help Students Love</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div>
+                    <div class="text-4xl font-bold gradient-text mb-2">1M+</div>
+                    <p class="text-gray-600">Homework Questions Solved</p>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold gradient-text mb-2">50K+</div>
+                    <p class="text-gray-600">Students Using Daily</p>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold gradient-text mb-2">100%</div>
+                    <p class="text-gray-600">Free Forever</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="section-padding px-4">
+        <div class="container mx-auto max-w-7xl">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4 font-display">Why Use Vexara for Homework</h2>
+                <p class="text-xl text-gray-600">The smartest homework helper available</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- All Subjects -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">All Subjects Covered</h3>
+                    <p class="text-gray-600 mb-4">Maths, science, English, history, geography, coding, economics, and more. Get homework help for literally every subject.</p>
+                    <p class="text-sm text-gray-500">✓ Maths ✓ Science ✓ English ✓ All Others</p>
+                </div>
+                
+                <!-- Step-by-Step Solutions -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-list-ol"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Step-by-Step Solutions</h3>
+                    <p class="text-gray-600 mb-4">Don't just get answers. Understand every step. Each solution shows the working and explains why each step is done.</p>
+                    <p class="text-sm text-gray-500">✓ Detailed Steps ✓ Clear Explanations ✓ Learn While Solving</p>
+                </div>
+                
+                <!-- 24/7 Availability -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">24/7 Availability</h3>
+                    <p class="text-gray-600 mb-4">No waiting for teachers. Get homework help instantly, anytime, day or night. Perfect for last-minute homework.</p>
+                    <p class="text-sm text-gray-500">✓ Instant Help ✓ Always Available ✓ No Waiting</p>
+                </div>
+                
+                <!-- Fast & Accurate -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-lightning-bolt"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Fast & Accurate</h3>
+                    <p class="text-gray-600 mb-4">Get homework solutions in seconds. Accurate answers powered by AI. Solve homework faster than ever before.</p>
+                    <p class="text-sm text-gray-500">✓ Instant Solutions ✓ Accurate ✓ Quick</p>
+                </div>
+                
+                <!-- Learning Tool -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Learn While Solving</h3>
+                    <p class="text-gray-600 mb-4">Homework doesn't just get done—you actually understand the concepts. Learn from each solution and improve your skills.</p>
+                    <p class="text-sm text-gray-500">✓ Educational ✓ Understanding ✓ Skill Building</p>
+                </div>
+                
+                <!-- Completely Free -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Completely Free</h3>
+                    <p class="text-gray-600 mb-4">No hidden fees. No credit cards. No subscriptions. Homework help is completely free for all students.</p>
+                    <p class="text-sm text-gray-500">✓ Free ✓ No Cards ✓ No Subscriptions</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How to Get Homework Help Section -->
+    <section class="section-padding px-4 bg-slate-50">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-4xl font-bold mb-12 font-display text-center">How to Get Homework Help</h2>
+            
+            <div class="space-y-12">
+                <div class="flex gap-8">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">1</div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-3">Type Your Question</h3>
+                        <p class="text-gray-700 leading-relaxed">Paste your homework question or type it out. Be as specific as possible. Include problem numbers, diagrams if needed, and any details.</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-8">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">2</div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-3">Get Instant Solution</h3>
+                        <p class="text-gray-700 leading-relaxed">Vexara AI analyzes your homework question and generates a complete solution in seconds. No waiting, no delays.</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-8">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">3</div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-3">Read Step-by-Step</h3>
+                        <p class="text-gray-700 leading-relaxed">Each homework solution includes detailed working steps. Follow along and understand how to solve similar problems.</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-8">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">4</div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-3">Complete & Learn</h3>
+                        <p class="text-gray-700 leading-relaxed">Use the solution to complete your homework. More importantly, you've learned the concepts for future problems.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Subjects Covered Section -->
+    <section class="section-padding px-4">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-4xl font-bold mb-4 font-display text-center">Homework Help for Every Subject</h2>
+            <p class="text-xl text-gray-600 text-center mb-12">No matter what subject, Vexara helps with homework</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <h3 class="text-lg font-bold mb-4">Science Homework</h3>
+                    <p class="text-gray-700 mb-3">Physics problems, chemistry equations, biology diagrams, lab reports. Get instant homework solutions.</p>
+                    <p class="text-sm text-gray-600">Physics • Chemistry • Biology • Labs</p>
+                </div>
+                
+                <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <h3 class="text-lg font-bold mb-4">Maths Homework</h3>
+                    <p class="text-gray-700 mb-3">Algebra, geometry, trigonometry, calculus, statistics. All maths homework solved with working steps.</p>
+                    <p class="text-sm text-gray-600">Algebra • Geometry • Trigonometry • Calculus</p>
+                </div>
+                
+                <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <h3 class="text-lg font-bold mb-4">English Homework</h3>
+                    <p class="text-gray-700 mb-3">Grammar, essays, literature analysis, reading comprehension, writing assignments. Help with every English task.</p>
+                    <p class="text-sm text-gray-600">Grammar • Essays • Literature • Writing</p>
+                </div>
+                
+                <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <h3 class="text-lg font-bold mb-4">Coding Homework</h3>
+                    <p class="text-gray-700 mb-3">Python, JavaScript, HTML, C++. Get homework solutions with code explanation and debugging help.</p>
+                    <p class="text-sm text-gray-600">Python • JavaScript • HTML • C++</p>
+                </div>
+                
+                <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <h3 class="text-lg font-bold mb-4">Social Studies</h3>
+                    <p class="text-gray-700 mb-3">History, geography, economics, civics homework. Get answers to social studies questions.</p>
+                    <p class="text-sm text-gray-600">History • Geography • Economics</p>
+                </div>
+                
+                <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <h3 class="text-lg font-bold mb-4">All Other Subjects</h3>
+                    <p class="text-gray-700 mb-3">Art, music, PE, languages, and any other subject. Vexara helps with homework across all areas.</p>
+                    <p class="text-sm text-gray-600">Any Subject • Languages • Arts</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Student Testimonials -->
+    <section class="section-padding px-4 bg-slate-50">
+        <div class="container mx-auto max-w-7xl">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4 font-display">What Students Say</h2>
+                <p class="text-xl text-gray-600">Real feedback from students who use Vexara for homework</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="testimonial-card">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full mr-4"></div>
+                        <div>
+                            <p class="font-bold">Nikita Singh</p>
+                            <p class="text-sm text-gray-500">SEE Student</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-4">"Vexara saved my life! I was drowning in homework. Now I can finish assignments quickly AND actually understand what I'm doing. My grades improved instantly!"</p>
+                    <div class="flex text-yellow-400">★★★★★</div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-400 rounded-full mr-4"></div>
+                        <div>
+                            <p class="font-bold">Rohan Malik</p>
+                            <p class="text-sm text-gray-500">Student</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-4">"The step-by-step explanations are incredible. I'm not just copying answers anymore—I'm actually learning. This is how homework should be done!"</p>
+                    <div class="flex text-yellow-400">★★★★★</div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mr-4"></div>
+                        <div>
+                            <p class="font-bold">Priya Desai</p>
+                            <p class="text-sm text-gray-500">Class 10 Student</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-4">"Free homework help that's actually good? I was skeptical but Vexara is genuinely the best. Fast, accurate, and I'm learning while using it!"</p>
+                    <div class="flex text-yellow-400">★★★★★</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="section-padding px-4">
+        <div class="container mx-auto max-w-3xl">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4 font-display">FAQ About Homework Help</h2>
+                <p class="text-xl text-gray-600">Common questions about Vexara homework solver</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Does Vexara help with homework for all subjects?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! Vexara covers all school subjects including maths, science, English, history, geography, coding, economics, and more. Whatever homework you're stuck on, Vexara can help.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Will Vexara just give me answers or will I learn?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Vexara is designed for learning, not just answers. Every homework solution includes step-by-step working and explanations. You'll understand how to solve the problem, so you can solve similar ones independently.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Is homework help with Vexara really free?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Completely free! No credit card, no subscriptions, no hidden charges. Vexara is free for all students. We believe homework help should be accessible to everyone.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>How fast can I get homework solutions?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Instant! Most homework solutions are ready in seconds. Just type your question and get the answer immediately. Perfect for urgent homework deadlines.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Can I use Vexara for homework on my phone?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Absolutely! Vexara works on all devices—phones, tablets, laptops. Get homework help whenever you need it, wherever you are. Perfect for studying on the go.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item bg-white rounded-lg p-6">
+                    <button class="faq-question">
+                        <span>Is using Vexara for homework cheating?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>No. Vexara is an educational tool that teaches you how to solve problems. Using it to learn and understand homework concepts is productive and beneficial. It's like having a tutor—you learn, understand, and then do similar problems independently.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24 px-4 bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
+        <div class="container mx-auto text-center max-w-4xl">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">Stop Struggling with Homework</h2>
+            <p class="text-xl mb-10 opacity-95">Get instant homework help with clear explanations. Free forever, available 24/7. No credit card needed.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="#" id="call-to-action-link" class="bg-white text-blue-600 hover:bg-gray-50 py-4 px-10 rounded-lg text-lg font-semibold inline-block">Get Homework Help Now</a>
+                <a href="#" class="bg-white/10 hover:bg-white/20 py-4 px-10 rounded-lg text-lg font-semibold border border-white/30 inline-block">See Examples</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-16 px-4">
+        <div class="container mx-auto max-w-7xl">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                <div>
+                    <h3 class="text-xl font-bold mb-4 flex items-center font-display">
+                        <i class="fas fa-graduation-cap mr-2 gradient-text"></i> Vexara AI
+                    </h3>
+                    <p class="text-gray-400 mb-6">The AI homework solver for students in Nepal, powered by Google Gemini.</p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Products</h4>
+                    <ul class="space-y-3">
+                        <li><a href="/" class="text-gray-400 hover:text-white">Vexara AI</a></li>
+                        <li><a href="/see-maths-ai" class="text-gray-400 hover:text-white">Maths Solver</a></li>
+                        <li><a href="/science-helper" class="text-gray-400 hover:text-white">Science Helper</a></li>
+                        <li><a href="/homework-ai" class="text-gray-400 hover:text-white">Homework AI</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Resources</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-gray-400 hover:text-white">Study Guide</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Blog</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Support</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Legal</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="pt-8 border-t border-gray-800 text-center text-gray-400">
+                <p>&copy; 2025 Vexara AI. All rights reserved. Built for students in Nepal.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-backdrop">
+        <div class="login-container">
+            <button class="close-button" id="close-modal">&times;</button>
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-2 font-display">Welcome to Vexara AI</h2>
+                <p class="text-gray-600">Get homework help now</p>
+            </div>
+            
+            <div class="space-y-3">
+                <a href="/guest_login" class="login-btn" id="guest-login-btn">
+                    <i class="fas fa-user-secret mr-3"></i> Continue as Guest
+                </a>
+            </div>
+            
+            <div class="text-center mt-6 text-sm text-gray-500">
+                By continuing, you agree to our <a href="#" class="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" class="text-blue-600 hover:underline">Privacy Policy</a>.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginModal = document.getElementById('login-modal');
+            const loginLinks = ['login-link', 'get-started-link', 'demo-link', 'call-to-action-link'];
+            const closeModalButton = document.getElementById('close-modal');
+            const guestLoginBtn = document.getElementById('guest-login-btn');
+            
+            const openModal = () => {
+                loginModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            };
+            
+            const closeModal = () => {
+                loginModal.classList.remove('active');
+                document.body.style.overflow = '';
+            };
+            
+            loginLinks.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        openModal();
+                    });
+                }
+            });
+            
+            if (closeModalButton) closeModalButton.addEventListener('click', closeModal);
+            
+            loginModal.addEventListener('click', (e) => {
+                if (e.target === loginModal) closeModal();
+            });
+            
+            if (guestLoginBtn) {
+                guestLoginBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.location.href = 'guest_login';
+                });
+            }
+            
+            // FAQ functionality
+            const faqQuestions = document.querySelectorAll('.faq-question');
+            faqQuestions.forEach(question => {
+                question.addEventListener('click', () => {
+                    const answer = question.nextElementSibling;
+                    const icon = question.querySelector('.faq-icon');
+                    const isActive = answer.classList.contains('active');
+                    
+                    document.querySelectorAll('.faq-answer').forEach(a => a.classList.remove('active'));
+                    document.querySelectorAll('.faq-icon').forEach(i => i.classList.remove('rotate'));
+                    
+                    if (!isActive) {
+                        answer.classList.add('active');
+                        icon.classList.add('rotate');
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
