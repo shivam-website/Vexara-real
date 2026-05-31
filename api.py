@@ -1422,9 +1422,12 @@ def load_chat_history_from_file(user_id, chat_id):
             safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
             path = f"users/{safe_user_id}/chats/{chat_id}/messages"
             ref = db.reference(path)
-            messages_dict = ref.get().val()
             
-            if messages_dict:
+            # Properly handle DataSnapshot - ref.get() returns a DataSnapshot object
+            snapshot = ref.get()
+            if snapshot.val() is not None:  # Check if data exists
+                messages_dict = snapshot.val()
+                
                 # Convert Firebase format (dict of msg_id: msg_data) to list
                 messages_list = []
                 for msg_id, msg_data in messages_dict.items():
@@ -1437,6 +1440,8 @@ def load_chat_history_from_file(user_id, chat_id):
                 messages_list.sort(key=lambda x: x.get("timestamp", 0))
                 print(f"[FIREBASE_LOAD] ✓ Loaded {len(messages_list)} messages from Firebase for {user_id}/{chat_id}")
                 return messages_list
+            else:
+                print(f"[FIREBASE_LOAD] No messages found in Firebase for {user_id}/{chat_id}")
         except Exception as e:
             print(f"[FIREBASE_LOAD] Warning: Could not read from Firebase: {e}")
             # Fall back to local file silently
@@ -1830,19 +1835,24 @@ def get_chat_history_list():
     chat_summaries = []
     seen_chat_ids = set()
     
+    print(f"[CHAT_LIST] Loading chats for user_id: {user_id}")
+    
     # 🔥 FIREBASE FIRST - Get all chats from cloud (cross-device)
     if FIREBASE_AVAILABLE:
         try:
             safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
             path = f"users/{safe_user_id}/chats"
             ref = db.reference(path)
-            chats_dict = ref.get().val()
             
-            if chats_dict:
-                print(f"[FIREBASE] Found {len(chats_dict)} chats in Firebase")
+            # Properly get the data - ref.get() returns a DataSnapshot, not a dict
+            snapshot = ref.get()
+            if snapshot.val() is not None:  # Check if data exists
+                chats_dict = snapshot.val()
+                print(f"[FIREBASE] ✓ Found {len(chats_dict)} chats in Firebase for {user_id}")
+                
                 for chat_id, chat_data in chats_dict.items():
                     seen_chat_ids.add(chat_id)
-                    messages = chat_data.get("messages", {})
+                    messages = chat_data.get("messages", {}) if isinstance(chat_data, dict) else {}
                     
                     display_title = "New Chat"
                     if messages:
@@ -1865,13 +1875,20 @@ def get_chat_history_list():
                         'title': display_title,
                         'timestamp': timestamp
                     })
+            else:
+                print(f"[FIREBASE] No chats found in Firebase for {user_id}")
         except Exception as e:
             print(f"[FIREBASE] Error loading chat list: {e}")
+            import traceback
+            traceback.print_exc()
     
     # 📄 Fall back to local files (for old chats not yet in Firebase)
     try:
         if os.path.exists(CHAT_HISTORY_DIR):
             user_chat_files = [f for f in os.listdir(CHAT_HISTORY_DIR) if f.startswith(f"{user_id}_") and f.endswith(".json")]
+            
+            if user_chat_files:
+                print(f"[LOCAL] Found {len(user_chat_files)} local chat files for {user_id}")
             
             for filename in user_chat_files:
                 chat_id = filename.replace(f"{user_id}_", "").replace(".json", "")
@@ -1905,6 +1922,7 @@ def get_chat_history_list():
     for chat in chat_summaries:
         del chat['timestamp']
     
+    print(f"[CHAT_LIST] ✓ Returning {len(chat_summaries)} chats for {user_id}")
     return jsonify(chat_summaries)
 
 @app.route('/get_chat_messages/<chat_id>', methods=['GET'])
