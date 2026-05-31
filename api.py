@@ -1423,11 +1423,17 @@ def load_chat_history_from_file(user_id, chat_id):
             path = f"users/{safe_user_id}/chats/{chat_id}/messages"
             ref = db.reference(path)
             
-            # Properly handle DataSnapshot - ref.get() returns a DataSnapshot object
-            snapshot = ref.get()
-            if snapshot.val() is not None:  # Check if data exists
-                messages_dict = snapshot.val()
-                
+            # Handle both cases: DataSnapshot object OR direct dict (different SDK versions)
+            result = ref.get()
+            
+            # Check if it's a DataSnapshot object (has .val() method)
+            if hasattr(result, 'val'):
+                messages_dict = result.val()
+            else:
+                # Direct dict response
+                messages_dict = result
+            
+            if messages_dict is not None:
                 # Convert Firebase format (dict of msg_id: msg_data) to list
                 messages_list = []
                 for msg_id, msg_data in messages_dict.items():
@@ -1844,10 +1850,17 @@ def get_chat_history_list():
             path = f"users/{safe_user_id}/chats"
             ref = db.reference(path)
             
-            # Properly get the data - ref.get() returns a DataSnapshot, not a dict
-            snapshot = ref.get()
-            if snapshot.val() is not None:  # Check if data exists
-                chats_dict = snapshot.val()
+            # Handle both cases: DataSnapshot object OR direct dict (different SDK versions)
+            result = ref.get()
+            
+            # Check if it's a DataSnapshot object (has .val() method)
+            if hasattr(result, 'val'):
+                chats_dict = result.val()
+            else:
+                # Direct dict response
+                chats_dict = result
+            
+            if chats_dict is not None:  # Check if data exists
                 print(f"[FIREBASE] ✓ Found {len(chats_dict)} chats in Firebase for {user_id}")
                 
                 for chat_id, chat_data in chats_dict.items():
@@ -2165,8 +2178,9 @@ def google_login_authorized():
             user_email = user_data.get("email")
             google_id = user_data.get('id')
             
-            # Create persistent user ID based on Google account
-            persistent_user_id = f"google_{google_id}"
+            # Create persistent user ID based on EMAIL (easier to track)
+            # Remove @ and . to make it path-safe
+            persistent_user_id = user_email.replace("@", "_at_").replace(".", "_")
             
             session.permanent = True
             session['user'] = user_email
@@ -2201,8 +2215,9 @@ def microsoft_login_authorized():
         user_email = user_data.get("mail") or user_data.get("userPrincipalName")
         microsoft_id = user_data.get('id')
         
-        # Create persistent user ID based on Microsoft account
-        persistent_user_id = f"microsoft_{microsoft_id}"
+        # Create persistent user ID based on EMAIL (easier to track)
+        # Remove @ and . to make it path-safe
+        persistent_user_id = user_email.replace("@", "_at_").replace(".", "_")
         
         session.permanent = True
         session['user'] = user_email
