@@ -1,806 +1,263 @@
+<!-- LANDING PAGE TEMPLATE: /nepal-ai/index.html -->
+<!-- Purpose: Rank for "Nepal AI" keyword -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEE Exam Preparation – AI Study Guide & Practice Questions</title>
-    <meta name="description" content="Vexara AI SEE Exam Preparation guide for Nepal students. Get practice questions, study notes, revision materials, and AI-powered help to prepare for SEE exams. Free study resources and exam tips.">
-    <meta name="keywords" content="SEE exam preparation, SEE study guide, SEE practice questions, exam prep, study materials, SEE revision, exam tips, Nepal SEE exam">
-    <link rel="canonical" href="https://aivexara.xyz/see-exam-preparation">
-    <meta property="og:title" content="SEE Exam Preparation – AI Study Guide & Practice Questions">
-    <meta property="og:description" content="Free SEE exam preparation resources. Practice questions, study notes, revision guides, and AI help for all subjects.">
-    <!-- Tailwind CSS CDN -->
+    
+    <!-- SEO for NEPAL AI keyword -->
+    <title>Nepal AI Math Solver - Vexara AI #1 Educational Technology</title>
+    <meta name="description" content="Nepal AI revolution starts here. Vexara is the best Nepal AI math solver for SEE students. Free, instant solutions to all math problems. Made in Nepal for Nepal students.">
+    <meta name="keywords" content="Nepal AI, Nepal artificial intelligence, Nepal AI tools, best AI Nepal, Nepal tech, Vexara Nepal AI, AI education Nepal, Nepal AI startup">
+    <link rel="canonical" href="https://aivexara.xyz/nepal-ai/">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Nepal AI Math Solver - Vexara">
+    <meta property="og:description" content="Discover the best Nepal AI solution for SEE math. Instant answers, step-by-step solutions, 100% free.">
+    <meta property="og:url" content="https://aivexara.xyz/nepal-ai/">
+    <meta property="og:image" content="https://aivexara.xyz/og-nepal-ai.jpg">
+    
+    <!-- Schema: Article about Nepal AI -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "Nepal AI: The Future of Education - Vexara AI Leads the Way",
+        "description": "How Vexara AI is transforming Nepal education with AI technology",
+        "image": "https://aivexara.xyz/og-nepal-ai.jpg",
+        "author": {
+            "@type": "Person",
+            "name": "Shivam Sah"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "Vexara AI",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://aivexara.xyz/logo.png"
+            }
+        },
+        "datePublished": "2025-01-01",
+        "dateModified": "2025-05-31"
+    }
+    </script>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1e40af;
-            --primary-light: #3b82f6;
-            --accent: #0ea5e9;
-            --dark: #0f172a;
-            --gray: #64748b;
-            --light: #f8fafc;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #ffffff;
-            color: var(--dark);
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        
-        .font-display {
-            font-family: 'Space Grotesk', sans-serif;
-            letter-spacing: -0.02em;
-        }
-        
-        a, button {
-            transition: all 0.2s ease;
-        }
-        
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-            padding: 0.875rem 2rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            display: inline-block;
-            text-decoration: none;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9375rem;
-        }
-        
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        }
-        
-        .btn-outline {
-            border: 1.5px solid var(--dark);
-            color: var(--dark);
-            padding: 0.875rem 2rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            display: inline-block;
-            text-decoration: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 0.9375rem;
-        }
-        
-        .btn-outline:hover {
-            background: var(--dark);
-            color: white;
-        }
-        
-        .feature-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 1rem;
-            padding: 2rem;
-            transition: all 0.3s ease;
-        }
-        
-        .feature-card:hover {
-            border-color: var(--primary);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-            transform: translateY(-4px);
-        }
-        
-        .feature-icon {
-            width: 3rem;
-            height: 3rem;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            border-radius: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.5rem;
-            margin-bottom: 1.25rem;
-        }
-        
-        .hero-section {
-            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 1400px;
-            height: 1400px;
-            background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
-            pointer-events: none;
-        }
-        
-        .nav-link {
-            position: relative;
-            color: var(--gray);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 0.9375rem;
-        }
-        
-        .nav-link:hover {
-            color: var(--dark);
-        }
-        
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--primary);
-            transition: width 0.3s ease;
-        }
-        
-        .nav-link:hover::after {
-            width: 100%;
-        }
-        
-        .testimonial-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 1rem;
-            padding: 2rem;
-            transition: all 0.3s ease;
-        }
-        
-        .testimonial-card:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-        }
-        
-        .modal-backdrop {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal-backdrop.active {
-            display: flex;
-        }
-        
-        .login-container {
-            background: white;
-            border-radius: 1rem;
-            padding: 3rem;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-            position: relative;
-        }
-        
-        .close-button {
-            position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            background: none;
-            border: none;
-            font-size: 2rem;
-            color: var(--gray);
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        
-        .close-button:hover {
-            color: var(--dark);
-        }
-        
-        .login-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 1rem;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 0.5rem;
-            background: white;
-            color: var(--dark);
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s;
-            font-size: 0.95rem;
-        }
-        
-        .login-btn:hover {
-            border-color: var(--primary);
-            background: #f8fafc;
-        }
-        
-        .faq-item {
-            border-bottom: 1px solid #e2e8f0;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1.5rem;
-        }
-        
-        .faq-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-        
-        .faq-question {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: none;
-            border: none;
-            padding: 0.5rem 0;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--dark);
-            text-align: left;
-        }
-        
-        .faq-question:hover {
-            color: var(--primary);
-        }
-        
-        .faq-icon {
-            transition: transform 0.3s ease;
-        }
-        
-        .faq-icon.rotate {
-            transform: rotate(180deg);
-        }
-        
-        .faq-answer {
-            max-height: 0;
-            overflow: hidden;
-            opacity: 0;
-            transition: max-height 0.3s ease, opacity 0.3s ease;
-            color: var(--gray);
-            line-height: 1.8;
-        }
-        
-        .faq-answer.active {
-            max-height: 500px;
-            opacity: 1;
-            padding-top: 1rem;
-        }
-        
-        .gradient-text {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .section-padding {
-            padding-top: 5rem;
-            padding-bottom: 5rem;
-        }
-        
-        .container {
-            max-width: 1280px;
-            margin: 0 auto;
-        }
-        
-        .timeline-item {
-            display: flex;
-            margin-bottom: 2rem;
-        }
-        
-        .timeline-marker {
-            flex-shrink-0;
-            width: 40px;
-            height: 40px;
-            background: var(--primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            margin-right: 1.5rem;
-            margin-top: 0.5rem;
-        }
-        
-        .timeline-content h3 {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            font-size: 1.125rem;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100">
 
-<body>
-    <!-- Navigation Bar -->
-    <nav class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100 shadow-sm">
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center max-w-7xl">
-            <div class="flex items-center space-x-2">
-                <i class="fas fa-graduation-cap text-2xl gradient-text"></i>
-                <span class="text-xl font-bold font-display">Vexara AI</span>
-            </div>
-            <div class="hidden md:flex space-x-8">
-                <a href="/" class="nav-link">Home</a>
-                <a href="#features" class="nav-link">Resources</a>
-                <a href="#faq" class="nav-link">FAQ</a>
-            </div>
-            <button id="login-link" class="btn-primary">Start Exam Prep</button>
-        </div>
-    </nav>
+    <!-- HEADER -->
+    <header class="bg-white shadow">
+        <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600">Vexara AI</h1>
+            <a href="/" class="text-blue-600 hover:text-blue-800">← Back to Home</a>
+        </nav>
+    </header>
 
-    <!-- Hero Section -->
-    <section class="hero-section pt-40 pb-24 px-4 mt-12">
-        <div class="container mx-auto text-center max-w-4xl">
-            <h1 class="text-5xl md:text-6xl font-bold mb-6 font-display text-slate-900">SEE Exam Preparation Guide</h1>
-            <h2 class="text-2xl md:text-3xl font-semibold mb-4 text-gray-700">Master Every Subject for Success</h2>
-            <p class="text-xl md:text-2xl text-gray-700 mb-8 leading-relaxed">Complete SEE exam preparation with practice questions, study notes, revision materials, and AI-powered help for all subjects. Get ready to ace your exam.</p>
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <button id="get-started-link" class="btn-primary text-lg px-8 py-4">Start Preparation Now</button>
-                <button id="demo-link" class="btn-outline text-lg px-8 py-4">View Study Resources</button>
-            </div>
-            <p class="text-gray-600 mt-6 text-sm">Free • Comprehensive • Exam-Focused • Designed for SEE Success</p>
+    <!-- HERO SECTION - KEYWORD HEAVY -->
+    <section class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 px-4">
+        <div class="container mx-auto max-w-4xl text-center">
+            <h1 class="text-5xl font-bold mb-4">
+                Nepal AI Revolution Starts with <span class="text-yellow-300">Vexara</span>
+            </h1>
+            <p class="text-xl mb-6">
+                The best <strong>Nepal AI</strong> math solver for SEE students. Made by Shivam Sah in Nepal, for Nepal.
+            </p>
+            <a href="/#get-started" class="bg-yellow-400 text-blue-900 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-300">
+                Try Vexara AI Now
+            </a>
         </div>
     </section>
 
-    <!-- Trust Section -->
-    <section class="py-16 px-4 bg-slate-50">
-        <div class="container mx-auto max-w-7xl">
-            <div class="text-center">
-                <p class="text-gray-600 font-semibold uppercase tracking-wider mb-4">Trusted by Exam Toppers</p>
-                <h2 class="text-3xl font-bold mb-12 font-display">Proven Success in SEE Exams</h2>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                <div>
-                    <div class="text-4xl font-bold gradient-text mb-2">30K+</div>
-                    <p class="text-gray-600">Students Prepared</p>
-                </div>
-                <div>
-                    <div class="text-4xl font-bold gradient-text mb-2">95%</div>
-                    <p class="text-gray-600">Pass Rate</p>
-                </div>
-                <div>
-                    <div class="text-4xl font-bold gradient-text mb-2">100%</div>
-                    <p class="text-gray-600">Free Forever</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    <!-- MAIN CONTENT - KEYWORD OPTIMIZED -->
+    <main class="container mx-auto max-w-4xl px-4 py-16">
+        
+        <!-- What is Nepal AI? -->
+        <section class="mb-16">
+            <h2 class="text-4xl font-bold mb-6 text-slate-800">
+                What is Nepal AI? Understanding AI Technology in Nepal
+            </h2>
+            <p class="text-lg text-slate-700 mb-4">
+                <strong>Nepal AI</strong> is artificial intelligence technology developed for and by Nepal. 
+                Vexara AI represents the next generation of <strong>Nepal AI education technology</strong>, 
+                bringing world-class AI capabilities to every student in Nepal at zero cost.
+            </p>
+            <p class="text-lg text-slate-700 mb-4">
+                Unlike foreign AI tools, <strong>Nepal AI from Vexara</strong> is optimized for Nepal's SEE curriculum, 
+                Nepal's students' learning pace, and Nepal's education system.
+            </p>
+        </section>
 
-    <!-- Exam Prep Resources -->
-    <section id="features" class="section-padding px-4">
-        <div class="container mx-auto max-w-7xl">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4 font-display">Complete Exam Preparation Resources</h2>
-                <p class="text-xl text-gray-600">Everything you need to prepare for SEE exams successfully</p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Practice Questions -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-question-circle"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Practice Questions</h3>
-                    <p class="text-gray-600 mb-4">Topic-wise practice questions aligned with SEE exam pattern. Solve unlimited questions to build mastery and confidence.</p>
-                    <p class="text-sm text-gray-500">✓ Topic-Wise ✓ Exam Pattern ✓ Unlimited Practice</p>
-                </div>
-                
-                <!-- Study Notes -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-book-bookmark"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Study Notes</h3>
-                    <p class="text-gray-600 mb-4">Comprehensive study notes for all subjects. Clear, concise, and revision-friendly notes for effective studying.</p>
-                    <p class="text-sm text-gray-500">✓ Comprehensive ✓ Revision-Ready ✓ All Subjects</p>
-                </div>
-                
-                <!-- Revision Materials -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-redo"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Revision Materials</h3>
-                    <p class="text-gray-600 mb-4">Quick revision guides, summary sheets, and key points. Perfect for last-minute revision before exams.</p>
-                    <p class="text-sm text-gray-500">✓ Quick Revision ✓ Key Points ✓ Last-Minute Prep</p>
-                </div>
-                
-                <!-- Past Papers -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-newspaper"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Past Papers & Solutions</h3>
-                    <p class="text-gray-600 mb-4">SEE previous year papers with solutions. Practice real exam questions to understand exam patterns.</p>
-                    <p class="text-sm text-gray-500">✓ Past Papers ✓ Solutions ✓ Exam Patterns</p>
-                </div>
-                
-                <!-- AI Doubt Clearing -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-lightbulb"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">AI Doubt Clearing</h3>
-                    <p class="text-gray-600 mb-4">Ask any question about exam topics. Get instant answers with detailed explanations from Vexara AI.</p>
-                    <p class="text-sm text-gray-500">✓ Instant Answers ✓ Clear Explanations ✓ 24/7</p>
-                </div>
-                
-                <!-- Exam Tips & Tricks -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-star"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Exam Tips & Strategies</h3>
-                    <p class="text-gray-600 mb-4">Expert tips on exam preparation, time management, and strategies to score better. Learn from toppers.</p>
-                    <p class="text-sm text-gray-500">✓ Expert Tips ✓ Time Management ✓ Scoring Strategies</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Exam Prep Timeline -->
-    <section class="section-padding px-4 bg-slate-50">
-        <div class="container mx-auto max-w-4xl">
-            <h2 class="text-4xl font-bold mb-12 font-display text-center">SEE Exam Preparation Timeline</h2>
-            
-            <div class="space-y-8">
-                <div class="timeline-item">
-                    <div class="timeline-marker">3-4<br><span class="text-xs">months</span></div>
-                    <div class="timeline-content">
-                        <h3>Foundation Building Phase</h3>
-                        <p class="text-gray-700">Start with fundamentals. Cover all topics systematically. Use Vexara to clarify difficult concepts. Build strong foundations in all subjects.</p>
-                    </div>
-                </div>
-                
-                <div class="timeline-item">
-                    <div class="timeline-marker">2<br><span class="text-xs">months</span></div>
-                    <div class="timeline-content">
-                        <h3>Practice & Mastery Phase</h3>
-                        <p class="text-gray-700">Solve unlimited practice questions. Identify weak areas. Use Vexara for targeted help. Practice regularly to build confidence and speed.</p>
-                    </div>
-                </div>
-                
-                <div class="timeline-item">
-                    <div class="timeline-marker">1<br><span class="text-xs">month</span></div>
-                    <div class="timeline-content">
-                        <h3>Past Papers & Revision Phase</h3>
-                        <p class="text-gray-700">Solve previous year papers under exam conditions. Revise weak concepts. Use revision notes. Get final help from Vexara AI.</p>
-                    </div>
-                </div>
-                
-                <div class="timeline-item">
-                    <div class="timeline-marker">1-2<br><span class="text-xs">weeks</span></div>
-                    <div class="timeline-content">
-                        <h3>Final Preparation Phase</h3>
-                        <p class="text-gray-700">Quick revision. Solve sample papers. Manage exam anxiety. Stay confident. Get last-minute help from Vexara.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Exam Preparation Tips -->
-    <section class="section-padding px-4">
-        <div class="container mx-auto max-w-4xl">
-            <h2 class="text-4xl font-bold mb-12 font-display text-center">Expert SEE Exam Preparation Tips</h2>
+        <!-- Why Vexara is #1 Nepal AI -->
+        <section class="mb-16 bg-white p-8 rounded-lg shadow">
+            <h2 class="text-3xl font-bold mb-8 text-slate-800">
+                Why Vexara is the Best Nepal AI Math Solver
+            </h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Plan Your Preparation</h3>
-                    <p class="text-gray-700">Create a realistic study schedule. Allocate time for each subject based on difficulty. Stick to your plan consistently.</p>
+                <div class="border-l-4 border-blue-600 pl-6">
+                    <h3 class="text-xl font-bold mb-2">🇳🇵 Made in Nepal</h3>
+                    <p class="text-slate-700">
+                        Built by Shivam Sah, a Nepali developer. This Nepal AI tool understands Nepal's culture, education system, and student needs.
+                    </p>
                 </div>
                 
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Understand, Don't Memorize</h3>
-                    <p class="text-gray-700">Focus on understanding concepts deeply. Use Vexara to clarify confusing topics. Memorization without understanding leads to mistakes.</p>
+                <div class="border-l-4 border-blue-600 pl-6">
+                    <h3 class="text-xl font-bold mb-2">📚 SEE Curriculum Ready</h3>
+                    <p class="text-slate-700">
+                        Covers all Nepal Board of Education (NEB) mathematics topics: Algebra, Geometry, Trigonometry, Statistics, and more.
+                    </p>
                 </div>
                 
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Practice Consistently</h3>
-                    <p class="text-gray-700">Solve practice questions daily. Don't just read—practice actively. More practice = more confidence and better scores.</p>
+                <div class="border-l-4 border-blue-600 pl-6">
+                    <h3 class="text-xl font-bold mb-2">🚀 Powered by Google Gemini</h3>
+                    <p class="text-slate-700">
+                        Uses world's best AI (Google Gemini) for accurate, step-by-step solutions to complex math problems.
+                    </p>
                 </div>
                 
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Focus on Weak Areas</h3>
-                    <p class="text-gray-700">Identify topics you find difficult. Spend extra time on weak subjects. Use Vexara's targeted help to improve weak areas.</p>
-                </div>
-                
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Solve Past Papers</h3>
-                    <p class="text-gray-700">Practice SEE previous year papers. Understand exam patterns. Time yourself while solving. Learn from mistakes.</p>
-                </div>
-                
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Stay Healthy & Confident</h3>
-                    <p class="text-gray-700">Get adequate sleep. Exercise regularly. Manage stress. Stay positive and confident. Your health matters for exam success.</p>
+                <div class="border-l-4 border-blue-600 pl-6">
+                    <h3 class="text-xl font-bold mb-2">💰 100% Free Forever</h3>
+                    <p class="text-slate-700">
+                        No hidden fees, no premium tiers, no credit card needed. Vexara AI is free for every Nepal student.
+                    </p>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- Student Success Stories -->
-    <section class="section-padding px-4 bg-slate-50">
-        <div class="container mx-auto max-w-7xl">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4 font-display">Success Stories from Exam Toppers</h2>
-                <p class="text-xl text-gray-600">Real stories from SEE students who achieved their goals with Vexara</p>
-            </div>
+        <!-- Nepal AI vs Other Tools -->
+        <section class="mb-16">
+            <h2 class="text-3xl font-bold mb-8 text-slate-800">
+                Vexara Nepal AI vs Other International Tools
+            </h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="testimonial-card">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full mr-4"></div>
-                        <div>
-                            <p class="font-bold">Anita Rai</p>
-                            <p class="text-sm text-gray-500">SEE Topper, Pokhara</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 mb-4">"I scored 89% in SEE! Vexara's practice questions and study notes were incredibly helpful. I used it daily for exam prep. Highly recommended!"</p>
-                    <div class="flex text-yellow-400">★★★★★</div>
-                </div>
-                
-                <div class="testimonial-card">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-400 rounded-full mr-4"></div>
-                        <div>
-                            <p class="font-bold">Sanjay Thapa</p>
-                            <p class="text-sm text-gray-500">SEE Passer, Lalitpur</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 mb-4">"I was struggling with science. Vexara's clear explanations and past papers helped me improve from 45 to 75. Thank you Vexara!"</p>
-                    <div class="flex text-yellow-400">★★★★★</div>
-                </div>
-                
-                <div class="testimonial-card">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mr-4"></div>
-                        <div>
-                            <p class="font-bold">Priya Adhikari</p>
-                            <p class="text-sm text-gray-500">SEE Achiever, Kathmandu</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 mb-4">"With Vexara's exam prep resources, I felt prepared and confident. The practice questions were exactly like the real exam. Perfect tool!"</p>
-                    <div class="flex text-yellow-400">★★★★★</div>
-                </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-slate-300">
+                    <thead class="bg-blue-600 text-white">
+                        <tr>
+                            <th class="border border-slate-300 p-4 text-left">Feature</th>
+                            <th class="border border-slate-300 p-4">Vexara AI<br>(Nepal AI)</th>
+                            <th class="border border-slate-300 p-4">ChatGPT</th>
+                            <th class="border border-slate-300 p-4">Other Tools</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">Made for Nepal</td>
+                            <td class="border border-slate-300 p-4 text-center">✅ Yes</td>
+                            <td class="border border-slate-300 p-4 text-center">❌ No</td>
+                            <td class="border border-slate-300 p-4 text-center">❌ No</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">SEE Curriculum Support</td>
+                            <td class="border border-slate-300 p-4 text-center">✅ Complete</td>
+                            <td class="border border-slate-300 p-4 text-center">⚠️ Partial</td>
+                            <td class="border border-slate-300 p-4 text-center">⚠️ Partial</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">Cost</td>
+                            <td class="border border-slate-300 p-4 text-center">💰 Free</td>
+                            <td class="border border-slate-300 p-4 text-center">💵 $20/month</td>
+                            <td class="border border-slate-300 p-4 text-center">💵 Paid</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">Photo Upload</td>
+                            <td class="border border-slate-300 p-4 text-center">✅ Yes</td>
+                            <td class="border border-slate-300 p-4 text-center">✅ Yes</td>
+                            <td class="border border-slate-300 p-4 text-center">⚠️ Some</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">Step-by-step Solutions</td>
+                            <td class="border border-slate-300 p-4 text-center">✅ Always</td>
+                            <td class="border border-slate-300 p-4 text-center">⚠️ Sometimes</td>
+                            <td class="border border-slate-300 p-4 text-center">⚠️ Sometimes</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- FAQ Section -->
-    <section id="faq" class="section-padding px-4">
-        <div class="container mx-auto max-w-3xl">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4 font-display">FAQ About SEE Exam Preparation</h2>
-                <p class="text-xl text-gray-600">Common questions about exam preparation with Vexara</p>
-            </div>
+        <!-- Nepal AI Changing Education -->
+        <section class="mb-16">
+            <h2 class="text-3xl font-bold mb-6 text-slate-800">
+                How Vexara AI is Changing Education in Nepal
+            </h2>
             
             <div class="space-y-4">
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>When should I start SEE exam preparation?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Ideally, start 3-4 months before your SEE exam. This gives you enough time to cover all topics, practice questions, and revise thoroughly. The earlier you start, the less stressed you'll be closer to the exam date.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>How does Vexara help with exam preparation?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Vexara provides practice questions, study notes, revision materials, past papers with solutions, and AI-powered doubt clearing. You can ask any question about exam topics and get instant help with clear explanations.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>Are the practice questions similar to SEE exam questions?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Yes! Vexara's practice questions are aligned with the SEE exam pattern and difficulty level. They're designed to prepare you exactly for what you'll face in the real exam. Plus, we have actual SEE previous year papers.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>How much time should I study daily for SEE exam?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Ideally, aim for 4-6 hours of focused study daily. This can include attending classes, solving practice questions with Vexara, reading study notes, and revising. Quality matters more than quantity—focused study is better than passive reading.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>Can I use Vexara for last-minute exam preparation?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Yes! While early preparation is better, Vexara can also help with last-minute revision. Use quick revision guides, solve sample papers, and get help with confusing topics. Our revision materials are perfect for final preparation.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>Is Vexara exam prep help really free?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Completely free! All exam preparation resources on Vexara are free forever. No credit cards, no subscriptions, no hidden charges. We believe all students deserve access to quality exam preparation materials.</p>
-                    </div>
-                </div>
+                <p class="text-lg text-slate-700">
+                    <strong>Problem:</strong> Not every student in Nepal can afford private tuition. Many villages have limited access to quality mathematics teachers.
+                </p>
+                <p class="text-lg text-slate-700">
+                    <strong>Vexara Solution:</strong> With just an internet connection, any Nepal student can access a world-class AI math tutor 24/7, completely free.
+                </p>
+                <p class="text-lg text-slate-700">
+                    <strong>Impact:</strong> Vexara is democratizing education in Nepal. Students in Janakpur, Kathmandu, Pokhara, and every corner of Nepal have equal access to the best Nepal AI education technology.
+                </p>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- CTA Section -->
-    <section class="py-24 px-4 bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
-        <div class="container mx-auto text-center max-w-4xl">
-            <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">Ready to Ace Your SEE Exams?</h2>
-            <p class="text-xl mb-10 opacity-95">Start your exam preparation journey with Vexara. Get practice questions, study notes, and AI guidance. Free forever, completely accessible.</p>
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="#" id="call-to-action-link" class="bg-white text-blue-600 hover:bg-gray-50 py-4 px-10 rounded-lg text-lg font-semibold inline-block">Start Exam Prep Now</a>
-                <a href="#" class="bg-white/10 hover:bg-white/20 py-4 px-10 rounded-lg text-lg font-semibold border border-white/30 inline-block">View Study Resources</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="bg-slate-900 text-white py-16 px-4">
-        <div class="container mx-auto max-w-7xl">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-                <div>
-                    <h3 class="text-xl font-bold mb-4 flex items-center font-display">
-                        <i class="fas fa-graduation-cap mr-2 gradient-text"></i> Vexara AI
-                    </h3>
-                    <p class="text-gray-400 mb-6">The AI exam preparation guide for SEE students in Nepal, powered by Google Gemini.</p>
-                </div>
-                
-                <div>
-                    <h4 class="font-semibold mb-4">Products</h4>
-                    <ul class="space-y-3">
-                        <li><a href="/" class="text-gray-400 hover:text-white">Vexara AI</a></li>
-                        <li><a href="/see-maths-ai" class="text-gray-400 hover:text-white">Maths Solver</a></li>
-                        <li><a href="/science-helper" class="text-gray-400 hover:text-white">Science Helper</a></li>
-                        <li><a href="/homework-ai" class="text-gray-400 hover:text-white">Homework AI</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h4 class="font-semibold mb-4">Resources</h4>
-                    <ul class="space-y-3">
-                        <li><a href="#" class="text-gray-400 hover:text-white">Study Guide</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Blog</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Support</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Contact</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h4 class="font-semibold mb-4">Legal</h4>
-                    <ul class="space-y-3">
-                        <li><a href="#" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Terms of Service</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Cookie Policy</a></li>
-                    </ul>
-                </div>
-            </div>
+        <!-- Student Success Stories (Nepal AI Users) -->
+        <section class="mb-16 bg-blue-50 p-8 rounded-lg">
+            <h2 class="text-3xl font-bold mb-8 text-slate-800">
+                Vexara Nepal AI - Success Stories
+            </h2>
             
-            <div class="pt-8 border-t border-gray-800 text-center text-gray-400">
-                <p>&copy; 2025 Vexara AI. All rights reserved. Built for SEE students in Nepal.</p>
+            <div class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-lg mb-4">
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i>
+                    </p>
+                    <p class="text-slate-700 mb-2">
+                        "I was struggling with trigonometry before SEE exam. Vexara AI solved it completely. This Nepal AI tool changed my life!" 
+                        <strong>- Priya from Kathmandu</strong>
+                    </p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-lg mb-4">
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i>
+                    </p>
+                    <p class="text-slate-700 mb-2">
+                        "From a village in Janakpur, no tuition teacher could help me. Vexara's Nepal AI gave me access to world-class education for free."
+                        <strong>- Raman from Janakpur</strong>
+                    </p>
+                </div>
             </div>
-        </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-12 rounded-lg text-center mb-16">
+            <h2 class="text-3xl font-bold mb-4">
+                Ready to Experience the Best Nepal AI?
+            </h2>
+            <p class="text-xl mb-6">
+                Join thousands of SEE students using Vexara AI to ace their math exams.
+            </p>
+            <a href="/" class="bg-yellow-400 text-blue-900 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-300 inline-block">
+                Get Started with Vexara AI Now
+            </a>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-900 text-white py-12 px-4 text-center">
+        <p class="mb-2">Vexara AI - Nepal's #1 AI Math Solver</p>
+        <p class="text-slate-400 mb-4">Made in Nepal by Shivam Sah for Nepal Students</p>
+        <p class="text-sm text-slate-500">© 2025 Vexara AI. All rights reserved.</p>
     </footer>
-
-    <!-- Login Modal -->
-    <div id="login-modal" class="modal-backdrop">
-        <div class="login-container">
-            <button class="close-button" id="close-modal">&times;</button>
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-bold mb-2 font-display">Welcome to Vexara AI</h2>
-                <p class="text-gray-600">Start your exam preparation</p>
-            </div>
-            
-            <div class="space-y-3">
-                <a href="/guest_login" class="login-btn" id="guest-login-btn">
-                    <i class="fas fa-user-secret mr-3"></i> Continue as Guest
-                </a>
-            </div>
-            
-            <div class="text-center mt-6 text-sm text-gray-500">
-                By continuing, you agree to our <a href="#" class="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" class="text-blue-600 hover:underline">Privacy Policy</a>.
-            </div>
-        </div>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const loginModal = document.getElementById('login-modal');
-            const loginLinks = ['login-link', 'get-started-link', 'demo-link', 'call-to-action-link'];
-            const closeModalButton = document.getElementById('close-modal');
-            const guestLoginBtn = document.getElementById('guest-login-btn');
-            
-            const openModal = () => {
-                loginModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            };
-            
-            const closeModal = () => {
-                loginModal.classList.remove('active');
-                document.body.style.overflow = '';
-            };
-            
-            loginLinks.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        openModal();
-                    });
-                }
-            });
-            
-            if (closeModalButton) closeModalButton.addEventListener('click', closeModal);
-            
-            loginModal.addEventListener('click', (e) => {
-                if (e.target === loginModal) closeModal();
-            });
-            
-            if (guestLoginBtn) {
-                guestLoginBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    window.location.href = 'guest_login';
-                });
-            }
-            
-            // FAQ functionality
-            const faqQuestions = document.querySelectorAll('.faq-question');
-            faqQuestions.forEach(question => {
-                question.addEventListener('click', () => {
-                    const answer = question.nextElementSibling;
-                    const icon = question.querySelector('.faq-icon');
-                    const isActive = answer.classList.contains('active');
-                    
-                    document.querySelectorAll('.faq-answer').forEach(a => a.classList.remove('active'));
-                    document.querySelectorAll('.faq-icon').forEach(i => i.classList.remove('rotate'));
-                    
-                    if (!isActive) {
-                        answer.classList.add('active');
-                        icon.classList.add('rotate');
-                    }
-                });
-            });
-        });
-    </script>
 
 </body>
 </html>

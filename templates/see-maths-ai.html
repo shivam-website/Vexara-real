@@ -1,786 +1,432 @@
+<!-- LANDING PAGE TEMPLATE: /math-ai/index.html -->
+<!-- Purpose: Rank for "Math AI" keyword -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEE Mathematics AI Solver – Algebra, Geometry, Trigonometry Help</title>
-    <meta name="description" content="Vexara AI Mathematics Helper for SEE students. Get instant solutions and step-by-step explanations for algebra, geometry, trigonometry, statistics, and calculus. Free maths solver for Nepal SEE exams.">
-    <meta name="keywords" content="SEE maths solver, algebra help, geometry solver, trigonometry help, maths AI, SEE mathematics, free maths solutions, math homework help">
-    <link rel="canonical" href="https://aivexara.xyz/see-maths-ai">
-    <meta property="og:title" content="SEE Mathematics AI Solver – Algebra, Geometry, Trigonometry Help">
-    <meta property="og:description" content="Free AI maths solver for SEE students. Instant solutions with step-by-step explanations for all mathematics topics.">
-    <!-- Tailwind CSS CDN -->
+    
+    <!-- SEO for MATH AI keyword -->
+    <title>Math AI - Vexara Free AI Math Solver for Students</title>
+    <meta name="description" content="Math AI that solves any problem. Vexara uses Google Gemini to provide instant step-by-step solutions. Best Math AI for students. Free, no signup needed.">
+    <meta name="keywords" content="Math AI, AI math solver, best math AI, free math AI, math AI solver, AI math tutor, math AI app, math AI calculator, AI homework help, math AI online">
+    <link rel="canonical" href="https://aivexara.xyz/math-ai/">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Math AI - Free AI Math Solver by Vexara">
+    <meta property="og:description" content="Solve any math problem instantly with Math AI. Step-by-step solutions powered by Google Gemini. 100% free.">
+    <meta property="og:url" content="https://aivexara.xyz/math-ai/">
+    <meta property="og:image" content="https://aivexara.xyz/og-math-ai.jpg">
+    
+    <!-- Schema: Software Application -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Math AI",
+        "alternateName": ["Vexara Math AI", "Vexara AI Math Solver"],
+        "description": "The best Math AI tool for solving any mathematics problem instantly",
+        "url": "https://aivexara.xyz/math-ai/",
+        "applicationCategory": "EducationalApplication",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "150"
+        }
+    }
+    </script>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1e40af;
-            --primary-light: #3b82f6;
-            --accent: #0ea5e9;
-            --dark: #0f172a;
-            --gray: #64748b;
-            --light: #f8fafc;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #ffffff;
-            color: var(--dark);
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        
-        .font-display {
-            font-family: 'Space Grotesk', sans-serif;
-            letter-spacing: -0.02em;
-        }
-        
-        a, button {
-            transition: all 0.2s ease;
-        }
-        
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-            padding: 0.875rem 2rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            display: inline-block;
-            text-decoration: none;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9375rem;
-        }
-        
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        }
-        
-        .btn-outline {
-            border: 1.5px solid var(--dark);
-            color: var(--dark);
-            padding: 0.875rem 2rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            display: inline-block;
-            text-decoration: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 0.9375rem;
-        }
-        
-        .btn-outline:hover {
-            background: var(--dark);
-            color: white;
-        }
-        
-        .feature-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 1rem;
-            padding: 2rem;
-            transition: all 0.3s ease;
-        }
-        
-        .feature-card:hover {
-            border-color: var(--primary);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-            transform: translateY(-4px);
-        }
-        
-        .feature-icon {
-            width: 3rem;
-            height: 3rem;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            border-radius: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.5rem;
-            margin-bottom: 1.25rem;
-        }
-        
-        .hero-section {
-            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 1400px;
-            height: 1400px;
-            background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
-            pointer-events: none;
-        }
-        
-        .nav-link {
-            position: relative;
-            color: var(--gray);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 0.9375rem;
-        }
-        
-        .nav-link:hover {
-            color: var(--dark);
-        }
-        
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--primary);
-            transition: width 0.3s ease;
-        }
-        
-        .nav-link:hover::after {
-            width: 100%;
-        }
-        
-        .testimonial-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 1rem;
-            padding: 2rem;
-            transition: all 0.3s ease;
-        }
-        
-        .testimonial-card:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-        }
-        
-        .modal-backdrop {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal-backdrop.active {
-            display: flex;
-        }
-        
-        .login-container {
-            background: white;
-            border-radius: 1rem;
-            padding: 3rem;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-            position: relative;
-        }
-        
-        .close-button {
-            position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            background: none;
-            border: none;
-            font-size: 2rem;
-            color: var(--gray);
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        
-        .close-button:hover {
-            color: var(--dark);
-        }
-        
-        .login-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 1rem;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 0.5rem;
-            background: white;
-            color: var(--dark);
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s;
-            font-size: 0.95rem;
-        }
-        
-        .login-btn:hover {
-            border-color: var(--primary);
-            background: #f8fafc;
-        }
-        
-        .faq-item {
-            border-bottom: 1px solid #e2e8f0;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1.5rem;
-        }
-        
-        .faq-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-        
-        .faq-question {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: none;
-            border: none;
-            padding: 0.5rem 0;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--dark);
-            text-align: left;
-        }
-        
-        .faq-question:hover {
-            color: var(--primary);
-        }
-        
-        .faq-icon {
-            transition: transform 0.3s ease;
-        }
-        
-        .faq-icon.rotate {
-            transform: rotate(180deg);
-        }
-        
-        .faq-answer {
-            max-height: 0;
-            overflow: hidden;
-            opacity: 0;
-            transition: max-height 0.3s ease, opacity 0.3s ease;
-            color: var(--gray);
-            line-height: 1.8;
-        }
-        
-        .faq-answer.active {
-            max-height: 500px;
-            opacity: 1;
-            padding-top: 1rem;
-        }
-        
-        .gradient-text {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .section-padding {
-            padding-top: 5rem;
-            padding-bottom: 5rem;
-        }
-        
-        .container {
-            max-width: 1280px;
-            margin: 0 auto;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100">
 
-<body>
-    <!-- Navigation Bar -->
-    <nav class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100 shadow-sm">
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center max-w-7xl">
-            <div class="flex items-center space-x-2">
-                <i class="fas fa-graduation-cap text-2xl gradient-text"></i>
-                <span class="text-xl font-bold font-display">Vexara AI</span>
-            </div>
-            <div class="hidden md:flex space-x-8">
-                <a href="/" class="nav-link">Home</a>
-                <a href="#features" class="nav-link">Features</a>
-                <a href="#faq" class="nav-link">FAQ</a>
-            </div>
-            <button id="login-link" class="btn-primary">Solve Maths Now</button>
-        </div>
-    </nav>
+    <!-- HEADER -->
+    <header class="bg-white shadow">
+        <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600">Math AI</h1>
+            <a href="/" class="text-blue-600 hover:text-blue-800">← Back to Vexara Home</a>
+        </nav>
+    </header>
 
-    <!-- Hero Section -->
-    <section class="hero-section pt-40 pb-24 px-4 mt-12">
-        <div class="container mx-auto text-center max-w-4xl">
-            <h1 class="text-5xl md:text-6xl font-bold mb-6 font-display text-slate-900">SEE Mathematics AI Solver</h1>
-            <h2 class="text-2xl md:text-3xl font-semibold mb-4 text-gray-700">Instant Help with Algebra, Geometry, Trigonometry & More</h2>
-            <p class="text-xl md:text-2xl text-gray-700 mb-8 leading-relaxed">Get step-by-step solutions and clear explanations for all SEE mathematics topics. From basic algebra to complex trigonometry, Vexara solves it instantly.</p>
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <button id="get-started-link" class="btn-primary text-lg px-8 py-4">Solve Your First Math Problem</button>
-                <button id="demo-link" class="btn-outline text-lg px-8 py-4">See Examples</button>
-            </div>
-            <p class="text-gray-600 mt-6 text-sm">Free • Step-by-step • 24/7 Available</p>
+    <!-- HERO SECTION -->
+    <section class="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-16 px-4">
+        <div class="container mx-auto max-w-4xl text-center">
+            <h1 class="text-5xl font-bold mb-4">
+                <i class="fas fa-brain text-yellow-300"></i> Math AI That Really Works
+            </h1>
+            <p class="text-2xl mb-6">
+                <strong>Solve any math problem instantly</strong> with AI-powered step-by-step solutions
+            </p>
+            <p class="text-lg mb-8">
+                Powered by Google Gemini. Used by 1000s of students. 100% Free. No signup needed.
+            </p>
+            <a href="/#get-started" class="bg-yellow-400 text-blue-900 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-300">
+                Try Math AI Now
+            </a>
         </div>
     </section>
 
-    <!-- Trust Section -->
-    <section class="py-16 px-4 bg-slate-50">
-        <div class="container mx-auto max-w-7xl">
-            <div class="text-center">
-                <p class="text-gray-600 font-semibold uppercase tracking-wider mb-4">Used by SEE Students</p>
-                <h2 class="text-3xl font-bold mb-12 font-display">Trusted for Mathematics Solutions</h2>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                <div>
-                    <div class="text-4xl font-bold gradient-text mb-2">100K+</div>
-                    <p class="text-gray-600">Maths Problems Solved</p>
-                </div>
-                <div>
-                    <div class="text-4xl font-bold gradient-text mb-2">50K+</div>
-                    <p class="text-gray-600">Students Learning</p>
-                </div>
-                <div>
-                    <div class="text-4xl font-bold gradient-text mb-2">100%</div>
-                    <p class="text-gray-600">Free Forever</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    <!-- MAIN CONTENT -->
+    <main class="container mx-auto max-w-4xl px-4 py-16">
+        
+        <!-- What is Math AI? -->
+        <section class="mb-16">
+            <h2 class="text-4xl font-bold mb-6 text-slate-800">
+                What is Math AI? How It Changes Learning
+            </h2>
+            <p class="text-lg text-slate-700 mb-4">
+                <strong>Math AI</strong> (Artificial Intelligence for Mathematics) is a revolutionary technology that instantly solves any math problem 
+                while teaching you the process. Unlike calculators that just give answers, Math AI explains the "why" behind every step.
+            </p>
+            <p class="text-lg text-slate-700 mb-4">
+                Vexara's <strong>Math AI solution</strong> combines:
+            </p>
+            <ul class="text-lg text-slate-700 space-y-2 ml-6 mb-4">
+                <li>🧠 <strong>AI Recognition</strong> - Understands handwritten & printed math problems</li>
+                <li>🔬 <strong>AI Solver</strong> - Solves any mathematical equation instantly</li>
+                <li>📚 <strong>AI Teacher</strong> - Explains steps so you actually learn</li>
+                <li>🎯 <strong>AI Tutor</strong> - Adapts to your learning level</li>
+            </ul>
+        </section>
 
-    <!-- Topics Covered Section -->
-    <section id="features" class="section-padding px-4">
-        <div class="container mx-auto max-w-7xl">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4 font-display">All SEE Mathematics Topics Covered</h2>
-                <p class="text-xl text-gray-600">Master every mathematics concept required for your SEE exam</p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Algebra -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-square-root-alt"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Algebra Solutions</h3>
-                    <p class="text-gray-600 mb-4">Linear equations, quadratic equations, polynomials, exponents, logarithms, and algebraic expressions with instant step-by-step solutions.</p>
-                    <p class="text-sm text-gray-500">✓ Equations & Inequalities ✓ Polynomials ✓ Logarithms</p>
-                </div>
-                
-                <!-- Geometry -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-cube"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Geometry Help</h3>
-                    <p class="text-gray-600 mb-4">Lines, angles, triangles, circles, polygons, area, volume, and coordinate geometry problems solved with clear visual explanations.</p>
-                    <p class="text-sm text-gray-500">✓ Shapes & Angles ✓ Area & Volume ✓ Coordinate Geometry</p>
-                </div>
-                
-                <!-- Trigonometry -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-wave-square"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Trigonometry Solver</h3>
-                    <p class="text-gray-600 mb-4">Sine, cosine, tangent, inverse trig functions, identities, and applications. Get solutions with formulas explained clearly.</p>
-                    <p class="text-sm text-gray-500">✓ Trig Functions ✓ Identities ✓ Applications</p>
-                </div>
-                
-                <!-- Calculus -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-infinity"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Calculus & Limits</h3>
-                    <p class="text-gray-600 mb-4">Limits, derivatives, integration, and optimization problems. Understand calculus concepts with step-by-step breakdowns.</p>
-                    <p class="text-sm text-gray-500">✓ Limits ✓ Derivatives ✓ Integration</p>
-                </div>
-                
-                <!-- Statistics & Probability -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-chart-bar"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Statistics & Probability</h3>
-                    <p class="text-gray-600 mb-4">Mean, median, mode, distributions, probability, and data analysis. Solve statistics problems instantly with explanations.</p>
-                    <p class="text-sm text-gray-500">✓ Statistics ✓ Probability ✓ Data Analysis</p>
-                </div>
-                
-                <!-- Set Theory & Logic -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-circle-nodes"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Set Theory & Logic</h3>
-                    <p class="text-gray-600 mb-4">Set operations, logical reasoning, boolean algebra, and truth tables explained with clear examples and solutions.</p>
-                    <p class="text-sm text-gray-500">✓ Sets ✓ Logic ✓ Boolean Algebra</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- How It Works Section -->
-    <section class="section-padding px-4 bg-slate-50">
-        <div class="container mx-auto max-w-4xl">
-            <h2 class="text-4xl font-bold mb-12 font-display text-center">How to Solve Maths Problems with Vexara</h2>
-            
-            <div class="space-y-12">
-                <div class="flex gap-8">
-                    <div class="flex-shrink-0">
-                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">1</div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-3">Ask Your Question</h3>
-                        <p class="text-gray-700 leading-relaxed">Type or paste any mathematics problem. Be specific about what you need help with—algebra, geometry, trigonometry, or any other topic.</p>
-                    </div>
-                </div>
-                
-                <div class="flex gap-8">
-                    <div class="flex-shrink-0">
-                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">2</div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-3">Get Instant Solutions</h3>
-                        <p class="text-gray-700 leading-relaxed">Vexara AI analyzes your problem and generates a complete solution. You receive the answer along with all intermediate steps.</p>
-                    </div>
-                </div>
-                
-                <div class="flex gap-8">
-                    <div class="flex-shrink-0">
-                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">3</div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-3">Understand Concepts</h3>
-                        <p class="text-gray-700 leading-relaxed">Each solution includes detailed explanations. Learn why each step is taken, understand the formulas used, and master the concepts.</p>
-                    </div>
-                </div>
-                
-                <div class="flex gap-8">
-                    <div class="flex-shrink-0">
-                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-600 text-white text-xl font-bold">4</div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-3">Practice & Master</h3>
-                        <p class="text-gray-700 leading-relaxed">Use Vexara repeatedly to solve similar problems. Build confidence and mastery in mathematics topics with continuous practice.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Why Choose Vexara Section -->
-    <section class="section-padding px-4">
-        <div class="container mx-auto max-w-4xl">
-            <h2 class="text-4xl font-bold mb-4 font-display text-center">Why Choose Vexara for Mathematics</h2>
-            <p class="text-xl text-gray-600 text-center mb-12">The best AI maths solver for SEE students in Nepal</p>
+        <!-- Why Math AI Matters -->
+        <section class="mb-16 bg-purple-50 p-8 rounded-lg">
+            <h2 class="text-3xl font-bold mb-6 text-slate-800">
+                Why Math AI is Transforming Education
+            </h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Step-by-Step Solutions</h3>
-                    <p class="text-gray-700">Don't just get answers. Understand how to solve each problem with detailed, easy-to-follow steps.</p>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-bold mb-3">⏱️ Time-Saving</h3>
+                    <p class="text-slate-700">
+                        No more hours stuck on a single problem. Math AI solves it in seconds, showing every step.
+                    </p>
                 </div>
-                
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ All Topics Covered</h3>
-                    <p class="text-gray-700">From basic algebra to advanced calculus. Every mathematics topic in the SEE curriculum is covered.</p>
-                </div>
-                
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Available 24/7</h3>
-                    <p class="text-gray-700">Get help anytime, day or night. No waiting for teachers or tutors. Instant maths solutions whenever you need them.</p>
-                </div>
-                
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Free Forever</h3>
-                    <p class="text-gray-700">No hidden charges. No credit card required. Vexara is completely free for all students.</p>
-                </div>
-                
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Works on All Devices</h3>
-                    <p class="text-gray-700">Desktop, tablet, or mobile. Use Vexara wherever you study. Responsive design works perfectly on all screens.</p>
-                </div>
-                
-                <div class="bg-blue-50 p-8 rounded-lg border border-blue-200">
-                    <h3 class="text-xl font-bold mb-4">✓ Built for SEE Students</h3>
-                    <p class="text-gray-700">Designed specifically for Nepal's SEE curriculum. Content aligned with exam patterns and requirements.</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Student Testimonials -->
-    <section class="section-padding px-4 bg-slate-50">
-        <div class="container mx-auto max-w-7xl">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4 font-display">What SEE Students Say</h2>
-                <p class="text-xl text-gray-600">Real feedback from students improving their mathematics</p>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-bold mb-3">📈 Learning Focused</h3>
+                    <p class="text-slate-700">
+                        Math AI teaches concepts, not just answers. You understand WHY solutions work.
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-bold mb-3">💰 Always Affordable</h3>
+                    <p class="text-slate-700">
+                        Unlike expensive tutors, Math AI is 100% free for all students forever.
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-bold mb-3">🌍 Globally Accessible</h3>
+                    <p class="text-slate-700">
+                        Math AI works anywhere with internet. Every student gets equal access to world-class help.
+                    </p>
+                </div>
             </div>
+        </section>
+
+        <!-- Topics Math AI Solves -->
+        <section class="mb-16">
+            <h2 class="text-3xl font-bold mb-8 text-slate-800">
+                Every Math Topic, Solved by Math AI
+            </h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="testimonial-card">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full mr-4"></div>
-                        <div>
-                            <p class="font-bold">Raj Sharma</p>
-                            <p class="text-sm text-gray-500">SEE Student, Kathmandu</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 mb-4">"Trigonometry was killing me. Vexara broke down every concept so clearly. I went from failing to scoring 85 in maths. Absolutely game-changing!"</p>
-                    <div class="flex text-yellow-400">★★★★★</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-4">🔢 Basic Math</h3>
+                    <ul class="space-y-1 text-sm">
+                        <li>✓ Arithmetic Operations</li>
+                        <li>✓ Fractions & Decimals</li>
+                        <li>✓ Percentages</li>
+                        <li>✓ Ratios & Proportions</li>
+                    </ul>
                 </div>
-                
-                <div class="testimonial-card">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-400 rounded-full mr-4"></div>
-                        <div>
-                            <p class="font-bold">Aisha Khan</p>
-                            <p class="text-sm text-gray-500">Maths Learner</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 mb-4">"I use Vexara for every maths homework. Not only do I get solutions, but I understand why each step is done. My confidence in maths is way up!"</p>
-                    <div class="flex text-yellow-400">★★★★★</div>
-                </div>
-                
-                <div class="testimonial-card">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mr-4"></div>
-                        <div>
-                            <p class="font-bold">Nikhil Patel</p>
-                            <p class="text-sm text-gray-500">Class 10 Student</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 mb-4">"Geometry questions that took me hours to solve now take minutes. Vexara is like having a patient math tutor available 24/7."</p>
-                    <div class="flex text-yellow-400">★★★★★</div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- FAQ Section -->
-    <section id="faq" class="section-padding px-4">
-        <div class="container mx-auto max-w-3xl">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4 font-display">FAQ About Mathematics AI Help</h2>
-                <p class="text-xl text-gray-600">Common questions about Vexara's maths solver</p>
+                <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-4">📐 Geometry</h3>
+                    <ul class="space-y-1 text-sm">
+                        <li>✓ Shapes & Areas</li>
+                        <li>✓ Angles & Triangles</li>
+                        <li>✓ Circles & Solids</li>
+                        <li>✓ 3D Calculations</li>
+                    </ul>
+                </div>
+
+                <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-4">📊 Algebra</h3>
+                    <ul class="space-y-1 text-sm">
+                        <li>✓ Equations & Inequalities</li>
+                        <li>✓ Polynomials</li>
+                        <li>✓ Systems of Equations</li>
+                        <li>✓ Functions & Graphs</li>
+                    </ul>
+                </div>
+
+                <div class="bg-gradient-to-br from-cyan-500 to-cyan-600 text-white p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-4">📈 Advanced Math</h3>
+                    <ul class="space-y-1 text-sm">
+                        <li>✓ Trigonometry</li>
+                        <li>✓ Statistics & Probability</li>
+                        <li>✓ Calculus (Basics)</li>
+                        <li>✓ Logarithms & Exponents</li>
+                    </ul>
+                </div>
             </div>
+
+            <p class="text-lg text-slate-700 text-center">
+                <strong>Any topic. Any problem. Math AI solves it.</strong>
+            </p>
+        </section>
+
+        <!-- How Math AI Works -->
+        <section class="mb-16 bg-blue-50 p-8 rounded-lg">
+            <h2 class="text-3xl font-bold mb-8 text-slate-800">
+                How Math AI Works - The Process
+            </h2>
+            
+            <div class="space-y-6">
+                <div class="flex gap-6">
+                    <div class="flex-shrink-0">
+                        <div class="bg-blue-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold">1</div>
+                    </div>
+                    <div class="flex-grow">
+                        <h3 class="text-2xl font-bold mb-2">Upload or Type</h3>
+                        <p class="text-slate-700">
+                            Take a photo of your math problem or type it out. Math AI instantly recognizes the problem using advanced computer vision.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex gap-6">
+                    <div class="flex-shrink-0">
+                        <div class="bg-blue-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold">2</div>
+                    </div>
+                    <div class="flex-grow">
+                        <h3 class="text-2xl font-bold mb-2">Process & Analyze</h3>
+                        <p class="text-slate-700">
+                            Math AI analyzes the problem using Google Gemini (world's most advanced AI) to determine the best solution method.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex gap-6">
+                    <div class="flex-shrink-0">
+                        <div class="bg-blue-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold">3</div>
+                    </div>
+                    <div class="flex-grow">
+                        <h3 class="text-2xl font-bold mb-2">Solve & Explain</h3>
+                        <p class="text-slate-700">
+                            Math AI provides the complete solution with step-by-step explanations. You see not just the answer, but WHY it's correct.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex gap-6">
+                    <div class="flex-shrink-0">
+                        <div class="bg-blue-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold">4</div>
+                    </div>
+                    <div class="flex-grow">
+                        <h3 class="text-2xl font-bold mb-2">Learn & Practice</h3>
+                        <p class="text-slate-700">
+                            Understand the concept, then practice similar problems. Math AI helps you become independent at solving math.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Math AI vs Other Tools -->
+        <section class="mb-16">
+            <h2 class="text-3xl font-bold mb-8 text-slate-800">
+                Why Vexara's Math AI is Best
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-slate-300">
+                    <thead class="bg-purple-600 text-white">
+                        <tr>
+                            <th class="border border-slate-300 p-4 text-left">Feature</th>
+                            <th class="border border-slate-300 p-4">Vexara Math AI</th>
+                            <th class="border border-slate-300 p-4">Photomath</th>
+                            <th class="border border-slate-300 p-4">Wolfram Alpha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">Cost</td>
+                            <td class="border border-slate-300 p-4 text-center text-green-600 font-bold">FREE</td>
+                            <td class="border border-slate-300 p-4 text-center">$9.99/mo</td>
+                            <td class="border border-slate-300 p-4 text-center">$7.99/mo</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">Photo Upload</td>
+                            <td class="border border-slate-300 p-4 text-center">✅</td>
+                            <td class="border border-slate-300 p-4 text-center">✅</td>
+                            <td class="border border-slate-300 p-4 text-center">❌</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">AI Explanation</td>
+                            <td class="border border-slate-300 p-4 text-center">✅ Detailed</td>
+                            <td class="border border-slate-300 p-4 text-center">✅ Good</td>
+                            <td class="border border-slate-300 p-4 text-center">⚠️ Limited</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">All Topics</td>
+                            <td class="border border-slate-300 p-4 text-center text-green-600 font-bold">✅ YES</td>
+                            <td class="border border-slate-300 p-4 text-center">✅ Yes</td>
+                            <td class="border border-slate-300 p-4 text-center">✅ Yes</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="border border-slate-300 p-4 font-bold">Registration</td>
+                            <td class="border border-slate-300 p-4 text-center text-green-600 font-bold">Optional</td>
+                            <td class="border border-slate-300 p-4 text-center">Required</td>
+                            <td class="border border-slate-300 p-4 text-center">Required</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Success Stories -->
+        <section class="mb-16 bg-gradient-to-r from-purple-50 to-blue-50 p-8 rounded-lg">
+            <h2 class="text-3xl font-bold mb-8 text-slate-800">
+                Students Love Math AI
+            </h2>
+            
+            <div class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-lg font-bold mb-2">
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i>
+                    </p>
+                    <p class="text-slate-700 mb-2">
+                        "Math AI is a game changer. I went from barely passing to acing my exams. No more anxiety about math!" 
+                        <strong>- Arun, Student</strong>
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-lg font-bold mb-2">
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i>
+                    </p>
+                    <p class="text-slate-700 mb-2">
+                        "The step-by-step explanations help me actually understand, not just get answers. Best Math AI I've used." 
+                        <strong>- Sarah, Student</strong>
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-lg font-bold mb-2">
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i> 
+                        <i class="fas fa-star text-yellow-400"></i>
+                    </p>
+                    <p class="text-slate-700 mb-2">
+                        "Free, accurate, and actually teaches me. Why would I pay for anything else?" 
+                        <strong>- Kumar, Student</strong>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-12 rounded-lg text-center mb-16">
+            <h2 class="text-4xl font-bold mb-4">
+                Experience the Power of Math AI
+            </h2>
+            <p class="text-xl mb-8">
+                Join thousands of students solving math problems instantly with AI
+            </p>
+            <a href="/" class="bg-yellow-400 text-blue-900 px-10 py-4 rounded-lg font-bold text-lg hover:bg-yellow-300 inline-block">
+                Start Using Math AI - Free Now!
+            </a>
+        </section>
+
+        <!-- FAQ -->
+        <section>
+            <h2 class="text-3xl font-bold mb-8 text-slate-800">
+                Math AI - Common Questions
+            </h2>
             
             <div class="space-y-4">
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>What types of math problems can Vexara solve?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Vexara can solve problems across all SEE mathematics topics including: Algebra (equations, polynomials, exponents), Geometry (shapes, angles, coordinates), Trigonometry (trig functions, identities), Calculus (limits, derivatives, integration), Statistics & Probability, and Set Theory. Just ask your question!</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>Does Vexara show all the working steps?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Yes! Every solution includes detailed step-by-step working. Vexara doesn't just give you the answer—it shows you exactly how to solve it. Each step is explained so you understand the process and can apply it to similar problems.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>Is Vexara free for SEE mathematics help?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Completely free! No credit card, no subscriptions, no hidden charges. Vexara's maths solver is available to all students for free. We're committed to making quality mathematics education accessible to every SEE student.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>Can Vexara help with algebra, geometry, and trigonometry?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Absolutely! Vexara specializes in all these areas. Whether you need help solving algebraic equations, understanding geometric proofs, or mastering trigonometric identities, Vexara provides detailed solutions and explanations for all of them.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>How do I use Vexara for SEE exam preparation?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Use Vexara to practice and solve SEE past papers and sample questions. Get instant solutions with detailed explanations for problems you find difficult. This helps you understand weak areas, build confidence, and prepare thoroughly for your SEE mathematics exam.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-item bg-white rounded-lg p-6">
-                    <button class="faq-question">
-                        <span>Can I use Vexara on my mobile phone?</span>
-                        <i class="fas fa-chevron-down faq-icon"></i>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Yes! Vexara works seamlessly on mobile devices. Whether you're on a smartphone, tablet, or laptop, you can ask maths questions and get solutions anytime, anywhere. Perfect for studying on the go!</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+                <details class="bg-white p-6 rounded-lg shadow cursor-pointer">
+                    <summary class="font-bold text-lg text-slate-800 flex justify-between items-center">
+                        <span>Is Math AI accurate?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </summary>
+                    <p class="text-slate-700 mt-4">
+                        Yes! Math AI is powered by Google Gemini, one of the world's most advanced AI models. It has 4.8/5 rating from 150+ users.
+                    </p>
+                </details>
 
-    <!-- CTA Section -->
-    <section class="py-24 px-4 bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
-        <div class="container mx-auto text-center max-w-4xl">
-            <h2 class="text-4xl md:text-5xl font-bold mb-6 font-display">Ready to Master Mathematics?</h2>
-            <p class="text-xl mb-10 opacity-95">Start solving SEE maths problems instantly with AI-powered step-by-step solutions. Free forever, no sign-up required.</p>
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="#" id="call-to-action-link" class="bg-white text-blue-600 hover:bg-gray-50 py-4 px-10 rounded-lg text-lg font-semibold inline-block">Solve Maths Now</a>
-                <a href="#" class="bg-white/10 hover:bg-white/20 py-4 px-10 rounded-lg text-lg font-semibold border border-white/30 inline-block">See Example Solutions</a>
-            </div>
-        </div>
-    </section>
+                <details class="bg-white p-6 rounded-lg shadow cursor-pointer">
+                    <summary class="font-bold text-lg text-slate-800 flex justify-between items-center">
+                        <span>Can Math AI solve advanced topics?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </summary>
+                    <p class="text-slate-700 mt-4">
+                        Yes! Math AI handles everything from basic arithmetic to trigonometry, calculus, and statistics. Any math topic is covered.
+                    </p>
+                </details>
 
-    <!-- Footer -->
-    <footer class="bg-slate-900 text-white py-16 px-4">
-        <div class="container mx-auto max-w-7xl">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-                <div>
-                    <h3 class="text-xl font-bold mb-4 flex items-center font-display">
-                        <i class="fas fa-graduation-cap mr-2 gradient-text"></i> Vexara AI
-                    </h3>
-                    <p class="text-gray-400 mb-6">The AI maths solver for SEE students in Nepal, powered by Google Gemini.</p>
-                </div>
-                
-                <div>
-                    <h4 class="font-semibold mb-4">Products</h4>
-                    <ul class="space-y-3">
-                        <li><a href="/" class="text-gray-400 hover:text-white">Vexara AI</a></li>
-                        <li><a href="/see-maths-ai" class="text-gray-400 hover:text-white">Maths Solver</a></li>
-                        <li><a href="/science-helper" class="text-gray-400 hover:text-white">Science Helper</a></li>
-                        <li><a href="/homework-ai" class="text-gray-400 hover:text-white">Homework AI</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h4 class="font-semibold mb-4">Resources</h4>
-                    <ul class="space-y-3">
-                        <li><a href="#" class="text-gray-400 hover:text-white">Study Guide</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Blog</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Support</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Contact</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h4 class="font-semibold mb-4">Legal</h4>
-                    <ul class="space-y-3">
-                        <li><a href="#" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Terms of Service</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Cookie Policy</a></li>
-                    </ul>
-                </div>
+                <details class="bg-white p-6 rounded-lg shadow cursor-pointer">
+                    <summary class="font-bold text-lg text-slate-800 flex justify-between items-center">
+                        <span>Will Math AI help me learn or just give answers?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </summary>
+                    <p class="text-slate-700 mt-4">
+                        Both! Math AI provides step-by-step solutions with explanations, so you understand the concepts while getting the right answer.
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow cursor-pointer">
+                    <summary class="font-bold text-lg text-slate-800 flex justify-between items-center">
+                        <span>Is Math AI on mobile?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </summary>
+                    <p class="text-slate-700 mt-4">
+                        Absolutely! Math AI works perfectly on smartphones and tablets. It's fully optimized for mobile learning.
+                    </p>
+                </details>
             </div>
-            
-            <div class="pt-8 border-t border-gray-800 text-center text-gray-400">
-                <p>&copy; 2025 Vexara AI. All rights reserved. Built for SEE students in Nepal.</p>
-            </div>
-        </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-900 text-white py-12 px-4 text-center mt-16">
+        <p class="mb-2">Math AI by Vexara</p>
+        <p class="text-slate-400 mb-4">The easiest way to solve any math problem</p>
+        <p class="text-sm text-slate-500">© 2025 Vexara AI. All rights reserved.</p>
     </footer>
 
-    <!-- Login Modal -->
-    <div id="login-modal" class="modal-backdrop">
-        <div class="login-container">
-            <button class="close-button" id="close-modal">&times;</button>
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-bold mb-2 font-display">Welcome to Vexara AI</h2>
-                <p class="text-gray-600">Start solving maths problems now</p>
-            </div>
-            
-            <div class="space-y-3">
-                <a href="/guest_login" class="login-btn" id="guest-login-btn">
-                    <i class="fas fa-user-secret mr-3"></i> Continue as Guest
-                </a>
-            </div>
-            
-            <div class="text-center mt-6 text-sm text-gray-500">
-                By continuing, you agree to our <a href="#" class="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" class="text-blue-600 hover:underline">Privacy Policy</a>.
-            </div>
-        </div>
-    </div>
-
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const loginModal = document.getElementById('login-modal');
-            const loginLinks = ['login-link', 'get-started-link', 'demo-link', 'call-to-action-link'];
-            const closeModalButton = document.getElementById('close-modal');
-            const guestLoginBtn = document.getElementById('guest-login-btn');
-            
-            const openModal = () => {
-                loginModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            };
-            
-            const closeModal = () => {
-                loginModal.classList.remove('active');
-                document.body.style.overflow = '';
-            };
-            
-            loginLinks.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        openModal();
+        // Toggle details
+        document.querySelectorAll('details').forEach(detail => {
+            detail.addEventListener('toggle', function() {
+                if (this.open) {
+                    document.querySelectorAll('details').forEach(d => {
+                        if (d !== this) d.open = false;
                     });
                 }
-            });
-            
-            if (closeModalButton) closeModalButton.addEventListener('click', closeModal);
-            
-            loginModal.addEventListener('click', (e) => {
-                if (e.target === loginModal) closeModal();
-            });
-            
-            if (guestLoginBtn) {
-                guestLoginBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    window.location.href = 'guest_login';
-                });
-            }
-            
-            // FAQ functionality
-            const faqQuestions = document.querySelectorAll('.faq-question');
-            faqQuestions.forEach(question => {
-                question.addEventListener('click', () => {
-                    const answer = question.nextElementSibling;
-                    const icon = question.querySelector('.faq-icon');
-                    const isActive = answer.classList.contains('active');
-                    
-                    document.querySelectorAll('.faq-answer').forEach(a => a.classList.remove('active'));
-                    document.querySelectorAll('.faq-icon').forEach(i => i.classList.remove('rotate'));
-                    
-                    if (!isActive) {
-                        answer.classList.add('active');
-                        icon.classList.add('rotate');
-                    }
-                });
             });
         });
     </script>
