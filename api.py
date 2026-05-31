@@ -1406,15 +1406,46 @@ def get_chat_file_path(user_id, chat_id):
     return os.path.join(CHAT_HISTORY_DIR, f"{safe_user_id}_{chat_id}.json")
 
 def load_chat_history_from_file(user_id, chat_id):
-    """Load chat history from file."""
+    """Load chat history - FIREBASE FIRST (cross-device sync), fall back to local file."""
+    
+    # 🔥 TRY FIREBASE FIRST (for cross-device sync)
+    if FIREBASE_AVAILABLE:
+        try:
+            safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+            path = f"users/{safe_user_id}/chats/{chat_id}/messages"
+            ref = db.reference(path)
+            messages_dict = ref.get().val()
+            
+            if messages_dict:
+                # Convert Firebase format (dict of msg_id: msg_data) to list
+                messages_list = []
+                for msg_id, msg_data in messages_dict.items():
+                    messages_list.append({
+                        "type": msg_data.get("type"),
+                        "text": msg_data.get("text"),
+                        "timestamp": msg_data.get("timestamp")
+                    })
+                # Sort by timestamp to maintain order
+                messages_list.sort(key=lambda x: x.get("timestamp", 0))
+                print(f"[FIREBASE_LOAD] ✓ Loaded {len(messages_list)} messages from Firebase for {user_id}/{chat_id}")
+                return messages_list
+        except Exception as e:
+            print(f"[FIREBASE_LOAD] Warning: Could not read from Firebase: {e}")
+            # Fall back to local file silently
+    
+    # 📄 Fall back to local file (if Firebase not available or failed)
     file_path = get_chat_file_path(user_id, chat_id)
     if os.path.exists(file_path):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+                print(f"[LOCAL_LOAD] ✓ Loaded from local file: {file_path}")
+                return data
         except (json.JSONDecodeError, Exception) as e:
-            print(f"Error loading chat: {e}")
+            print(f"[LOCAL_LOAD] Error loading chat: {e}")
             return []
+    
+    print(f"[LOAD_CHAT] No chat history found in Firebase or local files for {user_id}/{chat_id}")
     return []
 
 def save_chat_history_to_file(user_id, chat_id, chat_data):
@@ -1786,29 +1817,85 @@ def clear_all_chats_endpoint():
 
 @app.route('/get_chat_history_list', methods=['GET'])
 def get_chat_history_list():
-    """Get list of all user chats."""
+    """Get list of all user chats - FIREBASE FIRST for cross-device sync."""
     user_id = get_user_id()
     chat_summaries = []
+    seen_chat_ids = set()
     
+    # 🔥 FIREBASE FIRST - Get all chats from cloud (cross-device)
+    if FIREBASE_AVAILABLE:
+        try:
+            safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+            path = f"users/{safe_user_id}/chats"
+            ref = db.reference(path)
+            chats_dict = ref.get().val()
+            
+            if chats_dict:
+                print(f"[FIREBASE] Found {len(chats_dict)} chats in Firebase")
+                for chat_id, chat_data in chats_dict.items():
+                    seen_chat_ids.add(chat_id)
+                    messages = chat_data.get("messages", {})
+                    
+                    display_title = "New Chat"
+                    if messages:
+                        # Get first user message
+                        for msg_id, msg in messages.items():
+                            if msg.get('type') == 'user' and msg.get('text', '').strip():
+                                display_title = msg['text'].split('\n')[0][:30]
+                                if len(display_title) > 30:
+                                    display_title += "..."
+                                break
+                    
+                    # Get timestamp for sorting
+                    timestamp = 0
+                    if messages:
+                        for msg in messages.values():
+                            timestamp = max(timestamp, msg.get('timestamp', 0))
+                    
+                    chat_summaries.append({
+                        'id': chat_id,
+                        'title': display_title,
+                        'timestamp': timestamp
+                    })
+        except Exception as e:
+            print(f"[FIREBASE] Error loading chat list: {e}")
+    
+    # 📄 Fall back to local files (for old chats not yet in Firebase)
     try:
-        user_chat_files = [f for f in os.listdir(CHAT_HISTORY_DIR) if f.startswith(f"{user_id}_") and f.endswith(".json")]
-        user_chat_files.sort(key=lambda f: os.path.getmtime(os.path.join(CHAT_HISTORY_DIR, f)), reverse=True)
-        
-        for filename in user_chat_files:
-            chat_id = filename.replace(f"{user_id}_", "").replace(".json", "")
-            chat_data = load_chat_history_from_file(user_id, chat_id)
+        if os.path.exists(CHAT_HISTORY_DIR):
+            user_chat_files = [f for f in os.listdir(CHAT_HISTORY_DIR) if f.startswith(f"{user_id}_") and f.endswith(".json")]
             
-            display_title = "New Chat"
-            if chat_data:
-                first_user_msg = next((msg for msg in chat_data if msg['type'] == 'user' and msg['text'].strip()), None)
-                if first_user_msg:
-                    display_title = first_user_msg['text'].split('\n')[0][:30]
-                    if len(display_title) > 30:
-                        display_title += "..."
-            
-            chat_summaries.append({'id': chat_id, 'title': display_title})
+            for filename in user_chat_files:
+                chat_id = filename.replace(f"{user_id}_", "").replace(".json", "")
+                if chat_id in seen_chat_ids:
+                    continue  # Already added from Firebase
+                
+                seen_chat_ids.add(chat_id)
+                chat_data = load_chat_history_from_file(user_id, chat_id)
+                
+                display_title = "New Chat"
+                if chat_data:
+                    first_user_msg = next((msg for msg in chat_data if msg['type'] == 'user' and msg['text'].strip()), None)
+                    if first_user_msg:
+                        display_title = first_user_msg['text'].split('\n')[0][:30]
+                        if len(display_title) > 30:
+                            display_title += "..."
+                
+                timestamp = os.path.getmtime(os.path.join(CHAT_HISTORY_DIR, filename))
+                chat_summaries.append({
+                    'id': chat_id,
+                    'title': display_title,
+                    'timestamp': timestamp
+                })
     except Exception as e:
-        print(f"Error getting chat list: {e}")
+        print(f"[LOCAL] Error getting local chat list: {e}")
+    
+    # Sort by timestamp (newest first)
+    chat_summaries.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+    
+    # Remove timestamp before sending to frontend
+    for chat in chat_summaries:
+        del chat['timestamp']
     
     return jsonify(chat_summaries)
 
