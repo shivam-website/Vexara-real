@@ -94,6 +94,14 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL")
 FIREBASE_CREDENTIALS_JSON = os.environ.get("FIREBASE_CREDENTIALS")
 
+# Debug: Print what we found
+print(f"[STARTUP] FIREBASE_DB_URL set: {bool(FIREBASE_DB_URL)}")
+print(f"[STARTUP] FIREBASE_CREDENTIALS set: {bool(FIREBASE_CREDENTIALS_JSON)}")
+if FIREBASE_DB_URL:
+    print(f"[STARTUP] Database URL: {FIREBASE_DB_URL}")
+if FIREBASE_CREDENTIALS_JSON:
+    print(f"[STARTUP] Credentials length: {len(FIREBASE_CREDENTIALS_JSON)} chars")
+
 def initialize_firebase():
     """Initialize Firebase Admin SDK with credentials from environment."""
     global FIREBASE_AVAILABLE
@@ -138,8 +146,8 @@ def initialize_firebase():
         return False
 
 # Initialize Firebase on startup
-if __name__ == '__main__' or os.environ.get('FLASK_ENV') in ['production', 'development']:
-    initialize_firebase()
+# Force initialization regardless of how app is started (local, gunicorn, render, etc)
+initialize_firebase()
 
 # ============================================================================
 # 🖼️ IMAGE COMPRESSION MODULE
