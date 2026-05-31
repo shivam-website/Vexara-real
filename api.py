@@ -32,6 +32,16 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 import math
 
+# 🔥 FIREBASE IMPORTS
+try:
+    import firebase_admin
+    from firebase_admin import db, credentials
+    FIREBASE_AVAILABLE = True
+    print("[FIREBASE] Firebase SDK imported successfully")
+except ImportError:
+    FIREBASE_AVAILABLE = False
+    print("[FIREBASE] Warning: firebase-admin not installed. Install with: pip install firebase-admin")
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 template_path = os.path.join(current_dir, 'templates')
 static_path = os.path.join(current_dir, 'static')
@@ -76,6 +86,60 @@ GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# ============================================================================
+# 🔥 FIREBASE CONFIGURATION & INITIALIZATION
+# ============================================================================
+
+FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL")
+FIREBASE_CREDENTIALS_JSON = os.environ.get("FIREBASE_CREDENTIALS")
+
+def initialize_firebase():
+    """Initialize Firebase Admin SDK with credentials from environment."""
+    global FIREBASE_AVAILABLE
+    
+    if not FIREBASE_AVAILABLE:
+        print("[FIREBASE] Firebase SDK not available, skipping initialization")
+        return False
+    
+    if not FIREBASE_DB_URL:
+        print("[FIREBASE] ERROR: FIREBASE_DB_URL environment variable not set")
+        FIREBASE_AVAILABLE = False
+        return False
+    
+    if not FIREBASE_CREDENTIALS_JSON:
+        print("[FIREBASE] ERROR: FIREBASE_CREDENTIALS environment variable not set")
+        FIREBASE_AVAILABLE = False
+        return False
+    
+    try:
+        # Parse credentials from JSON string
+        creds_dict = json.loads(FIREBASE_CREDENTIALS_JSON)
+        creds = credentials.Certificate(creds_dict)
+        
+        # Initialize Firebase app (only once)
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app(creds, {
+                'databaseURL': FIREBASE_DB_URL
+            })
+            print(f"[FIREBASE] ✓ Initialized successfully. Database: {FIREBASE_DB_URL}")
+            return True
+        else:
+            print("[FIREBASE] Already initialized")
+            return True
+            
+    except json.JSONDecodeError as e:
+        print(f"[FIREBASE] ERROR: Invalid FIREBASE_CREDENTIALS JSON: {e}")
+        FIREBASE_AVAILABLE = False
+        return False
+    except Exception as e:
+        print(f"[FIREBASE] ERROR: Failed to initialize: {e}")
+        FIREBASE_AVAILABLE = False
+        return False
+
+# Initialize Firebase on startup
+if __name__ == '__main__' or os.environ.get('FLASK_ENV') in ['production', 'development']:
+    initialize_firebase()
 
 # ============================================================================
 # 🖼️ IMAGE COMPRESSION MODULE
@@ -1363,6 +1427,73 @@ def save_chat_history_to_file(user_id, chat_id, chat_data):
         print(f"Error saving chat: {e}")
 
 # ============================================================================
+# 🔥 FIREBASE CHAT STORAGE FUNCTIONS
+# ============================================================================
+
+def save_message_to_firebase(user_id, chat_id, message_data):
+    """
+    Save a single message to Firebase Realtime Database.
+    
+    Args:
+        user_id: User's unique ID (from session)
+        chat_id: Chat session ID
+        message_data: Dict with keys: type, text, timestamp
+    """
+    if not FIREBASE_AVAILABLE:
+        return False
+    
+    try:
+        # Sanitize user_id for Firebase path
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        
+        # Build Firebase path
+        path = f"users/{safe_user_id}/chats/{chat_id}/messages"
+        
+        # Generate a unique message ID
+        msg_id = str(uuid.uuid4()).replace('-', '')[:16]
+        
+        # Prepare data for Firebase
+        firebase_message = {
+            "type": message_data.get("type"),
+            "text": message_data.get("text"),
+            "timestamp": int(message_data.get("timestamp", time.time()))
+        }
+        
+        # Save to Firebase
+        ref = db.reference(path)
+        ref.child(msg_id).set(firebase_message)
+        
+        print(f"[FIREBASE] ✓ Saved message to {path}/{msg_id}")
+        return True
+        
+    except Exception as e:
+        print(f"[FIREBASE] ERROR saving message: {e}")
+        return False
+
+def save_chat_metadata_to_firebase(user_id, chat_id):
+    """Save chat metadata to Firebase (created_at, subject, etc)."""
+    if not FIREBASE_AVAILABLE:
+        return False
+    
+    try:
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        path = f"users/{safe_user_id}/chats/{chat_id}"
+        
+        metadata = {
+            "created_at": int(time.time())
+        }
+        
+        ref = db.reference(path)
+        ref.child("metadata").set(metadata)
+        
+        print(f"[FIREBASE] ✓ Saved chat metadata for {chat_id}")
+        return True
+        
+    except Exception as e:
+        print(f"[FIREBASE] ERROR saving metadata: {e}")
+        return False
+
+# ============================================================================
 # 🌐 UNIFIED API CALLING WITH FALLBACK
 # ============================================================================
 
@@ -1452,12 +1583,14 @@ def upload_image_endpoint():
             provider_used = None
             
             # ================== STEP 1: SOLVE DIRECTLY WITH GEMINI PRIMARY ==================
-            # Build a solving prompt that handles all image types
-            solving_prompt = """Solve this math problem from the image:
+            # Build solving prompt that includes user's message + image
+            solving_prompt = f"""Solve this math problem from the image.
+
+User's question: {caption if caption else "Solve the math problem in the image"}
 
 Provide a complete solution with:
-1. **Problem Statement:** Clearly state what the problem is asking (extract from image)
-2. **Given:** Information from the image
+1. **Problem Statement:** Clearly state what the problem is asking (from image and user question)
+2. **Given:** Information from the image/message
 3. **To Find:** What needs to be calculated
 4. **Solution:** Step-by-step with explanations
 5. **Answer:** Final result with units
@@ -1466,6 +1599,7 @@ Provide a complete solution with:
 IMPORTANT: 
 - If the image contains text, extract it accurately
 - If there are diagrams, analyze them carefully
+- Use the user's question to understand exactly what they're asking
 - For geometric problems, preserve all angle/measurement information
 - For text-only problems, solve step-by-step using correct formulas"""
             
@@ -1474,11 +1608,12 @@ IMPORTANT:
 
 IMPORTANT:
 - Analyze images carefully for both text and diagrams
-- Extract questions accurately from images
+- Listen to the user's question/caption to understand what they're asking
+- Extract questions accurately from both the image AND the user's message
 - Preserve all mathematical notation and symbols
 - Provide step-by-step solutions following SEE exam format
 - Use clear formatting with sections for Problem Statement, Given, To Find, Solution, Answer, and Tips
-- For any image type (text-only, geometric, mixed), provide a complete solution"""
+- For any image type (text-only, geometric, mixed) combined with user's question, provide a complete solution"""
             
             print(f"[GEMINI_FIRST] Step 1: Solving with Gemini (PRIMARY via intelligent fallback)...")
             response, provider_used, success = call_api_with_intelligent_fallback(
@@ -1579,18 +1714,25 @@ IMPORTANT:
                 user_msg = f"[Image] {caption or 'Math problem'}\n[Solved via Gemini Vision]"
                 
                 # Save to history
-                current_history.append({
+                user_msg_obj = {
                     "type": "user",
                     "text": user_msg,
                     "timestamp": time.time()
-                })
-                current_history.append({
+                }
+                bot_msg_obj = {
                     "type": "bot",
                     "text": full_response,
                     "timestamp": time.time()
-                })
+                }
+                current_history.append(user_msg_obj)
+                current_history.append(bot_msg_obj)
                 
                 save_chat_history_to_file(user_id, chat_id, current_history)
+                # Save to Firebase
+                if FIREBASE_AVAILABLE:
+                    save_message_to_firebase(user_id, chat_id, user_msg_obj)
+                    save_message_to_firebase(user_id, chat_id, bot_msg_obj)
+                
                 increment_daily_message_count(user_id)
                 
                 print(f"[GEMINI_FIRST] ✓ Complete. Provider used: {provider_used}")
@@ -1712,8 +1854,12 @@ def ask_endpoint():
     trimmed_history = trim_chat_history(full_history)
     
     # Save user message
-    trimmed_history.append({"type": "user", "text": instruction, "timestamp": time.time()})
+    user_msg_obj = {"type": "user", "text": instruction, "timestamp": time.time()}
+    trimmed_history.append(user_msg_obj)
     save_chat_history_to_file(user_id, chat_id, trimmed_history)
+    # Save to Firebase
+    if FIREBASE_AVAILABLE:
+        save_message_to_firebase(user_id, chat_id, user_msg_obj)
     
     # Increment quota
     increment_daily_message_count(user_id)
@@ -1787,8 +1933,12 @@ def ask_endpoint():
                 return
             
             # Save bot response
-            trimmed_history.append({"type": "bot", "text": full_response, "timestamp": time.time()})
+            bot_msg_obj = {"type": "bot", "text": full_response, "timestamp": time.time()}
+            trimmed_history.append(bot_msg_obj)
             save_chat_history_to_file(user_id, chat_id, trimmed_history)
+            # Save to Firebase
+            if FIREBASE_AVAILABLE:
+                save_message_to_firebase(user_id, chat_id, bot_msg_obj)
             
         except Exception as e:
             print(f"Error in /ask: {e}")
