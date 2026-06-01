@@ -872,14 +872,16 @@ UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ============================================================================
-# 📊 USER MESSAGE QUOTA TRACKING WITH GOOGLE ACCOUNT PERSISTENCE
+# 📊 FIREBASE-INTEGRATED USER MESSAGE QUOTA TRACKING
 # ============================================================================
+# Tracks quota per Google Account with Firebase Realtime Database
+# Structure: users/{user_id}/quota/{date}/count & metadata
 
 QUOTA_FILE = os.path.join(app.root_path, 'user_quotas.json')
 DAILY_MESSAGE_LIMIT = 20
 
 def load_user_quotas():
-    """Load user quotas from persistent file."""
+    """Load user quotas from persistent file (fallback when Firebase unavailable)."""
     if os.path.exists(QUOTA_FILE):
         try:
             with open(QUOTA_FILE, 'r', encoding='utf-8') as f:
@@ -889,7 +891,7 @@ def load_user_quotas():
     return {}
 
 def save_user_quotas(quotas):
-    """Save user quotas to persistent file."""
+    """Save user quotas to persistent file (fallback)."""
     try:
         with open(QUOTA_FILE, 'w', encoding='utf-8') as f:
             json.dump(quotas, f, ensure_ascii=False, indent=2)
@@ -897,8 +899,34 @@ def save_user_quotas(quotas):
         print(f"[QUOTA] Error saving quotas: {e}")
 
 def get_daily_message_count(user_id):
-    """Get daily message count for user."""
+    """
+    Get daily message count for user from Firebase.
+    Falls back to local JSON if Firebase unavailable.
+    
+    Firebase structure: users/{user_id}/quota/{date}
+    """
     today_str = date.today().isoformat()
+    
+    # PRIMARY: Try Firebase first
+    if FIREBASE_AVAILABLE:
+        try:
+            safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+            path = f"users/{safe_user_id}/quota/{today_str}"
+            ref = db.reference(path)
+            quota_data = ref.get()
+            
+            if quota_data and isinstance(quota_data, dict):
+                count = quota_data.get('count', 0)
+                print(f"[QUOTA-FIREBASE] ✓ Retrieved from Firebase: user={user_id}, date={today_str}, count={count}")
+                return count
+            else:
+                print(f"[QUOTA-FIREBASE] No quota record in Firebase for {today_str}, returning 0")
+                return 0
+                
+        except Exception as e:
+            print(f"[QUOTA-FIREBASE] ERROR reading quota: {e}, falling back to local")
+    
+    # FALLBACK: Use local JSON file
     quotas = load_user_quotas()
     
     if user_id not in quotas:
@@ -907,11 +935,56 @@ def get_daily_message_count(user_id):
     if today_str not in quotas[user_id]:
         quotas[user_id][today_str] = 0
     
-    return quotas[user_id][today_str]
+    count = quotas[user_id][today_str]
+    print(f"[QUOTA-LOCAL] Using local fallback: user={user_id}, date={today_str}, count={count}")
+    return count
 
 def increment_daily_message_count(user_id):
-    """Increment daily message count for user."""
+    """
+    Increment daily message count for user in Firebase.
+    Automatically creates quota record if not exists.
+    Falls back to local JSON if Firebase unavailable.
+    
+    Firebase structure: users/{user_id}/quota/{date}
+      {
+        "count": <number>,
+        "last_message_timestamp": <unix_timestamp>,
+        "date": "YYYY-MM-DD"
+      }
+    """
     today_str = date.today().isoformat()
+    
+    # PRIMARY: Try Firebase first
+    if FIREBASE_AVAILABLE:
+        try:
+            safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+            quota_path = f"users/{safe_user_id}/quota/{today_str}"
+            
+            # Get current count
+            ref = db.reference(quota_path)
+            quota_data = ref.get()
+            current_count = 0
+            
+            if quota_data and isinstance(quota_data, dict):
+                current_count = quota_data.get('count', 0)
+            
+            # Increment and save
+            new_count = current_count + 1
+            quota_record = {
+                "count": new_count,
+                "last_message_timestamp": int(time.time()),
+                "date": today_str
+            }
+            
+            ref.set(quota_record)
+            
+            print(f"[QUOTA-FIREBASE] ✓ Incremented: user={user_id}, date={today_str}, new_count={new_count}")
+            return new_count
+            
+        except Exception as e:
+            print(f"[QUOTA-FIREBASE] ERROR incrementing: {e}, falling back to local")
+    
+    # FALLBACK: Use local JSON file
     quotas = load_user_quotas()
     
     if user_id not in quotas:
@@ -929,7 +1002,9 @@ def increment_daily_message_count(user_id):
             del quotas[user_id][date_key]
     
     save_user_quotas(quotas)
-    print(f"[QUOTA] User {user_id}: {quotas[user_id][today_str]} messages today")
+    new_count = quotas[user_id][today_str]
+    print(f"[QUOTA-LOCAL] Incremented (fallback): user={user_id}, date={today_str}, new_count={new_count}")
+    return new_count
 
 def get_remaining_messages(user_id):
     """Get remaining message count for user today."""
@@ -959,7 +1034,7 @@ class ChunkedKnowledgeBase:
                 data = json.load(f)
             self.chunks = data.get('chunks', [])
             self.config = data.get('config', {
-                "min_confidence_threshold": 0.15,
+                "min_confidence_threshold": 0.08,
                 "max_chunks_per_query": 3,
                 "keyword_match_weight": 1.0,
                 "intent_pattern_weight": 2.0,
@@ -1483,11 +1558,19 @@ def save_chat_history_to_file(user_id, chat_id, chat_data):
 def save_message_to_firebase(user_id, chat_id, message_data):
     """
     Save a single message to Firebase Realtime Database.
+    Also logs quota consumption with each message.
     
     Args:
         user_id: User's unique ID (from session)
         chat_id: Chat session ID
         message_data: Dict with keys: type, text, timestamp
+    
+    Firebase structure:
+      users/{user_id}/
+        ├── chats/{chat_id}/messages/{msg_id}
+        │   └── {type, text, timestamp}
+        └── quota/{date}
+            └── {count, last_message_timestamp, date}
     """
     if not FIREBASE_AVAILABLE:
         return False
@@ -1496,8 +1579,8 @@ def save_message_to_firebase(user_id, chat_id, message_data):
         # Sanitize user_id for Firebase path
         safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
         
-        # Build Firebase path
-        path = f"users/{safe_user_id}/chats/{chat_id}/messages"
+        # Build Firebase path for messages
+        messages_path = f"users/{safe_user_id}/chats/{chat_id}/messages"
         
         # Generate a unique message ID
         msg_id = str(uuid.uuid4()).replace('-', '')[:16]
@@ -1509,11 +1592,33 @@ def save_message_to_firebase(user_id, chat_id, message_data):
             "timestamp": int(message_data.get("timestamp", time.time()))
         }
         
-        # Save to Firebase
-        ref = db.reference(path)
+        # Save message to Firebase
+        ref = db.reference(messages_path)
         ref.child(msg_id).set(firebase_message)
         
-        print(f"[FIREBASE] ✓ Saved message to {path}/{msg_id}")
+        print(f"[FIREBASE] ✓ Saved message to {messages_path}/{msg_id}")
+        
+        # ALSO LOG QUOTA INFO WITH EACH MESSAGE
+        # This creates an audit trail per message sent
+        today_str = date.today().isoformat()
+        try:
+            quota_log_path = f"users/{safe_user_id}/quota_audit_log"
+            quota_log_entry = {
+                "message_id": msg_id,
+                "message_type": message_data.get("type"),
+                "timestamp": int(message_data.get("timestamp", time.time())),
+                "date": today_str
+            }
+            
+            # Append to audit log (using timestamp as unique key)
+            log_ref = db.reference(quota_log_path)
+            log_entry_id = str(int(time.time() * 1000))  # millisecond timestamp for uniqueness
+            log_ref.child(log_entry_id).set(quota_log_entry)
+            
+            print(f"[FIREBASE] ✓ Logged to quota audit: {quota_log_path}/{log_entry_id}")
+        except Exception as log_e:
+            print(f"[FIREBASE] WARNING: Could not log to audit trail: {log_e}")
+        
         return True
         
     except Exception as e:
@@ -2397,13 +2502,107 @@ def debug_api_config():
 
 @app.route('/debug/quotas', methods=['GET'])
 def debug_quotas():
-    """Get all user quotas (debug only)."""
+    """Get all user quotas from Firebase and local backup."""
     quotas = load_user_quotas()
-    return jsonify({
-        "total_users": len(quotas),
+    
+    result = {
+        "source": "Firebase (primary) + Local JSON (fallback)",
+        "firebase_available": FIREBASE_AVAILABLE,
+        "total_users_local": len(quotas),
         "daily_limit": DAILY_MESSAGE_LIMIT,
+        "storage_location": {
+            "primary": "Firebase Realtime Database (users/{user_id}/quota/{date})",
+            "secondary": f"Local JSON file ({QUOTA_FILE})"
+        },
         "sample_quotas": {k: v for k, v in list(quotas.items())[:5]}
-    })
+    }
+    
+    # If Firebase available, show its stats too
+    if FIREBASE_AVAILABLE:
+        try:
+            ref = db.reference("users")
+            users_data = ref.get()
+            if users_data:
+                firebase_user_count = len(users_data) if isinstance(users_data, dict) else 0
+                result["total_users_firebase"] = firebase_user_count
+                result["firebase_connection"] = "✓ Connected"
+            else:
+                result["firebase_connection"] = "✓ Connected (no users yet)"
+        except Exception as e:
+            result["firebase_error"] = str(e)
+    
+    return jsonify(result)
+
+@app.route('/api/quota_audit/<user_id>', methods=['GET'])
+def get_quota_audit_log(user_id):
+    """
+    Get quota audit log for a specific user - shows all messages with timestamps.
+    Useful for debugging and analytics.
+    """
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        path = f"users/{safe_user_id}/quota_audit_log"
+        ref = db.reference(path)
+        audit_log = ref.get()
+        
+        if not audit_log:
+            return jsonify({
+                "user_id": user_id,
+                "audit_log": [],
+                "message": "No messages sent yet"
+            })
+        
+        # Convert to list and sort by timestamp
+        log_entries = []
+        for log_id, entry in audit_log.items():
+            entry['log_id'] = log_id
+            log_entries.append(entry)
+        
+        log_entries.sort(key=lambda x: x.get('timestamp', 0))
+        
+        return jsonify({
+            "user_id": user_id,
+            "total_messages": len(log_entries),
+            "audit_log": log_entries
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/quota_stats/<user_id>', methods=['GET'])
+def get_quota_stats(user_id):
+    """
+    Get quota statistics for a user including daily breakdown.
+    Shows messages per day, current day usage, etc.
+    """
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        quota_path = f"users/{safe_user_id}/quota"
+        ref = db.reference(quota_path)
+        quota_data = ref.get()
+        
+        today_str = date.today().isoformat()
+        today_quota = quota_data.get(today_str, {}) if quota_data else {}
+        today_count = today_quota.get('count', 0) if isinstance(today_quota, dict) else 0
+        
+        return jsonify({
+            "user_id": user_id,
+            "daily_limit": DAILY_MESSAGE_LIMIT,
+            "today_date": today_str,
+            "messages_today": today_count,
+            "remaining_today": max(0, DAILY_MESSAGE_LIMIT - today_count),
+            "quota_percentage": f"{(today_count / DAILY_MESSAGE_LIMIT * 100):.1f}%",
+            "all_dates": quota_data if quota_data else {}
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ============================================================================
 # 🚀 MAIN
