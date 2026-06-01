@@ -1649,6 +1649,11 @@ Provide a complete solution with:
 5. **Answer:** Final result with units
 6. **SEE Tip:** Exam preparation tip for this type of problem
 
+CURRICULUM METADATA (IMPORTANT FOR CONTEXT):
+- What is the **main topic/concept** in this problem? (e.g., "Algebra", "Geometry", "Trigonometry", "Quadratic Equations")
+- What **chapter** would this be under in the SEE curriculum? (e.g., "Chapter 2: Sets", "Chapter 5: Trigonometry")
+- Write this on a NEW line as: **Topic: [topic name], Chapter: [chapter name]**
+
 IMPORTANT: 
 - If the image contains text, extract it accurately
 - If there are diagrams, analyze them carefully
@@ -1730,26 +1735,44 @@ ANALYSIS APPROACH:
                 yield "❌ No response generated. Please try again."
                 return
             
-            # ================== STEP 2: EXTRACT QUESTION FOR RAG ==================
-            # Best-effort extraction for curriculum context
-            print(f"[GEMINI_FIRST] Step 2: Extracting question for curriculum context...")
+            # ================== STEP 2: EXTRACT TOPIC & CHAPTER FOR RAG ==================
+            # Gemini already provided topic/chapter metadata in the response
+            print(f"[GEMINI_FIRST] Step 2: Extracting curriculum metadata from Gemini's response...")
             
-            # Simple heuristic: look for "Problem Statement:" or use caption
+            extracted_topic = None
+            extracted_chapter = None
+            question_text = caption if caption else "math problem"
+            
             try:
-                if "Problem Statement:" in full_response:
-                    question_text = full_response.split("Problem Statement:")[1].split("\n")[0].strip()
-                elif "problem:" in full_response.lower():
-                    parts = full_response.lower().split("problem:")
-                    if len(parts) > 1:
-                        question_text = parts[1].split("\n")[0].strip()[:100]
-                    else:
-                        question_text = caption if caption else "math problem"
-                else:
-                    question_text = caption if caption else "math problem"
-            except:
+                # Look for the metadata line: "Topic: ..., Chapter: ..."
+                if "Topic:" in full_response and "Chapter:" in full_response:
+                    # Find the line with Topic: and Chapter:
+                    lines = full_response.split("\n")
+                    for line in lines:
+                        if "Topic:" in line and "Chapter:" in line:
+                            # Extract topic and chapter
+                            topic_part = line.split("Topic:")[1].split(",")[0].strip()
+                            chapter_part = line.split("Chapter:")[1].strip()
+                            
+                            extracted_topic = topic_part
+                            extracted_chapter = chapter_part
+                            question_text = f"{extracted_topic} {extracted_chapter}"
+                            print(f"[EXTRACTION] Found metadata - Topic: '{extracted_topic}', Chapter: '{extracted_chapter}'")
+                            break
+                
+                # Fallback: if no metadata found, try to extract from Problem Statement
+                if not extracted_topic:
+                    if "Problem Statement:" in full_response:
+                        question_text = full_response.split("Problem Statement:")[1].split("\n")[0].strip()
+                    elif "problem:" in full_response.lower():
+                        parts = full_response.lower().split("problem:")
+                        if len(parts) > 1:
+                            question_text = parts[1].split("\n")[0].strip()[:100]
+                    
+                    print(f"[EXTRACTION] No metadata found, using fallback: '{question_text[:80]}'")
+            except Exception as e:
+                print(f"[EXTRACTION] Error parsing metadata: {e}")
                 question_text = caption if caption else "math problem"
-            
-            print(f"[GEMINI_FIRST] Extracted question: '{question_text[:80]}'")
             
             # STEP 3: RETRIEVE RAG CONTEXT BASED ON EXTRACTED QUESTION (OPTIONAL)
             print(f"[GEMINI_FIRST] Step 3: Retrieving curriculum context...")
