@@ -1634,9 +1634,12 @@ def upload_image_endpoint():
             
             # ================== STEP 1: SOLVE DIRECTLY WITH GEMINI PRIMARY ==================
             # Build solving prompt that includes user's message + image
-            solving_prompt = f"""Solve this math problem from the image.
+            # IMPORTANT: Include caption in the messages so AI uses the user's specific question
+            user_question_line = f"User's specific question: {caption}" if caption else "Please solve the math problem shown in the image."
+            
+            solving_prompt = f"""Analyze this image and solve the problem.
 
-User's question: {caption if caption else "Solve the math problem in the image"}
+{user_question_line}
 
 Provide a complete solution with:
 1. **Problem Statement:** Clearly state what the problem is asking (from image and user question)
@@ -1653,12 +1656,19 @@ IMPORTANT:
 - For geometric problems, preserve all angle/measurement information
 - For text-only problems, solve step-by-step using correct formulas"""
             
+            # Create message with both text and image reference
             solving_messages = [{"role": "user", "content": solving_prompt}]
             system_msg = """You are Vexara, an expert SEE Math tutor specializing in solving problems from images.
 
-IMPORTANT:
+CRITICAL INSTRUCTIONS:
+- Always read and use the user's specific question/caption provided in the prompt
+- Do NOT ignore the user's question - it guides what to solve or focus on
+- For example, if user asks "solve question 3" or "find the area", solve EXACTLY that
+- If user provides a specific problem number like "Q5" or "Problem 2", focus on that
+- Combine the image content WITH the user's question to provide targeted solutions
+
+ANALYSIS APPROACH:
 - Analyze images carefully for both text and diagrams
-- Listen to the user's question/caption to understand what they're asking
 - Extract questions accurately from both the image AND the user's message
 - Preserve all mathematical notation and symbols
 - Provide step-by-step solutions following SEE exam format
