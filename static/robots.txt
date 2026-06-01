@@ -1,4 +1,15 @@
+# Robots.txt for aivexara.xyz
+# Allow Google and other search engines to crawl everything
+
 User-agent: *
 Allow: /
 
+# Disallow bot-trap directories (if any)
+# Disallow: /admin/
+# Disallow: /private/
+
+# Sitemap location
 Sitemap: https://aivexara.xyz/sitemap.xml
+
+# Crawl delay (optional - 1 second is generous)
+Crawl-delay: 1
