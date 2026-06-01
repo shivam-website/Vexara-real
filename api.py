@@ -878,7 +878,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Structure: users/{user_id}/quota/{date}/count & metadata
 
 QUOTA_FILE = os.path.join(app.root_path, 'user_quotas.json')
-DAILY_MESSAGE_LIMIT = 2
+DAILY_MESSAGE_LIMIT = 10
 
 def load_user_quotas():
     """Load user quotas from persistent file (fallback when Firebase unavailable)."""
