@@ -28,6 +28,7 @@ from authlib.integrations.flask_client import OAuth
 from flask import send_from_directory, send_file
 from datetime import datetime, date, timedelta
 from flask_cors import CORS
+from flask_compress import Compress
 from collections import defaultdict
 from difflib import SequenceMatcher
 import math
@@ -62,7 +63,15 @@ CORS(app, resources={
         "allow_headers": ["Content-Type"]
     }
 })
+
+# Enable gzip compression for all responses - essential for Render 512MB
+Compress(app)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
+
+# 🔧 MEMORY-SAFE LIMITS for 512MB Render environments
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max upload (images + files)
+app.config['JSON_SORT_KEYS'] = False  # Don't sort JSON (saves CPU)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000  # Cache static files 1 year
 # ============================================================================
 # 🔐 PERSISTENT SESSION CONFIGURATION
 # ============================================================================
@@ -82,7 +91,7 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 SERPER_API_KEY = os.environ.get("SERPER_API_KEY")
 
 # API Endpoints
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -576,9 +585,9 @@ class APIProvider:
             'api_key': GOOGLE_GEMINI_API_KEY,
             'type': 'gemini',
             'models': {
-                'normal': 'gemini-3.1-flash-lite',
-                'deepthink': 'gemini-3.1-flash-lite',
-                'vision': 'gemini-3.1-flash-lite'
+                'normal': 'gemini-2.5-flash-lite',
+                'deepthink': 'gemini-2.5-flash-lite',
+                'vision': 'gemini-2.5-flash-lite'
             },
             'supports_vision': True,
             'status': 'active'
@@ -878,7 +887,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Structure: users/{user_id}/quota/{date}/count & metadata
 
 QUOTA_FILE = os.path.join(app.root_path, 'user_quotas.json')
-DAILY_MESSAGE_LIMIT = 10
+DAILY_MESSAGE_LIMIT = 30
 
 def load_user_quotas():
     """Load user quotas from persistent file (fallback when Firebase unavailable)."""
@@ -1489,27 +1498,22 @@ def get_chat_file_path(user_id, chat_id):
     return os.path.join(CHAT_HISTORY_DIR, f"{safe_user_id}_{chat_id}.json")
 
 def load_chat_history_from_file(user_id, chat_id):
-    """Load chat history - FIREBASE FIRST (cross-device sync), fall back to local file."""
-    
-    # 🔥 TRY FIREBASE FIRST (for cross-device sync)
+    """Load chat history from Firebase first, then local file fallback."""
+
     if FIREBASE_AVAILABLE:
         try:
             safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
             path = f"users/{safe_user_id}/chats/{chat_id}/messages"
             ref = db.reference(path)
-            
-            # Handle both cases: DataSnapshot object OR direct dict (different SDK versions)
+
             result = ref.get()
-            
-            # Check if it's a DataSnapshot object (has .val() method)
+
             if hasattr(result, 'val'):
                 messages_dict = result.val()
             else:
-                # Direct dict response
                 messages_dict = result
-            
+
             if messages_dict is not None:
-                # Convert Firebase format (dict of msg_id: msg_data) to list
                 messages_list = []
                 for msg_id, msg_data in messages_dict.items():
                     messages_list.append({
@@ -1517,7 +1521,6 @@ def load_chat_history_from_file(user_id, chat_id):
                         "text": msg_data.get("text"),
                         "timestamp": msg_data.get("timestamp")
                     })
-                # Sort by timestamp to maintain order
                 messages_list.sort(key=lambda x: x.get("timestamp", 0))
                 print(f"[FIREBASE_LOAD] ✓ Loaded {len(messages_list)} messages from Firebase for {user_id}/{chat_id}")
                 return messages_list
@@ -1525,9 +1528,7 @@ def load_chat_history_from_file(user_id, chat_id):
                 print(f"[FIREBASE_LOAD] No messages found in Firebase for {user_id}/{chat_id}")
         except Exception as e:
             print(f"[FIREBASE_LOAD] Warning: Could not read from Firebase: {e}")
-            # Fall back to local file silently
-    
-    # 📄 Fall back to local file (if Firebase not available or failed)
+
     file_path = get_chat_file_path(user_id, chat_id)
     if os.path.exists(file_path):
         try:
@@ -1538,7 +1539,7 @@ def load_chat_history_from_file(user_id, chat_id):
         except (json.JSONDecodeError, Exception) as e:
             print(f"[LOCAL_LOAD] Error loading chat: {e}")
             return []
-    
+
     print(f"[LOAD_CHAT] No chat history found in Firebase or local files for {user_id}/{chat_id}")
     return []
 
@@ -1550,6 +1551,81 @@ def save_chat_history_to_file(user_id, chat_id, chat_data):
             json.dump(chat_data, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"Error saving chat: {e}")
+
+def get_chat_title_file_path(user_id, chat_id):
+    """Get safe file path for the chat title metadata."""
+    safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+    return os.path.join(CHAT_HISTORY_DIR, f"{safe_user_id}_{chat_id}.title.json")
+
+def load_chat_title_from_file(user_id, chat_id):
+    """Load a custom chat title from Firebase first, then local metadata fallback."""
+    if FIREBASE_AVAILABLE:
+        try:
+            safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+            ref = db.reference(f"users/{safe_user_id}/chat_summaries/{chat_id}/title")
+            title = ref.get()
+            if isinstance(title, str) and title.strip():
+                return title.strip()
+        except Exception as e:
+            print(f"[FIREBASE_TITLE_LOAD] Warning: Could not read title from Firebase: {e}")
+
+    file_path = get_chat_title_file_path(user_id, chat_id)
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                title = data.get("title", "")
+                if isinstance(title, str) and title.strip():
+                    return title.strip()
+        except Exception as e:
+            print(f"[LOCAL_TITLE_LOAD] Error loading chat title: {e}")
+
+    return None
+
+def save_chat_title_to_file(user_id, chat_id, title):
+    """Save a custom chat title to local metadata."""
+    file_path = get_chat_title_file_path(user_id, chat_id)
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump({
+                "title": title,
+                "updated_at": time.time()
+            }, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error saving chat title: {e}")
+
+def save_chat_summary_to_firebase(user_id, chat_id, title=None, created_at=None, updated_at=None, overwrite_title=False):
+    """Store lightweight chat summary metadata for fast sidebar loading."""
+    if not FIREBASE_AVAILABLE:
+        return False
+
+    try:
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        summary_ref = db.reference(f"users/{safe_user_id}/chat_summaries/{chat_id}")
+        current_summary = summary_ref.get() or {}
+        summary_data = dict(current_summary) if isinstance(current_summary, dict) else {}
+
+        if title is not None:
+            existing_title = (summary_data.get("title") or "").strip()
+            if overwrite_title or not existing_title or existing_title == "New Chat":
+                summary_data["title"] = title
+        if created_at is not None and not summary_data.get("created_at"):
+            summary_data["created_at"] = int(created_at)
+        if updated_at is not None:
+            summary_data["updated_at"] = int(updated_at)
+
+        if not summary_data.get("title"):
+            summary_data["title"] = "New Chat"
+        if not summary_data.get("created_at"):
+            summary_data["created_at"] = int(time.time())
+        if not summary_data.get("updated_at"):
+            summary_data["updated_at"] = int(time.time())
+
+        summary_ref.set(summary_data)
+        return True
+    except Exception as e:
+        print(f"[FIREBASE_SUMMARY] ERROR saving summary: {e}")
+        return False
 
 # ============================================================================
 # 🔥 FIREBASE CHAT STORAGE FUNCTIONS
@@ -1598,6 +1674,18 @@ def save_message_to_firebase(user_id, chat_id, message_data):
         
         print(f"[FIREBASE] ✓ Saved message to {messages_path}/{msg_id}")
         
+        # Keep the lightweight chat summary index fresh
+        summary_title = None
+        if message_data.get("type") == "user":
+            text_value = (message_data.get("text") or "").strip()
+            if text_value:
+                summary_title = text_value.split('\n')[0][:30]
+        save_chat_summary_to_firebase(
+            user_id,
+            chat_id,
+            updated_at=message_data.get("timestamp", time.time()),
+        )
+        
         # ALSO LOG QUOTA INFO WITH EACH MESSAGE
         # This creates an audit trail per message sent
         today_str = date.today().isoformat()
@@ -1640,6 +1728,14 @@ def save_chat_metadata_to_firebase(user_id, chat_id):
         
         ref = db.reference(path)
         ref.child("metadata").set(metadata)
+        save_chat_summary_to_firebase(
+            user_id,
+            chat_id,
+            title="New Chat",
+            created_at=metadata["created_at"],
+            updated_at=metadata["created_at"],
+            overwrite_title=True,
+        )
         
         print(f"[FIREBASE] ✓ Saved chat metadata for {chat_id}")
         return True
@@ -1946,11 +2042,17 @@ def start_new_chat_endpoint():
     user_id = get_user_id()
     new_chat_id = str(uuid.uuid4())
     save_chat_history_to_file(user_id, new_chat_id, [])
+    save_chat_metadata_to_firebase(user_id, new_chat_id)
     
     has_previous_chats = False
     try:
         for filename in os.listdir(CHAT_HISTORY_DIR):
-            if filename.startswith(f"{user_id}_") and filename.endswith(".json") and filename != f"{user_id}_{new_chat_id}.json":
+            if (
+                filename.startswith(f"{user_id}_")
+                and filename.endswith(".json")
+                and not filename.endswith(".title.json")
+                and filename != f"{user_id}_{new_chat_id}.json"
+            ):
                 has_previous_chats = True
                 break
     except:
@@ -1965,98 +2067,147 @@ def clear_all_chats_endpoint():
     try:
         count = 0
         for filename in os.listdir(CHAT_HISTORY_DIR):
-            if filename.startswith(f"{user_id}_") and filename.endswith(".json"):
+            if filename.startswith(f"{user_id}_") and (filename.endswith(".json") or filename.endswith(".title.json")):
                 os.remove(os.path.join(CHAT_HISTORY_DIR, filename))
                 count += 1
+        if FIREBASE_AVAILABLE:
+            try:
+                safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+                db.reference(f"users/{safe_user_id}/chat_summaries").delete()
+                db.reference(f"users/{safe_user_id}/chats").delete()
+            except Exception as firebase_error:
+                print(f"[FIREBASE_CLEAR] Warning: Could not clear Firebase chats: {firebase_error}")
         return jsonify({"status": "success", "message": f"Cleared {count} chats."})
     except Exception as e:
         return jsonify({"status": "error", "message": "Failed to clear all chats.", "error": str(e)}), 500
 
+@app.route('/rename_chat/<chat_id>', methods=['POST'])
+def rename_chat(chat_id):
+    """Rename a chat by saving a custom title."""
+    user_id = get_user_id()
+    try:
+        data = request.get_json(silent=True) or {}
+        new_title = data.get("new_title", "").strip()
+
+        if not new_title:
+            return jsonify({"status": "error", "error": "Chat title cannot be empty."}), 400
+
+        if len(new_title) > 80:
+            new_title = new_title[:80].strip()
+
+        save_chat_title_to_file(user_id, chat_id, new_title)
+        save_chat_summary_to_firebase(
+            user_id,
+            chat_id,
+            title=new_title,
+            updated_at=time.time(),
+            overwrite_title=True,
+        )
+
+        if FIREBASE_AVAILABLE:
+            try:
+                safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+                db.reference(f"users/{safe_user_id}/chats/{chat_id}/metadata/title").set(new_title)
+            except Exception as firebase_error:
+                print(f"[FIREBASE_TITLE_SAVE] Warning: Could not save title to Firebase: {firebase_error}")
+
+        return jsonify({"status": "success", "chat_id": chat_id, "new_title": new_title})
+    except Exception as e:
+        print(f"[RENAME_CHAT] Error renaming chat {chat_id}: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+@app.route('/delete_chat/<chat_id>', methods=['POST'])
+def delete_chat(chat_id):
+    """Delete a chat from local storage and Firebase."""
+    user_id = get_user_id()
+    try:
+        deleted_anything = False
+
+        local_chat_file = get_chat_file_path(user_id, chat_id)
+        if os.path.exists(local_chat_file):
+            os.remove(local_chat_file)
+            deleted_anything = True
+
+        local_title_file = get_chat_title_file_path(user_id, chat_id)
+        if os.path.exists(local_title_file):
+            os.remove(local_title_file)
+            deleted_anything = True
+
+        if FIREBASE_AVAILABLE:
+            try:
+                safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+                chat_ref = db.reference(f"users/{safe_user_id}/chats/{chat_id}")
+                chat_ref.delete()
+                db.reference(f"users/{safe_user_id}/chat_summaries/{chat_id}").delete()
+                deleted_anything = True
+            except Exception as firebase_error:
+                print(f"[FIREBASE_DELETE] Warning: Could not delete Firebase chat {chat_id}: {firebase_error}")
+
+        if not deleted_anything:
+            return jsonify({"status": "error", "error": "Chat not found."}), 404
+
+        return jsonify({"status": "success", "chat_id": chat_id})
+    except Exception as e:
+        print(f"[DELETE_CHAT] Error deleting chat {chat_id}: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
 @app.route('/get_chat_history_list', methods=['GET'])
 def get_chat_history_list():
-    """Get list of all user chats - FIREBASE FIRST for cross-device sync."""
+    """Get list of user chats - optimized for 512MB Render. Local-first, limit to 50 recent chats."""
     user_id = get_user_id()
     chat_summaries = []
     seen_chat_ids = set()
+    MAX_CHATS_TO_RETURN = 50  # Limit to 50 most recent for low-memory environments
     
     print(f"[CHAT_LIST] Loading chats for user_id: {user_id}")
-    
-    # 🔥 FIREBASE FIRST - Get all chats from cloud (cross-device)
+
     if FIREBASE_AVAILABLE:
         try:
             safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
-            path = f"users/{safe_user_id}/chats"
-            ref = db.reference(path)
-            
-            # Handle both cases: DataSnapshot object OR direct dict (different SDK versions)
-            result = ref.get()
-            
-            # Check if it's a DataSnapshot object (has .val() method)
-            if hasattr(result, 'val'):
-                chats_dict = result.val()
-            else:
-                # Direct dict response
-                chats_dict = result
-            
-            if chats_dict is not None:  # Check if data exists
-                print(f"[FIREBASE] ✓ Found {len(chats_dict)} chats in Firebase for {user_id}")
-                
-                for chat_id, chat_data in chats_dict.items():
+            summary_ref = db.reference(f"users/{safe_user_id}/chat_summaries")
+            summaries_result = summary_ref.get()
+            summaries_dict = summaries_result.val() if hasattr(summaries_result, 'val') else summaries_result
+
+            if summaries_dict is not None:
+                print(f"[FIREBASE] ✓ Found {len(summaries_dict)} chat summaries in Firebase for {user_id}")
+                for chat_id, summary_data in summaries_dict.items():
                     seen_chat_ids.add(chat_id)
-                    messages = chat_data.get("messages", {}) if isinstance(chat_data, dict) else {}
-                    
-                    display_title = "New Chat"
-                    if messages:
-                        # Get first user message
-                        for msg_id, msg in messages.items():
-                            if msg.get('type') == 'user' and msg.get('text', '').strip():
-                                display_title = msg['text'].split('\n')[0][:30]
-                                if len(display_title) > 30:
-                                    display_title += "..."
-                                break
-                    
-                    # Get timestamp for sorting
-                    timestamp = 0
-                    if messages:
-                        for msg in messages.values():
-                            timestamp = max(timestamp, msg.get('timestamp', 0))
-                    
+                    if isinstance(summary_data, dict):
+                        display_title = summary_data.get("title") or "New Chat"
+                        timestamp = summary_data.get("updated_at") or summary_data.get("created_at") or 0
+                    else:
+                        display_title = "New Chat"
+                        timestamp = 0
                     chat_summaries.append({
                         'id': chat_id,
                         'title': display_title,
                         'timestamp': timestamp
                     })
             else:
-                print(f"[FIREBASE] No chats found in Firebase for {user_id}")
+                print(f"[FIREBASE] No chat summaries found in Firebase for {user_id}")
         except Exception as e:
-            print(f"[FIREBASE] Error loading chat list: {e}")
+            print(f"[FIREBASE] Error loading chat summaries: {e}")
             import traceback
             traceback.print_exc()
-    
-    # 📄 Fall back to local files (for old chats not yet in Firebase)
+
+    # Try local files first - faster and doesn't use Firebase quota
     try:
         if os.path.exists(CHAT_HISTORY_DIR):
-            user_chat_files = [f for f in os.listdir(CHAT_HISTORY_DIR) if f.startswith(f"{user_id}_") and f.endswith(".json")]
-            
+            user_chat_files = [
+                f for f in os.listdir(CHAT_HISTORY_DIR)
+                if f.startswith(f"{user_id}_") and f.endswith(".json") and not f.endswith(".title.json")
+            ]
+
             if user_chat_files:
                 print(f"[LOCAL] Found {len(user_chat_files)} local chat files for {user_id}")
-            
+
             for filename in user_chat_files:
                 chat_id = filename.replace(f"{user_id}_", "").replace(".json", "")
                 if chat_id in seen_chat_ids:
-                    continue  # Already added from Firebase
-                
+                    continue
+
                 seen_chat_ids.add(chat_id)
-                chat_data = load_chat_history_from_file(user_id, chat_id)
-                
-                display_title = "New Chat"
-                if chat_data:
-                    first_user_msg = next((msg for msg in chat_data if msg['type'] == 'user' and msg['text'].strip()), None)
-                    if first_user_msg:
-                        display_title = first_user_msg['text'].split('\n')[0][:30]
-                        if len(display_title) > 30:
-                            display_title += "..."
-                
+                display_title = load_chat_title_from_file(user_id, chat_id) or "New Chat"
                 timestamp = os.path.getmtime(os.path.join(CHAT_HISTORY_DIR, filename))
                 chat_summaries.append({
                     'id': chat_id,
@@ -2066,12 +2217,9 @@ def get_chat_history_list():
     except Exception as e:
         print(f"[LOCAL] Error getting local chat list: {e}")
     
-    # Sort by timestamp (newest first)
+    # Sort by timestamp (newest first) and limit to MAX_CHATS_TO_RETURN
     chat_summaries.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
-    
-    # Remove timestamp before sending to frontend
-    for chat in chat_summaries:
-        del chat['timestamp']
+    chat_summaries = chat_summaries[:MAX_CHATS_TO_RETURN]
     
     print(f"[CHAT_LIST] ✓ Returning {len(chat_summaries)} chats for {user_id}")
     return jsonify(chat_summaries)
@@ -2289,12 +2437,14 @@ def user_info():
         return jsonify({"error": "Not authenticated"}), 401
     
     user_email = session.get('user', None)
+    user_name = session.get('user_name', None)
     user_id = session.get('user_id')
     remaining_messages = get_remaining_messages(user_id)
     current_count = get_daily_message_count(user_id)
     
     return jsonify({
         "user_email": user_email,
+        "user_name": user_name,
         "user_id": user_id,
         "is_guest": session.get('is_guest', False),
         "auth_provider": session.get('auth_provider', 'default'),
