@@ -31,7 +31,9 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-thin-chubby/css/uicons-thin-chubby.css'>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-thin-rounded/css/uicons-thin-rounded.css'>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-straight/css/uicons-regular-straight.css'>
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
@@ -114,15 +116,52 @@
         </button>
       </div>
 
-      <button
-        class="new-chat-btn"
-        onclick="startNewChat()"
-        \
-        aria-label="Start New Chat"
-      >
-        <i class="fi fi-tr-comment-medical"></i>
-        <span>New Chat</span>
-      </button>
+      <div class="sidebar-actions">
+        <button
+          class="new-chat-btn sidebar-action-btn"
+          onclick="startNewChat()"
+          type="button"
+          aria-label="Start New Chat"
+        >
+          <i class="fi fi-br-comment-medical"></i>
+          <span>New chat</span>
+        </button>
+        <button
+          id="search-chat-btn"
+          class="search-chat-btn sidebar-action-btn"
+          type="button"
+          aria-label="Search Chats"
+          title="Search Chats"
+        >
+          <i class="fi fi-br-search"></i>
+          <span>Search chats</span>
+        </button>
+      </div>
+
+      <div id="chat-search-overlay" class="chat-search-overlay" hidden>
+        <div class="chat-search-panel" role="dialog" aria-modal="true" aria-label="Search chats">
+          <div class="chat-search-header">
+            <input
+              id="chat-search-input"
+              class="chat-search-input"
+              type="text"
+              placeholder="Search chats..."
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Search chats"
+            />
+            <button
+              id="chat-search-close"
+              class="chat-search-close"
+              type="button"
+              aria-label="Close search"
+            >
+              <i class="fi fi-br-cross-small"></i>
+            </button>
+          </div>
+          <div id="chat-search-results" class="chat-search-results"></div>
+        </div>
+      </div>
       
 
       <div
@@ -132,47 +171,65 @@
       ></div>
 
       <div class="sidebar-footer">
-        <div
-          id="user-info"
-          class="user-info"
-          style="display: none"
-          role="contentinfo"
-        >
-        <i class="fi fi-tr-user"></i>
-          <span id="user-email" class="user-email"></span>
+        <div class="user-menu" id="user-menu">
+          <button
+            id="user-info"
+            class="user-info user-menu-trigger"
+            style="display: none"
+            type="button"
+            aria-expanded="false"
+            aria-controls="user-menu-dropdown"
+          >
+            <i class="fi fi-tr-user"></i>
+            <span id="user-email" class="user-email"></span>
+            <i class="fi fi-tr-angle-small-up user-menu-chevron" aria-hidden="true"></i>
+          </button>
+
+          <div
+            id="user-menu-dropdown"
+            class="user-menu-dropdown"
+            role="menu"
+            aria-label="Account actions"
+            hidden
+          >
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSdVKVbOS-0hk3i51PyLsFa7aF0vLEu3bY1s94j-f4u9cadH7w/viewform?usp=sharing&ouid=101101309962366822584" target="_blank" rel="noopener noreferrer" class="sidebar-btn user-menu-item" role="menuitem">
+              <i class="fi fi-tr-feedback" aria-hidden="true"></i>
+              <span>Send Feedback</span>
+            </a>
+            <button
+              class="sidebar-btn user-menu-item"
+              onclick="toggleDarkMode()"
+              title="Toggle Dark Mode"
+              aria-label="Toggle Dark Mode"
+              type="button"
+              role="menuitem"
+            >
+              <i id="theme-toggle-icon" class="fi fi-tc-moon" aria-hidden="true"></i>
+              <span id="theme-toggle-label">Dark Mode</span>
+            </button>
+            <button
+              class="sidebar-btn user-menu-item"
+              id="clearAllChatsBtn"
+              title="Clear All Chat History"
+              aria-label="Clear All Chat History"
+              type="button"
+              role="menuitem"
+            >
+              <i class="fi fi-tr-trash"></i>
+              <span>Clear All Chats</span>
+            </button>
+            <a
+              href="/logout"
+              class="sidebar-btn user-menu-item logout-item"
+              title="Logout"
+              aria-label="Logout"
+              role="menuitem"
+            >
+              <i class="fi fi-tr-sign-out-alt" aria-hidden="true"></i>
+              <span>Logout</span>
+            </a>
+          </div>
         </div>
-        <a href="https://docs.google.com/forms/d/e/1FAIpQLSdVKVbOS-0hk3i51PyLsFa7aF0vLEu3bY1s94j-f4u9cadH7w/viewform?usp=sharing&ouid=101101309962366822584" target="_blank" rel="noopener noreferrer" class="feedback-btn sidebar-btn">
-          <i class="fi fi-tr-feedback" aria-hidden="true"></i>
-          <span>Send Feedback</span>
-      </a>
-        <button
-          class="sidebar-btn"
-          onclick="toggleDarkMode()"
-          title="Toggle Dark Mode"
-          aria-label="Toggle Dark Mode"
-        >
-        <i class="fi fi-tc-moon" aria-hidden="true"></i>
-          <span>Dark Theme</span>
-        </button>
-        <button
-          class="sidebar-btn"
-          id="clearAllChatsBtn"
-          title="Clear All Chat History"
-          aria-label="Clear All Chat History"
-        >
-        <i class="fi fi-tr-trash"></i>
-          <span>Clear All Chats</span>
-        </button>
-        <a
-          href="/logout"
-          class="sidebar-btn"
-          style="color: #ff6b6b"
-          title="Logout"
-          aria-label="Logout"
-        >
-          <i class="fi fi-tr-sign-out-alt" aria-hidden="true"></i>
-          <span>Logout</span>
-        </a>
       </div>
     </div>
 
@@ -183,7 +240,7 @@
       title="Show Sidebar"
       aria-label="Toggle Sidebar"
     >
-    <i class="fi fi-tr-sidebar"></i>
+    <i class="fi fi-rs-sidebar"></i>
     </button>
 
     <div class="main">
@@ -191,9 +248,9 @@
         class="top-bar"
         style="display: flex; align-items: center; justify-content: left"
       >
-        <h2 style="font-weight: 450; font-style: 'Baskerville'">Vexara</h2>
+        <h2 style="font-weight: 450; font-style: 'Baskerville'"></h2>
         <div class="top-bar-title">
-          <i class="fi fi-ts-comment-medical new-chat-btn" onclick="startNewChat()"></i>
+          <i class="fi fi-rr-comment-medical new-chat-btn" onclick="startNewChat()"></i>
         </div>
       </div>
 
@@ -713,14 +770,6 @@
           <i class="fas fa-microphone" aria-hidden="true"></i>
         </button>
         <button
-          id="screen-share-btn"
-          class="control-button"
-          title="Toggle Screen Share"
-          aria-label="Toggle Screen Share"
-        >
-          <i class="fas fa-desktop" aria-hidden="true"></i>
-        </button>
-        <button
           id="close-voice-mode-btn"
           class="control-button"
           aria-label="Close Voice Mode"
@@ -728,20 +777,6 @@
           <i class="fas fa-times" aria-hidden="true"></i>
         </button>
       </div>
-    </div>
-
-    <!-- NEW: Screen Share Preview Container -->
-    <div
-      id="screen-share-preview-container"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Screen Share Preview"
-    >
-      <video
-        id="screen-share-preview-video"
-        autoplay
-        aria-label="Screen Share Video Feed"
-      ></video>
     </div>
 
     <!-- Confirmation Modal for Clear All Chats -->
@@ -903,7 +938,7 @@
     <script src="/static/local-voice-module.js?v=3"></script>
 <!-- SECOND -->
     <script>
-      document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
         const inputContainer = document.querySelector(".input-container");
         const textInput = document.getElementById("text-input");
         const sendBtn = document.getElementById("send-btn");
@@ -961,6 +996,14 @@
               hideStopButton();
             }, 3000);
           }
+        });
+
+        // CRITICAL: Defer chat history loading to next frame to prevent blocking UI
+        // This allows first paint to happen immediately, then load chats in background
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            console.log("[PERF] Deferring chat history load to next tick");
+          }, 0);
         });
 
         // Stop button click
