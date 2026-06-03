@@ -1,3 +1,14 @@
+// Load KaTeX for math rendering
+const katexScript = document.createElement('script');
+katexScript.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js';
+katexScript.onload = () => {
+  const katexCss = document.createElement('link');
+  katexCss.rel = 'stylesheet';
+  katexCss.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css';
+  document.head.appendChild(katexCss);
+};
+document.head.appendChild(katexScript);
+
 // Global variables for chat management
 let currentChatId = null;
 let sidebarHidden = false; // Tracks if sidebar is manually collapsed on desktop
@@ -8,6 +19,10 @@ let abortController = null; // Global AbortController for stopping AI responses
 let isVoiceTalkActive = false;
 let isListening = false;
 let isSpeaking  = false;
+let chatSearchQuery = "";
+let chatSearchData = [];
+let searchDebounceTimer = null;
+const BATCH_SIZE = 20; // Load chats in batches to save memory on Render
 
 // Web Audio API for visualizer
 let audioContext;
@@ -18,19 +33,6 @@ let canvas, canvasCtx;
 let bufferLength;
 let dataArray;
 
-
-// Screen Share Globals
-let screenShareStream = null;
-let screenShareInterval = null;
-let isScreenSharing = false;
-const screenCaptureCanvas = document.createElement("canvas"); // Off-screen canvas
-const screenCaptureCtx = screenCaptureCanvas.getContext("2d");
-const screenShareVideoElement = document.getElementById(
-  "screen-share-preview-video"
-);
-const screenSharePreviewContainer = document.getElementById(
-  "screen-share-preview-container"
-);
 
 // Helper Functions
 function scrollToBottom() {
@@ -289,6 +291,19 @@ function addMessage(
   }
   msg.appendChild(content);
 
+  // Render math with KaTeX if available
+  if (window.katex && type === "bot") {
+    renderMathInElement(content, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false},
+        {left: '\\(', right: '\\)', display: false},
+        {left: '\\[', right: '\\]', display: true}
+      ],
+      throwOnError: false
+    });
+  }
+
   // Append optional content (e.g., uploaded image or generated images)
   if (optionalContent) {
     if (optionalContent instanceof HTMLElement) {
@@ -318,6 +333,21 @@ function addMessage(
       block.style.color = "var(--code-text-color)";
     }
   });
+  
+  // Render all math on page
+  if (window.katex) {
+    document.querySelectorAll(".chat-message").forEach((msg) => {
+      renderMathInElement(msg, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false},
+          {left: '\\(', right: '\\)', display: false},
+          {left: '\\[', right: '\\]', display: true}
+        ],
+        throwOnError: false
+      });
+    });
+  }
 }
 
 // Function to simulate typing effect for bot messages
@@ -372,10 +402,26 @@ async function appendToStreamingBotMessage(chunk) {
   }
   currentBotMessageFullText += chunk;
   currentBotMessageContentDiv.innerHTML = marked.parse(currentBotMessageFullText);
+  
+  // Highlight code blocks
   currentBotMessageContentDiv.querySelectorAll("pre code").forEach((block) => {
     try { hljs.highlightElement(block); }
     catch (e) { block.style.color = "var(--code-text-color)"; }
   });
+  
+  // Render math with KaTeX if available
+  if (window.katex) {
+    renderMathInElement(currentBotMessageContentDiv, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false},
+        {left: '\\(', right: '\\)', display: false},
+        {left: '\\[', right: '\\]', display: true}
+      ],
+      throwOnError: false
+    });
+  }
+  
   scrollToBottom();
 }
 
@@ -392,6 +438,19 @@ async function finalizeStreamingBotMessage(image_urls = []) {
       try { hljs.highlightElement(block); }
       catch (e) { block.style.color = "var(--code-text-color)"; }
     });
+    
+    // Render math with KaTeX if available
+    if (window.katex) {
+      renderMathInElement(currentBotMessageContentDiv, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false},
+          {left: '\\(', right: '\\)', display: false},
+          {left: '\\[', right: '\\]', display: true}
+        ],
+        throwOnError: false
+      });
+    }
   }
 
   if (image_urls && image_urls.length > 0) {
@@ -518,6 +577,13 @@ async function askAI(instruction, modelChoice, performSearch = false, isRegenera
 
       // Finalize the streaming message after stream finishes
       finalizeStreamingBotMessage();
+
+      // Auto-name chat after first bot response (if chat doesn't have a proper title yet)
+      if (currentChatId) {
+        setTimeout(async () => {
+          await autoNameChat(instruction);
+        }, 1000);
+      }
   } catch (error) {
       loader.style.display = "none";
       if (error.name === "AbortError") {
@@ -621,13 +687,6 @@ async function uploadImage(file, caption) {
     // ✅ ADD MODEL CHOICE - CRITICAL FOR PIPELINE
     const modelChoice = document.querySelector('input[name="modelChoice"]:checked').value;
     formData.append("model_choice", modelChoice);
-
-    // ✅ Show user message immediately
-    const imgElementForChat = document.createElement("img");
-    imgElementForChat.src = URL.createObjectURL(file);
-    imgElementForChat.classList.add("uploaded-image-preview");
-    const userCaption = caption ? `Image: ${caption}` : "Uploaded image";
-    addMessage(userCaption, "user", imgElementForChat, new Date());
 
     const response = await fetch(`${window.location.origin}/upload_image`, {
       method: "POST",
@@ -999,6 +1058,8 @@ window.startNewChat = async function (isInitialLoad = false) {
 
     if (data.chat_id) {
       currentChatId = data.chat_id;
+      chatAutoNamed = false; // Reset auto-name flag for new chat
+      localStorage.setItem("lastChatId", currentChatId);
 
       // Clear chatbox first
       chatbox.innerHTML = "";
@@ -1024,7 +1085,7 @@ window.startNewChat = async function (isInitialLoad = false) {
       modelGeneralRadio.checked = true; // Set General Talk as default
 
       // Update chat history **after adding placeholder**
-      await updateChatHistory();
+      await updateChatHistory({ skipLoadCurrent: true });
 
       // If no messages loaded, make sure placeholder stays
       if (chatbox.children.length === 0) {
@@ -1057,6 +1118,9 @@ window.toggleDarkMode = function () {
   } else {
     localStorage.removeItem("darkMode");
   }
+  if (typeof window.updateThemeMenuLabel === "function") {
+    window.updateThemeMenuLabel();
+  }
 };
 
 // Handles sidebar visibility for both desktop collapse and mobile slide-out
@@ -1087,22 +1151,22 @@ function updateSidebarToggleButtonVisibility() {
     if (sidebar.classList.contains("visible")) {
       showSidebarBtn.style.display = "none";
       sidebarToggleButton.style.display = "block";
-      sidebarToggleButton.querySelector("i").className = "fi fi-tr-sidebar"; // Same icon
+      sidebarToggleButton.querySelector("i").className = "fi fi-rs-sidebar"; // Same icon
     } else {
       showSidebarBtn.style.display = "flex";
       sidebarToggleButton.style.display = "none";
-      showSidebarBtn.querySelector("i").className = "fi fi-tr-sidebar"; // Same icon
+      showSidebarBtn.querySelector("i").className = "fi fi-rs-sidebar"; // Same icon
     }
   } else {
     // Desktop
     if (sidebar.classList.contains("collapsed")) {
       showSidebarBtn.style.display = "flex"; // Show floating button to expand
       sidebarToggleButton.style.display = "none"; // Hide internal toggle
-      showSidebarBtn.querySelector("i").className = "fi fi-tr-sidebar"; // Same icon
+      showSidebarBtn.querySelector("i").className = "fi fi-rs-sidebar"; // Same icon
     } else {
       showSidebarBtn.style.display = "none"; // Hide floating button
       sidebarToggleButton.style.display = "block"; // Show internal toggle
-      sidebarToggleButton.querySelector("i").className = "fi fi-tr-sidebar"; // Same icon
+      sidebarToggleButton.querySelector("i").className = "fi fi-rs-sidebar"; // Same icon
     }
   }
 }
@@ -1145,7 +1209,6 @@ const micControlBtn          = document.getElementById("mic-control-btn");
 const closeVoiceModeBtn      = document.getElementById("close-voice-mode-btn");
 const voiceStatusTextOverlay = voiceModeOverlay
     ? voiceModeOverlay.querySelector(".status-text") : null;
-const screenShareBtn         = document.getElementById("screen-share-btn");
 
 // speakText — no-op stub (Gemini Live handles TTS automatically)
 function speakText(_text) {}
@@ -1286,7 +1349,6 @@ function closeVoiceMode() {
   if (window.VexaraVoice) window.VexaraVoice.stopVoiceMode();
   stopVoiceVisualizer();
   hideTalkingAnimation();
-  stopScreenShare();
   if (voiceModeOverlay)   voiceModeOverlay.classList.remove("active");
   if (mainContentElement) mainContentElement.style.display = "flex";
   if (micControlBtn) {
@@ -1337,71 +1399,6 @@ if (micControlBtn) {
         });
     }
   });
-}
-
-if (screenShareBtn) {
-  screenShareBtn.addEventListener("click", () => {
-    if (isScreenSharing) { stopScreenShare(); } else { startScreenShare(); }
-  });
-}
-
-async function startScreenShare() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-    addMessage("Screen sharing not supported in your browser.", "bot", null, new Date());
-    console.warn("getDisplayMedia not supported.");
-    return;
-  }
-  try {
-    screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-    screenShareVideoElement.srcObject = screenShareStream;
-    screenSharePreviewContainer.style.display = "flex";
-    isScreenSharing = true;
-    screenShareBtn.classList.add("screen-share-active");
-    screenShareBtn.querySelector("i").className = "fas fa-stop-circle";
-    screenShareStream.getVideoTracks()[0].onended = () => stopScreenShare();
-    screenShareInterval = setInterval(captureAndSendScreenFrame, 2000);
-    addMessage("Screen sharing started. I will analyze your screen for issues.", "bot", null, new Date());
-  } catch (err) {
-    console.error("Error starting screen share:", err);
-    addMessage("Could not start screen sharing. Please ensure you grant permission.", "bot", null, new Date());
-    isScreenSharing = false;
-    screenShareBtn.classList.remove("screen-share-active");
-    screenShareBtn.querySelector("i").className = "fas fa-desktop";
-    screenSharePreviewContainer.style.display = "none";
-  }
-}
-
-function stopScreenShare() {
-  if (screenShareStream) { screenShareStream.getTracks().forEach(t => t.stop()); screenShareStream = null; }
-  if (screenShareInterval) { clearInterval(screenShareInterval); screenShareInterval = null; }
-  isScreenSharing = false;
-  if (screenShareBtn) {
-    screenShareBtn.classList.remove("screen-share-active");
-    screenShareBtn.querySelector("i").className = "fas fa-desktop";
-  }
-  if (screenSharePreviewContainer) screenSharePreviewContainer.style.display = "none";
-  addMessage("Live talk ended.", "bot", null, new Date());
-}
-
-async function captureAndSendScreenFrame() {
-  if (!screenShareVideoElement || !isScreenSharing) return;
-  screenCaptureCanvas.width  = screenShareVideoElement.videoWidth;
-  screenCaptureCanvas.height = screenShareVideoElement.videoHeight;
-  screenCaptureCtx.drawImage(screenShareVideoElement, 0, 0, screenCaptureCanvas.width, screenCaptureCanvas.height);
-  const base64Image = screenCaptureCanvas.toDataURL("image/jpeg", 0.7).split(",")[1];
-  try {
-    const formData = new FormData();
-    formData.append("image", base64Image);
-    formData.append("chat_id", currentChatId);
-    formData.append("instruction", "Analyze this screenshot for any UI/code issues, errors, or areas for improvement. Suggest specific fixes or next steps, including code if applicable.");
-    const response = await fetch(`${window.location.origin}/process_screen_frame`, { method: "POST", body: formData });
-    const data = await response.json();
-    if (data && data.response) {
-      addMessage(`**Screen Analysis:** ${data.response}`, "bot", null, new Date());
-    }
-  } catch (error) {
-    console.error("Error sending screen frame to AI:", error);
-  }
 }
 
 // ── END GEMINI LIVE VOICE BLOCK ─────────────────────────────────────────────
@@ -1484,7 +1481,7 @@ applyCodeUpdateBtn.addEventListener("click", async () => {
   }
 });
 
-async function updateChatHistory() {
+async function updateChatHistory(options = {}) {
   const chatHistoryList = document.getElementById("chat-history-list");
   chatHistoryList.innerHTML = ""; // Clear existing history
   try {
@@ -1492,77 +1489,88 @@ async function updateChatHistory() {
       `${window.location.origin}/get_chat_history_list`
     );
     const chatSummaries = await response.json();
+    chatSearchData = chatSummaries;
 
     if (chatSummaries.length === 0) {
       await startNewChat(true); // Start a new chat if no history
     } else {
-      chatSummaries.forEach((chatSummary) => {
-        const chatLink = document.createElement("a");
-        chatLink.href = "#";
-        chatLink.className = `chat-link ${
-          chatSummary.id === currentChatId ? "active" : ""
-        }`;
-        chatLink.setAttribute("data-chat-id", chatSummary.id); // Store chat ID
-        chatLink.setAttribute("data-chat-title", chatSummary.title); // Store chat title
-        chatLink.setAttribute("role", "option");
-        chatLink.setAttribute(
-          "aria-selected",
-          chatSummary.id === currentChatId ? "true" : "false"
-        );
-        chatLink.setAttribute("tabindex", "0"); // Make it focusable
+      // Render sidebar in batches to prevent UI freeze on 50+ chats
+      const SIDEBAR_BATCH = 10;
+      for (let i = 0; i < chatSummaries.length; i += SIDEBAR_BATCH) {
+        const batch = chatSummaries.slice(i, i + SIDEBAR_BATCH);
+        batch.forEach((chatSummary) => {
+          const chatLink = document.createElement("a");
+          chatLink.href = "#";
+          chatLink.className = `chat-link ${
+            chatSummary.id === currentChatId ? "active" : ""
+          }`;
+          chatLink.setAttribute("data-chat-id", chatSummary.id); // Store chat ID
+          chatLink.setAttribute("data-chat-title", chatSummary.title); // Store chat title
+          chatLink.setAttribute("role", "option");
+          chatLink.setAttribute(
+            "aria-selected",
+            chatSummary.id === currentChatId ? "true" : "false"
+          );
+          chatLink.setAttribute("tabindex", "0"); // Make it focusable
 
-        const chatTitleSpan = document.createElement("span");
-        chatTitleSpan.textContent = chatSummary.title;
-        chatLink.appendChild(chatTitleSpan);
+          const chatTitleSpan = document.createElement("span");
+          chatTitleSpan.textContent = chatSummary.title;
+          chatLink.appendChild(chatTitleSpan);
 
-        const actionsDiv = document.createElement("div");
-        actionsDiv.className = "chat-link-actions";
+          const actionsDiv = document.createElement("div");
+          actionsDiv.className = "chat-link-actions";
 
-        const renameBtn = document.createElement("button");
-        renameBtn.className = "rename-chat-btn";
-        renameBtn.innerHTML = '<i class="fas fa-edit" aria-hidden="true"></i>';
-        renameBtn.title = "Rename Chat";
-        renameBtn.setAttribute(
-          "aria-label",
-          `Rename chat ${chatSummary.title}`
-        );
-        renameBtn.onclick = (e) => {
-          e.stopPropagation(); // Prevent loading chat when clicking rename
-          renameChat(chatSummary.id, chatSummary.title);
-        };
-        actionsDiv.appendChild(renameBtn);
+          const renameBtn = document.createElement("button");
+          renameBtn.className = "rename-chat-btn";
+          renameBtn.innerHTML = '<i class="fas fa-edit" aria-hidden="true"></i>';
+          renameBtn.title = "Rename Chat";
+          renameBtn.setAttribute(
+            "aria-label",
+            `Rename chat ${chatSummary.title}`
+          );
+          renameBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevent loading chat when clicking rename
+            renameChat(chatSummary.id, chatSummary.title);
+          };
+          actionsDiv.appendChild(renameBtn);
 
-        const deleteBtn = document.createElement("button");
-        deleteBtn.className = "delete-chat-btn";
-        deleteBtn.innerHTML = '<i class="fas fa-trash" aria-hidden="true"></i>';
-        deleteBtn.title = "Delete Chat";
-        deleteBtn.setAttribute(
-          "aria-label",
-          `Delete chat ${chatSummary.title}`
-        );
-        deleteBtn.onclick = (e) => {
-          e.stopPropagation(); // Prevent loading chat when clicking delete
-          deleteChat(chatSummary.id, chatSummary.title);
-        };
-        actionsDiv.appendChild(deleteBtn);
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "delete-chat-btn";
+          deleteBtn.innerHTML = '<i class="fas fa-trash" aria-hidden="true"></i>';
+          deleteBtn.title = "Delete Chat";
+          deleteBtn.setAttribute(
+            "aria-label",
+            `Delete chat ${chatSummary.title}`
+          );
+          deleteBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevent loading chat when clicking delete
+            deleteChat(chatSummary.id, chatSummary.title);
+          };
+          actionsDiv.appendChild(deleteBtn);
 
-        chatLink.appendChild(actionsDiv);
+          chatLink.appendChild(actionsDiv);
 
-        chatLink.onclick = (e) => {
-          e.preventDefault();
-          loadChat(chatSummary.id);
-        };
-        chatHistoryList.appendChild(chatLink);
-      });
+          chatLink.onclick = (e) => {
+            e.preventDefault();
+            loadChat(chatSummary.id);
+          };
+          chatHistoryList.appendChild(chatLink);
+        });
+        
+        // Yield to browser after each batch to keep UI responsive
+        if (i + SIDEBAR_BATCH < chatSummaries.length) {
+          await new Promise(resolve => requestAnimationFrame(resolve));
+        }
+      }
 
       // Load the most recent chat if no current chat is active
       const isCurrentChatInList = chatSummaries.some(
         (summary) => summary.id === currentChatId
       );
-      if (!currentChatId || !isCurrentChatInList) {
+      if (!options.skipLoadCurrent && (!currentChatId || !isCurrentChatInList)) {
         currentChatId = chatSummaries[0].id; // Load the first chat by default
         await loadChat(currentChatId);
-      } else {
+      } else if (!options.skipLoadCurrent) {
         await loadChat(currentChatId); // Reload current chat to update active state
       }
     }
@@ -1581,6 +1589,8 @@ async function loadChat(id) {
   const chatbox = document.getElementById("chatbox");
   const newChatPlaceholder = document.getElementById("new-chat-placeholder");
   currentChatId = id;
+  chatAutoNamed = false; // Reset auto-name flag when loading different chat
+  localStorage.setItem("lastChatId", currentChatId);
   chatbox.innerHTML = ""; // Clear chatbox before loading new chat
 
   try {
@@ -1609,21 +1619,32 @@ async function loadChat(id) {
       if (newChatPlaceholder) {
         newChatPlaceholder.remove();
       }
-      chatData.forEach((msg) => {
-        const msgTimestamp = msg.timestamp
-          ? new Date(msg.timestamp * 1000)
-          : new Date();
-        if (msg.type === "bot" && msg.image_urls && msg.image_urls.length > 0) {
-          addMessage(msg.text, msg.type, msg.image_urls, msgTimestamp);
-        } else if (msg.type === "user" && msg.image_url) {
-          const imgElement = document.createElement("img");
-          imgElement.src = msg.image_url;
-          imgElement.classList.add("uploaded-image-preview");
-          addMessage(msg.text, msg.type, imgElement, msgTimestamp);
-        } else {
-          addMessage(msg.text, msg.type, null, msgTimestamp);
+      
+      // Render messages in batches to avoid blocking the UI
+      const RENDER_BATCH = 15;
+      for (let i = 0; i < chatData.length; i += RENDER_BATCH) {
+        const batch = chatData.slice(i, i + RENDER_BATCH);
+        batch.forEach((msg) => {
+          const msgTimestamp = msg.timestamp
+            ? new Date(msg.timestamp * 1000)
+            : new Date();
+          if (msg.type === "bot" && msg.image_urls && msg.image_urls.length > 0) {
+            addMessage(msg.text, msg.type, msg.image_urls, msgTimestamp);
+          } else if (msg.type === "user" && msg.image_url) {
+            const imgElement = document.createElement("img");
+            imgElement.src = msg.image_url;
+            imgElement.classList.add("uploaded-image-preview");
+            addMessage(msg.text, msg.type, imgElement, msgTimestamp);
+          } else {
+            addMessage(msg.text, msg.type, null, msgTimestamp);
+          }
+        });
+        
+        // Yield to browser to update UI
+        if (i + RENDER_BATCH < chatData.length) {
+          await new Promise(resolve => requestAnimationFrame(resolve));
         }
-      });
+      }
     }
 
     // Update active state in chat history list
@@ -1651,13 +1672,78 @@ async function loadChat(id) {
   }
 }
 
+// Track if current chat has been auto-named to avoid renaming multiple times
+let chatAutoNamed = false;
+
+// Auto-name chat based on first user message (Claude-like)
+async function autoNameChat(userMessage) {
+  // Only auto-name once per chat
+  if (chatAutoNamed || !currentChatId) return;
+  
+  try {
+    // Generate a concise, meaningful title from the first message
+    let title = userMessage.substring(0, 60).trim();
+    
+    // Remove common question words/prefixes
+    title = title.replace(/^(ask|tell|what|how|can|do|is|explain|help|need|make|create|write|generate|solve|find|give|show|describe|analyze|summarize|code|debug|fix|build|design)\s+/i, '').trim();
+    
+    // If too short after cleanup, use original beginning
+    if (title.length < 5) {
+      title = userMessage.substring(0, 40).trim();
+    }
+    
+    // Truncate to reasonable length
+    if (title.length > 50) {
+      title = title.substring(0, 50).trim() + '...';
+    }
+    
+    // Only proceed if we have a meaningful title
+    if (title && title.length > 2) {
+      console.log(`[AUTO-NAME] Attempting to rename chat "${currentChatId}" to: "${title}"`);
+      
+      try {
+        const renameResponse = await fetch(
+          `${window.location.origin}/rename_chat/${encodeURIComponent(currentChatId)}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ new_title: title }),
+          }
+        );
+        
+        const responseData = await renameResponse.json().catch(() => ({}));
+        
+        if (renameResponse.ok && responseData.status === "success") {
+          console.log(`[AUTO-NAME] ✓ Chat renamed successfully to: "${title}"`);
+          chatAutoNamed = true;
+          
+          // Update sidebar immediately with new title
+          setTimeout(() => {
+            updateChatHistory();
+          }, 200);
+        } else {
+          console.log(`[AUTO-NAME] Server responded but title may not have been saved:`, responseData);
+          chatAutoNamed = true; // Mark as attempted even if unclear
+        }
+      } catch (fetchErr) {
+        console.log(`[AUTO-NAME] Fetch error:`, fetchErr.message);
+        // Don't mark as named in case it's a network error and we should retry
+      }
+    }
+  } catch (err) {
+    console.log(`[AUTO-NAME] Error (non-critical):`, err.message);
+  }
+}
+
 // NEW: Function to rename a chat
 async function renameChat(chatId, currentTitle) {
   const newTitle = prompt(`Rename chat "${currentTitle}":`, currentTitle);
   if (newTitle && newTitle.trim() !== currentTitle) {
     try {
       const response = await fetch(
-        `${window.location.origin}/rename_chat/${chatId}`,
+        `${window.location.origin}/rename_chat/${encodeURIComponent(chatId)}`,
         {
           method: "POST",
           headers: {
@@ -1666,7 +1752,15 @@ async function renameChat(chatId, currentTitle) {
           body: JSON.stringify({ new_title: newTitle.trim() }),
         }
       );
-      const result = await response.json();
+      const contentType = response.headers.get("content-type") || "";
+      const result = contentType.includes("application/json")
+        ? await response.json()
+        : { error: await response.text() };
+
+      if (!response.ok) {
+        throw new Error(result.error || `Request failed with status ${response.status}`);
+      }
+
       if (result.status === "success") {
         addMessage(
           `Chat "${currentTitle}" renamed to "${newTitle}".`,
@@ -1723,12 +1817,20 @@ async function deleteChat(chatId, chatTitle) {
     async function handler() {
       try {
         const response = await fetch(
-          `${window.location.origin}/delete_chat/${chatId}`,
+          `${window.location.origin}/delete_chat/${encodeURIComponent(chatId)}`,
           {
             method: "POST",
           }
         );
-        const result = await response.json();
+        const contentType = response.headers.get("content-type") || "";
+        const result = contentType.includes("application/json")
+          ? await response.json()
+          : { error: await response.text() };
+
+        if (!response.ok) {
+          throw new Error(result.error || `Request failed with status ${response.status}`);
+        }
+
         if (result.status === "success") {
           addMessage(`Chat "${chatTitle}" deleted.`, "bot", null, new Date());
           if (chatId === currentChatId) {
@@ -1786,7 +1888,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   hljs.highlightAll();
 
   // Initialize Voice Visualizer for Gemini Live
-  initializeVoiceVisualizer();
+  // Commented out to prevent automatic microphone permission request on chat entry
+  // initializeVoiceVisualizer();
 
 
   // Element References (re-get if needed due to new elements)
@@ -1804,6 +1907,14 @@ document.addEventListener("DOMContentLoaded", async function () {
   const clearAllChatsBtn = document.getElementById("clearAllChatsBtn");
   const confirmClearBtn = document.getElementById("confirmClearBtn");
   const modal = document.getElementById("confirmModal");
+  const userMenu = document.getElementById("user-menu");
+  const userInfoButton = document.getElementById("user-info");
+  const userMenuDropdown = document.getElementById("user-menu-dropdown");
+  const searchChatBtn = document.getElementById("search-chat-btn");
+  const chatSearchOverlay = document.getElementById("chat-search-overlay");
+  const chatSearchInput = document.getElementById("chat-search-input");
+  const chatSearchResults = document.getElementById("chat-search-results");
+  const chatSearchClose = document.getElementById("chat-search-close");
   const webSearchBtn = document.getElementById("web-search-btn"); // Get the new web search button
   const sendBtn = document.getElementById("send-btn"); // Reference to the send button
   const stopBtn = document.getElementById("stop-btn"); // Reference to the stop button
@@ -1822,6 +1933,225 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (showSidebarBtn) showSidebarBtn.addEventListener("click", toggleSidebar);
 
   if (clearImageBtn) clearImageBtn.addEventListener("click", clearImagePreview); // Event listener for clear image button
+
+  if (searchChatBtn) {
+    searchChatBtn.addEventListener("click", function () {
+      if (chatSearchOverlay && !chatSearchOverlay.hidden) {
+        closeChatSearchOverlay();
+      } else {
+        openChatSearchOverlay();
+      }
+    });
+  }
+
+  if (chatSearchInput) {
+    chatSearchInput.addEventListener("input", function () {
+      chatSearchQuery = this.value;
+      
+      // Debounce search rendering - only re-render after user stops typing for 300ms
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        renderChatSearchResults(this.value);
+      }, 300);
+    });
+  }
+
+  if (chatSearchClose) {
+    chatSearchClose.addEventListener("click", closeChatSearchOverlay);
+  }
+
+  if (chatSearchOverlay) {
+    chatSearchOverlay.addEventListener("click", function (event) {
+      if (event.target === chatSearchOverlay) {
+        closeChatSearchOverlay();
+      }
+    });
+  }
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      closeChatSearchOverlay();
+    }
+  });
+
+  function closeUserMenu() {
+    if (!userMenu || !userInfoButton || !userMenuDropdown) return;
+    userMenu.classList.remove("open");
+    userInfoButton.setAttribute("aria-expanded", "false");
+    userMenuDropdown.hidden = true;
+  }
+
+  window.updateThemeMenuLabel = function () {
+    const themeLabel = document.getElementById("theme-toggle-label");
+    const themeIcon = document.getElementById("theme-toggle-icon");
+    const isDarkMode = document.body.classList.contains("dark-mode");
+
+    if (themeLabel) {
+      themeLabel.textContent = isDarkMode ? "Light Mode" : "Dark Mode";
+    }
+
+    if (themeIcon) {
+      themeIcon.className = isDarkMode ? "fi fi-tr-sun" : "fi fi-tc-moon";
+    }
+  };
+
+  function formatSearchSectionLabel(timestampValue) {
+    if (!timestampValue) return "Older";
+
+    const entryDate = new Date(timestampValue * 1000);
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startOfEntryDay = new Date(
+      entryDate.getFullYear(),
+      entryDate.getMonth(),
+      entryDate.getDate()
+    );
+    const dayDiff = Math.round((startOfToday - startOfEntryDay) / 86400000);
+
+    if (dayDiff === 0) return "Today";
+    if (dayDiff === 1) return "Yesterday";
+    if (dayDiff < 7) return "Last 7 days";
+    return "Older";
+  }
+
+  function renderChatSearchResults(query = "") {
+    if (!chatSearchResults) return;
+
+    const normalizedQuery = query.trim().toLowerCase();
+    const filteredChats = normalizedQuery
+      ? chatSearchData.filter((chat) =>
+          (chat.title || "").toLowerCase().includes(normalizedQuery)
+        )
+      : chatSearchData;
+
+    chatSearchResults.innerHTML = "";
+
+    if (filteredChats.length === 0) {
+      const emptyState = document.createElement("div");
+      emptyState.className = "chat-search-empty";
+      emptyState.textContent = "No chats found";
+      chatSearchResults.appendChild(emptyState);
+      return;
+    }
+
+    // Limit to first 50 items to prevent DOM bloat
+    const displayedChats = filteredChats.slice(0, 50);
+
+    const groupedChats = displayedChats.reduce((groups, chat) => {
+      const label = formatSearchSectionLabel(chat.timestamp);
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(chat);
+      return groups;
+    }, {});
+
+    const newChatAction = document.createElement("button");
+    newChatAction.type = "button";
+    newChatAction.className = "chat-search-item chat-search-new";
+    newChatAction.innerHTML = `
+      <i class="fi fi-br-comment-medical"></i>
+      <span>New chat</span>
+    `;
+    newChatAction.addEventListener("click", async () => {
+      closeChatSearchOverlay();
+      await startNewChat();
+    });
+    chatSearchResults.appendChild(newChatAction);
+
+    const sectionOrder = ["Today", "Yesterday", "Last 7 days", "Older"];
+
+    sectionOrder.forEach((sectionLabel) => {
+      const sectionChats = groupedChats[sectionLabel];
+      if (!sectionChats || sectionChats.length === 0) return;
+
+      const section = document.createElement("div");
+      section.className = "chat-search-section";
+
+      const heading = document.createElement("div");
+      heading.className = "chat-search-section-title";
+      heading.textContent = sectionLabel;
+      section.appendChild(heading);
+
+      sectionChats.forEach((chatSummary) => {
+        const chatItem = document.createElement("button");
+        chatItem.type = "button";
+        chatItem.className = "chat-search-item";
+        chatItem.innerHTML = `
+          <i class="fi fi-tr-comment-alt"></i>
+          <span>${chatSummary.title || "New Chat"}</span>
+        `;
+        chatItem.addEventListener("click", async () => {
+          closeChatSearchOverlay();
+          await loadChat(chatSummary.id);
+        });
+        section.appendChild(chatItem);
+      });
+
+      chatSearchResults.appendChild(section);
+    });
+  }
+
+  async function openChatSearchOverlay() {
+    if (!chatSearchOverlay || !chatSearchInput || !chatSearchResults) return;
+    try {
+      if (!chatSearchData || chatSearchData.length === 0) {
+        const response = await fetch(`${window.location.origin}/get_chat_history_list`);
+        chatSearchData = await response.json();
+      }
+      chatSearchQuery = "";
+      closeUserMenu();
+      chatSearchOverlay.hidden = false;
+      chatSearchOverlay.style.display = "flex";
+      renderChatSearchResults("");
+      chatSearchInput.value = "";
+      setTimeout(() => chatSearchInput.focus(), 0);
+    } catch (error) {
+      console.error("Error opening chat search:", error);
+    }
+  }
+
+  function closeChatSearchOverlay() {
+    if (!chatSearchOverlay || !chatSearchInput) return;
+    chatSearchOverlay.hidden = true;
+    chatSearchOverlay.style.display = "none";
+    chatSearchInput.value = "";
+    chatSearchQuery = "";
+  }
+
+  function toggleUserMenu() {
+    if (!userMenu || !userInfoButton || !userMenuDropdown) return;
+    const isOpen = userMenu.classList.toggle("open");
+    userInfoButton.setAttribute("aria-expanded", String(isOpen));
+    userMenuDropdown.hidden = !isOpen;
+  }
+
+  if (userInfoButton && userMenuDropdown) {
+    userInfoButton.addEventListener("click", function (event) {
+      event.stopPropagation();
+      toggleUserMenu();
+    });
+
+    userMenuDropdown.addEventListener("click", function (event) {
+      event.stopPropagation();
+      if (event.target.closest(".user-menu-item")) {
+        closeUserMenu();
+      }
+    });
+  }
+
+  document.addEventListener("click", function (event) {
+    if (userMenu && !userMenu.contains(event.target)) {
+      closeUserMenu();
+    }
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      closeUserMenu();
+    }
+  });
+
+  window.updateThemeMenuLabel();
+
   if (stopBtn) {
     stopBtn.addEventListener("click", async function () {
       if (abortController) {
@@ -1957,7 +2287,10 @@ document.addEventListener("DOMContentLoaded", async function () {
         cameraOptions.style.display = "block";
       } else {
         // On desktop, directly trigger the hidden file input
-        desktopFileInput.click();
+        if (desktopFileInput) {
+          desktopFileInput.value = "";
+          desktopFileInput.click();
+        }
       }
     });
   }
@@ -2158,6 +2491,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             if (result.status === "success") {
               currentChatId = null; // Reset current chat ID
+              localStorage.removeItem("lastChatId");
               document.getElementById("chatbox").innerHTML = ""; // Clear chat messages
               // Add the new chat placeholder back
               const chatbox = document.getElementById("chatbox");
@@ -2220,19 +2554,34 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   // Initial setup on page load
-  await updateChatHistory(); // Load existing chat history or start new chat
+  const savedChatId = localStorage.getItem("lastChatId");
+  if (savedChatId) {
+    const sidebarLoadPromise = updateChatHistory({ skipLoadCurrent: true });
+    try {
+      await loadChat(savedChatId);
+    } catch (error) {
+      console.warn("Saved chat could not be loaded:", error);
+      await updateChatHistory();
+    }
+    await sidebarLoadPromise;
+  } else {
+    await updateChatHistory(); // Load existing chat history or start new chat
+  }
 
   // Fetch user info (assuming a /user_info endpoint)
   fetch("/user_info")
     .then((response) => response.json())
     .then((data) => {
-      const userInfoDiv = document.getElementById("user-info");
       const userEmailSpan = document.getElementById("user-email");
-      if (data.user_email) {
-        userEmailSpan.textContent = data.user_email;
-        userInfoDiv.style.display = "flex"; // Show user info if email exists
+      if (data.user_email || data.user_name) {
+        const displayName =
+          data.is_guest
+            ? "Guest"
+            : data.user_name || data.user_email || "Account";
+        userEmailSpan.textContent = displayName;
+        if (userInfoButton) userInfoButton.style.display = "flex";
       } else {
-        userInfoDiv.style.display = "none";
+        if (userInfoButton) userInfoButton.style.display = "none";
       }
     })
     .catch((error) => console.error("Error fetching user info:", error));
@@ -2271,21 +2620,6 @@ if (plusMenuBtn && plusMenuContent) {
     ) {
       plusMenuContent.style.display = "none";
       plusMenuBtn.setAttribute("aria-expanded", "false");
-    }
-  });
-}
-
-// Attach file button
-const attachFileBtn = document.getElementById("attach-file-btn");
-const desktopFileInput = document.getElementById("desktop-file-input");
-
-if (attachFileBtn && desktopFileInput) {
-  attachFileBtn.addEventListener("click", () => desktopFileInput.click());
-  desktopFileInput.addEventListener("change", (e) => {
-    if (e.target.files.length > 0) {
-      console.log("Selected file:", e.target.files[0]);
-      // 🔧 Your existing function for uploading/previewing files:
-      // handleFileUpload(e.target.files[0]);
     }
   });
 }
@@ -3305,6 +3639,28 @@ function addDragDropStyles() {
       color: var(--text-color-secondary);
       margin-top: 5px;
       text-align: center;
+    }
+
+    /* Fix chat link overflow - allow buttons to always show */
+    .chat-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: visible;
+    }
+
+    .chat-link > span:first-child {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chat-link-actions {
+      flex-shrink: 0;
+      display: flex;
+      gap: 4px;
     }
   `;
   document.head.appendChild(style);
