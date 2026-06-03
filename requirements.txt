@@ -9,3 +9,4 @@ openai==2.14.0
 pillow==11.2.1
 gunicorn==23.0.0
 firebase-admin==6.5.0
+Flask-Compress==1.15
