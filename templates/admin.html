@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VEXARA Admin Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Loading Admin Panel...</p>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1><i class="fas fa-shield-alt"></i> VEXARA Admin</h1>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="#dashboard" class="nav-link active" data-page="dashboard">
+                    <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+                </a></li>
+                <li><a href="#users" class="nav-link" data-page="users">
+                    <i class="fas fa-users"></i> <span>Users</span>
+                </a></li>
+                <li><a href="#analytics" class="nav-link" data-page="analytics">
+                    <i class="fas fa-analytics"></i> <span>Analytics</span>
+                </a></li>
+                <li><a href="#health" class="nav-link" data-page="health">
+                    <i class="fas fa-heartbeat"></i> <span>Health</span>
+                </a></li>
+                <li><a href="#logs" class="nav-link" data-page="logs">
+                    <i class="fas fa-file-alt"></i> <span>Logs</span>
+                </a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <p id="adminName">Loading...</p>
+                <small id="adminEmail">...</small>
+            </div>
+            <button class="logout-btn" id="logoutBtn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <h2 id="pageTitle">Dashboard</h2>
+            </div>
+            <div class="top-bar-right">
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="Search users...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="time-display">
+                    <span id="currentTime"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-wrapper">
+            <!-- Dashboard Page -->
+            <section id="dashboard" class="page active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon users-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Total Users</h3>
+                            <p id="totalUsers" class="stat-value">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon pro-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Pro Users</h3>
+                            <p id="proUsers" class="stat-value">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon free-icon">
+                            <i class="fas fa-gift"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Free Users</h3>
+                            <p id="freeUsers" class="stat-value">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon messages-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Messages Today</h3>
+                            <p id="messagesToday" class="stat-value">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon chats-icon">
+                            <i class="fas fa-comment-dots"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Total Chats</h3>
+                            <p id="totalChats" class="stat-value">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon rate-icon">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Conversion Rate</h3>
+                            <p id="conversionRate" class="stat-value">0%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Activity (Last 7 Days)</h3>
+                    <div id="dailyChart" class="activity-chart">
+                        <canvas id="activityCanvas"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Users Page -->
+            <section id="users" class="page">
+                <div class="page-header">
+                    <h2>User Management</h2>
+                    <div class="filter-controls">
+                        <select id="planFilter" class="filter-select">
+                            <option value="">All Plans</option>
+                            <option value="free">Free</option>
+                            <option value="pro">Pro</option>
+                        </select>
+                        <select id="sortBy" class="filter-select">
+                            <option value="recent">Most Recent</option>
+                            <option value="name">Name (A-Z)</option>
+                            <option value="messages">Most Active</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="users-table-container">
+                    <table class="users-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Name</th>
+                                <th>Plan</th>
+                                <th>Messages Today</th>
+                                <th>Chats</th>
+                                <th>Last Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr class="loading-row">
+                                <td colspan="7">Loading users...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination">
+                    <button id="prevBtn" class="pagination-btn">← Previous</button>
+                    <span id="pageInfo">Page 1</span>
+                    <button id="nextBtn" class="pagination-btn">Next →</button>
+                </div>
+            </section>
+
+            <!-- Analytics Page -->
+            <section id="analytics" class="page">
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <h3>User Growth</h3>
+                        <canvas id="userGrowthChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>Daily Messages</h3>
+                        <canvas id="messagesChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>Plan Distribution</h3>
+                        <canvas id="planChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Health Page -->
+            <section id="health" class="page">
+                <div class="health-container">
+                    <h2>System Health Status</h2>
+                    <button class="refresh-btn" id="refreshHealthBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+
+                    <div class="health-items" id="healthItems">
+                        <div class="loading">Checking system health...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logs Page -->
+            <section id="logs" class="page">
+                <div class="logs-container">
+                    <h2>Admin Action Logs</h2>
+                    <button class="refresh-btn" id="refreshLogsBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+
+                    <table class="logs-table" id="logsTable">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Admin</th>
+                                <th>Action</th>
+                                <th>Target User</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                            <tr class="loading-row">
+                                <td colspan="5">Loading logs...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- User Detail Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalUserEmail">User Details</h2>
+                <button class="modal-close" id="modalCloseBtn">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="user-detail-grid">
+                    <div class="detail-item">
+                        <label>Email</label>
+                        <p id="modalEmail">-</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Name</label>
+                        <p id="modalName">-</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Current Plan</label>
+                        <p id="modalPlan">-</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Member Since</label>
+                        <p id="modalCreated">-</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Messages Today</label>
+                        <p id="modalMessagesToday">-</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Total Chats</label>
+                        <p id="modalTotalChats">-</p>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="action-btn free-btn" id="setFreeBtn">Set to Free</button>
+                    <button class="action-btn pro-btn" id="setProBtn">Set to Pro</button>
+                    <button class="action-btn reset-btn" id="resetQuotaBtn">Reset Quota</button>
+                    <button class="action-btn danger-btn" id="viewChatsBtn">View Chats</button>
+                </div>
+
+                <div class="chats-list" id="chatsList" style="display: none;">
+                    <h3>User's Chats</h3>
+                    <div id="chatsContainer">
+                        <p class="loading">Loading chats...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Detail Modal -->
+    <div id="chatModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="chatModalTitle">Chat Detail</h2>
+                <button class="modal-close" id="chatModalCloseBtn">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div id="chatDetail">
+                    <p class="loading">Loading chat...</p>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="action-btn danger-btn" id="deleteChatBtn">Delete Chat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>Confirm Action</h2>
+                <button class="modal-close" id="confirmCloseBtn">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <p id="confirmMessage">Are you sure?</p>
+            </div>
+
+            <div class="modal-footer">
+                <button class="action-btn cancel-btn" id="confirmCancelBtn">Cancel</button>
+                <button class="action-btn danger-btn" id="confirmYesBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="admin.js"></script>
+</body>
+</html> 
