@@ -43,6 +43,17 @@ except ImportError:
     FIREBASE_AVAILABLE = False
     print("[FIREBASE] Warning: firebase-admin not installed. Install with: pip install firebase-admin")
 
+# 🔐 GOOGLE AUTH IMPORTS (for Vertex AI Service Account)
+try:
+    import google.auth
+    from google.oauth2 import service_account
+    from google.auth.transport.requests import Request
+    GOOGLE_AUTH_AVAILABLE = True
+    print("[GOOGLE_AUTH] Google Auth libraries imported successfully")
+except ImportError:
+    GOOGLE_AUTH_AVAILABLE = False
+    print("[GOOGLE_AUTH] Warning: google-auth libraries not installed. Install with: pip install google-auth google-auth-oauthlib google-auth-httplib2")
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 template_path = os.path.join(current_dir, 'templates')
 static_path = os.path.join(current_dir, 'static')
@@ -84,17 +95,58 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 # 🔑 API KEYS & CONFIGURATION
 # ============================================================================
 
-GOOGLE_GEMINI_API_KEY = os.environ.get("GOOGLE_GEMINI_API_KEY")
+# Vertex AI (replacing direct Gemini API)
+VERTEX_AI_PROJECT_ID = os.environ.get("VERTEX_AI_PROJECT_ID", "vexara-real")
+VERTEX_AI_REGION = os.environ.get("VERTEX_AI_REGION", "global")  # Changed from us-central1 to global
+VERTEX_AI_CREDENTIALS_JSON = os.environ.get("VERTEX_AI_CREDENTIALS")
+
+# Legacy API keys (for fallback)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 CEREBRAS_API_KEY = os.environ.get("CEREBRAS_API_KEY")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 SERPER_API_KEY = os.environ.get("SERPER_API_KEY")
 
 # API Endpoints
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
+VERTEX_AI_API_URL = f"https://aiplatform.googleapis.com/v1/projects/{VERTEX_AI_PROJECT_ID}/locations/{VERTEX_AI_REGION}/publishers/google/models"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# ============================================================================
+# 🔐 VERTEX AI AUTHENTICATION (Service Account)
+# ============================================================================
+
+def get_vertex_ai_access_token():
+    """
+    Generate OAuth 2.0 access token from Vertex AI service account credentials.
+    This replaces the API key authentication.
+    """
+    if not VERTEX_AI_CREDENTIALS_JSON:
+        print("[VERTEX_AI] ERROR: VERTEX_AI_CREDENTIALS environment variable not set")
+        return None
+    
+    try:
+        import google.auth
+        from google.oauth2 import service_account
+        from google.auth.transport.requests import Request
+        
+        # Parse credentials from JSON
+        creds_dict = json.loads(VERTEX_AI_CREDENTIALS_JSON)
+        credentials = service_account.Credentials.from_service_account_info(
+            creds_dict,
+            scopes=['https://www.googleapis.com/auth/cloud-platform']
+        )
+        
+        # Refresh to get access token
+        credentials.refresh(Request())
+        access_token = credentials.token
+        
+        print(f"[VERTEX_AI] ✓ Generated access token (expires in ~1 hour)")
+        return access_token
+    
+    except Exception as e:
+        print(f"[VERTEX_AI] ERROR: Failed to generate access token: {e}")
+        return None
 
 # ============================================================================
 # 🔥 FIREBASE CONFIGURATION & INITIALIZATION
@@ -563,7 +615,7 @@ class APIProvider:
             'models': {
                 'normal': 'llama-3.1-8b-instant',
                 'deepthink': 'llama-3.3-70b-versatile',
-                'vision': 'meta-llama/llama-4-scout-17b-16e-instruct'
+                'vision': 'llama-3.2-11b-vision-instant'  # Groq's dedicated vision model
             },
             'supports_vision': True,
             'status': 'active'
@@ -581,13 +633,13 @@ class APIProvider:
             'status': 'active'
         },
         'gemini': {
-            'url': GEMINI_API_URL,
-            'api_key': GOOGLE_GEMINI_API_KEY,
-            'type': 'gemini',
+            'url': VERTEX_AI_API_URL,
+            'api_key': 'vertex-ai-token',  # placeholder - we'll use access token instead
+            'type': 'vertex_ai',
             'models': {
-                'normal': 'gemini-3.1-flash-lite',
-                'deepthink': 'gemini-3.1-flash-lite',
-                'vision': 'gemini-3.1-flash-lite'
+                'normal': 'gemini-2.5-flash-lite',
+                'deepthink': 'gemini-2.5-flash-lite',
+                'vision': 'gemini-2.5-flash-lite'
             },
             'supports_vision': True,
             'status': 'active'
@@ -608,9 +660,9 @@ class APIProvider:
     
     # Fallback chain: [primary, secondary, tertiary]
     FALLBACK_CHAIN = {
-        'normal': ['groq', 'cerebras', 'openrouter', 'gemini'],
-        'deepthink': ['groq', 'cerebras', 'openrouter', 'gemini'],
-        'vision': ['gemini','groq', 'cerebras', 'openrouter']
+        'normal': ['groq', 'cerebras', 'openrouter','gemini'],
+        'deepthink': [ 'groq','gemini', 'cerebras', 'openrouter'],
+        'vision': ['gemini', 'groq', 'openrouter']  # Gemini FIRST - best vision model
     }
     
     # Rate limit tracking
@@ -690,10 +742,13 @@ class APIProvider:
         print(f"[DEBUG] Calling {provider} with model: {model}, has_image: {image_data is not None}")
         
         try:
-            if prov['type'] == 'gemini':
-                response = cls._call_gemini(prov['url'], api_key, system_prompt, messages, model, image_data,stream=False)
+            if prov['type'] == 'vertex_ai':
+                response = cls._call_vertex_ai(prov['url'], system_prompt, messages, model, image_data, stream=False)
+            elif prov['type'] == 'gemini':
+                # Legacy fallback (shouldn't be used now)
+                response = cls._call_vertex_ai(prov['url'], system_prompt, messages, model, image_data, stream=False)
             else:
-                response = cls._call_openai_compatible(prov['url'], api_key, model, messages, image_data, stream)
+                response = cls._call_openai_compatible(prov['url'], prov['api_key'], model, messages, image_data, stream)
             
             if response:
                 # Print error details if status is not 200
@@ -763,9 +818,18 @@ class APIProvider:
             return None
     
     @classmethod
-    def _call_gemini(cls, url, api_key, system_prompt, messages, model, image_data=None,stream=False):
-        """Call Gemini API with proper format and optional image support."""
-        # Convert messages to Gemini format
+    def _call_vertex_ai(cls, url, system_prompt, messages, model, image_data=None, stream=False):
+        """
+        Call Vertex AI API using Service Account authentication.
+        Uses OAuth 2.0 access token instead of API key.
+        """
+        # Get access token from service account
+        access_token = get_vertex_ai_access_token()
+        if not access_token:
+            print(f"[VERTEX_AI] ERROR: Could not generate access token")
+            return None
+        
+        # Convert messages to Vertex AI format
         contents = []
         for msg in messages:
             if msg.get("role") == "system":
@@ -779,7 +843,7 @@ class APIProvider:
             elif isinstance(msg.get('content'), list):
                 content_parts.extend(msg.get('content'))
             
-            # Image content (Gemini format)
+            # Image content (Vertex AI format - base64 inline)
             if image_data:
                 content_parts.append({
                     "inline_data": {
@@ -793,37 +857,47 @@ class APIProvider:
                 "parts": content_parts
             })
         
+        # Vertex AI request format
         payload = {
             "contents": contents,
-            "systemInstruction": {"parts": [{"text": system_prompt}]},
-            "generationConfig": {
+            "system_instruction": {"parts": [{"text": system_prompt}]},
+            "generation_config": {
                 "temperature": 0.7,
-                "topK": 40,
-                "topP": 0.95,
-                "maxOutputTokens": 2048,
+                "top_k": 40,
+                "top_p": 0.95,
+                "max_output_tokens": 2048,
             }
         }
         
+        # Build Vertex AI endpoint
+        vertex_url = f"{url}/{model}:generateContent"
+        
         headers = {
-            "x-goog-api-key": api_key,
+            "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
         
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=60)
-            print(f"[GEMINI] Response status: {response.status_code}")
+            print(f"[VERTEX_AI] Calling {model} at {vertex_url[:80]}...")
+            response = requests.post(vertex_url, json=payload, headers=headers, timeout=60)
+            print(f"[VERTEX_AI] Response status: {response.status_code}")
+            
             if response.status_code != 200:
                 try:
                     error_detail = response.json()
-                    print(f"[GEMINI] Error details: {error_detail}")
+                    print(f"[VERTEX_AI] Error details: {error_detail}")
                 except:
-                    print(f"[GEMINI] Error body: {response.text[:500]}")
+                    print(f"[VERTEX_AI] Error body: {response.text[:500]}")
+            
             return response
+        
         except requests.exceptions.Timeout:
-            print(f"[TIMEOUT] Gemini API timeout")
+            print(f"[TIMEOUT] Vertex AI timeout")
             return None
         except Exception as e:
-            print(f"[API_ERROR] Gemini API call failed: {e}")
+            print(f"[API_ERROR] Vertex AI call failed: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     @classmethod
@@ -1881,9 +1955,9 @@ ANALYSIS APPROACH:
 - Use clear formatting with sections for Problem Statement, Given, To Find, Solution, Answer, and Tips
 - For any image type (text-only, geometric, mixed) combined with user's question, provide a complete solution"""
             
-            print(f"[GEMINI_FIRST] Step 1: Solving with Gemini (PRIMARY via intelligent fallback)...")
+            print(f"[GEMINI_FIRST] Step 1: Solving with Gemini VISION (PRIMARY via intelligent fallback)...")
             response, provider_used, success = call_api_with_intelligent_fallback(
-                "deepthink", system_msg, solving_messages, 
+                "vision", system_msg, solving_messages, 
                 image_data=image_data
             )
             
