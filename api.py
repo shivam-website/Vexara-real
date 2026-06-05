@@ -32,6 +32,8 @@ from flask_compress import Compress
 from collections import defaultdict
 from difflib import SequenceMatcher
 import math
+from functools import wraps
+from flask import jsonify
 
 # 🔥 FIREBASE IMPORTS
 try:
@@ -2830,7 +2832,540 @@ def get_quota_stats(user_id):
 
 # ============================================================================
 # 🚀 MAIN
+
 # ============================================================================
+# Replace line 2837 with:
+try:
+    admin_emails_str = os.environ.get("ADMIN_EMAILS", '["admin@aivexara.xyz"]')
+    if not admin_emails_str:
+        admin_emails_str = '["admin@aivexara.xyz"]'
+    ADMIN_EMAILS = set(json.loads(admin_emails_str))
+except json.JSONDecodeError:
+    print(f"[ADMIN] Warning: Invalid ADMIN_EMAILS, using default")
+    ADMIN_EMAILS = set(["admin@aivexara.xyz"])
+ 
+def require_admin(f):
+    """Decorator to check if user is admin."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'google_oauth_token' not in session:
+            return jsonify({"error": "Not authenticated"}), 401
+        
+        user_email = session.get('user_email')
+        if user_email not in ADMIN_EMAILS:
+            print(f"[ADMIN] Unauthorized access attempt by {user_email}")
+            return jsonify({"error": "Insufficient permissions"}), 403
+        
+        return f(*args, **kwargs)
+    return decorated_function
+ 
+# ============================================================================
+# 🔐 ADMIN LOGIN & LOGOUT
+# ============================================================================
+ 
+@app.route('/admin/login', methods=['GET'])
+def admin_login():
+    """Redirect to Google OAuth for admin login."""
+    return redirect(url_for('google.authorized'))
+ 
+@app.route('/admin/logout', methods=['POST'])
+def admin_logout():
+    """Logout admin user."""
+    session.clear()
+    return jsonify({"message": "Logged out successfully"})
+ 
+@app.route('/admin/auth-check', methods=['GET'])
+def admin_auth_check():
+    """Check if user is authenticated as admin."""
+    if 'google_oauth_token' not in session:
+        return jsonify({"authenticated": False}), 200
+    
+    user_email = session.get('user_email')
+    is_admin = user_email in ADMIN_EMAILS
+    
+    return jsonify({
+        "authenticated": True,
+        "is_admin": is_admin,
+        "email": user_email,
+        "name": session.get('user_name', 'User')
+    })
+ 
+# ============================================================================
+# 👥 USER MANAGEMENT ENDPOINTS
+# ============================================================================
+ 
+@app.route('/admin/users', methods=['GET'])
+@require_admin
+def get_all_users():
+    """Get all users with basic stats."""
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        ref = db.reference("users")
+        users_data = ref.get()
+        
+        if not users_data:
+            return jsonify({"users": [], "total": 0})
+        
+        users_list = []
+        for user_id, user_info in users_data.items():
+            user_obj = {
+                "user_id": user_id,
+                "email": user_info.get("email", "N/A"),
+                "name": user_info.get("name", "Unknown"),
+                "plan": user_info.get("plan", "free"),
+                "created_at": user_info.get("created_at"),
+                "last_active": user_info.get("last_active"),
+                "total_chats": len(user_info.get("chats", {})) if isinstance(user_info.get("chats"), dict) else 0,
+                "messages_today": 0
+            }
+            
+            # Get today's message count
+            today_str = date.today().isoformat()
+            quota_data = user_info.get("quota", {})
+            if isinstance(quota_data, dict) and today_str in quota_data:
+                user_obj["messages_today"] = quota_data[today_str].get("count", 0)
+            
+            users_list.append(user_obj)
+        
+        # Sort by last_active (most recent first)
+        users_list.sort(key=lambda x: x.get("last_active", ""), reverse=True)
+        
+        return jsonify({
+            "users": users_list,
+            "total": len(users_list)
+        })
+    
+    except Exception as e:
+        print(f"[ADMIN] Error fetching users: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+@app.route('/admin/user/<user_id>', methods=['GET'])
+@require_admin
+def get_user_details(user_id):
+    """Get detailed user information."""
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        ref = db.reference(f"users/{safe_user_id}")
+        user_data = ref.get()
+        
+        if not user_data:
+            return jsonify({"error": "User not found"}), 404
+        
+        # Get quota data
+        quota_data = user_data.get("quota", {})
+        today_str = date.today().isoformat()
+        today_quota = quota_data.get(today_str, {})
+        
+        # Get chat list
+        chats = user_data.get("chats", {})
+        chat_list = []
+        for chat_id, chat_data in (chats.items() if isinstance(chats, dict) else []):
+            chat_list.append({
+                "chat_id": chat_id,
+                "title": chat_data.get("title", "Untitled"),
+                "created_at": chat_data.get("created_at"),
+                "message_count": len(chat_data.get("messages", {})) if isinstance(chat_data.get("messages"), dict) else 0
+            })
+        
+        return jsonify({
+            "user_id": user_id,
+            "email": user_data.get("email"),
+            "name": user_data.get("name"),
+            "plan": user_data.get("plan", "free"),
+            "created_at": user_data.get("created_at"),
+            "last_active": user_data.get("last_active"),
+            "quota": {
+                "daily_limit": DAILY_MESSAGE_LIMIT,
+                "today": today_quota.get("count", 0) if isinstance(today_quota, dict) else 0,
+                "remaining": max(0, DAILY_MESSAGE_LIMIT - (today_quota.get("count", 0) if isinstance(today_quota, dict) else 0))
+            },
+            "chats": {
+                "total": len(chat_list),
+                "list": chat_list[:20]  # Return last 20 chats
+            }
+        })
+    
+    except Exception as e:
+        print(f"[ADMIN] Error fetching user details: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+# ============================================================================
+# 💳 PLAN MANAGEMENT
+# ============================================================================
+ 
+@app.route('/admin/user/<user_id>/plan', methods=['POST'])
+@require_admin
+def toggle_user_plan(user_id):
+    """Toggle user between free and pro plan."""
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        data = request.get_json()
+        new_plan = data.get('plan', 'free')
+        
+        # Validate plan
+        if new_plan not in ['free', 'pro']:
+            return jsonify({"error": "Invalid plan. Must be 'free' or 'pro'"}), 400
+        
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        ref = db.reference(f"users/{safe_user_id}")
+        user_data = ref.get()
+        
+        if not user_data:
+            return jsonify({"error": "User not found"}), 404
+        
+        # Update plan
+        ref.update({
+            "plan": new_plan,
+            "plan_updated_at": datetime.now().isoformat(),
+            "plan_updated_by": session.get('user_email')
+        })
+        
+        print(f"[ADMIN] User {user_id} plan changed to {new_plan} by {session.get('user_email')}")
+        
+        return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "new_plan": new_plan,
+            "updated_at": datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        print(f"[ADMIN] Error updating plan: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+# ============================================================================
+# 📊 ANALYTICS & MONITORING
+# ============================================================================
+ 
+@app.route('/admin/analytics/summary', methods=['GET'])
+@require_admin
+def get_analytics_summary():
+    """Get overall system analytics."""
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        ref = db.reference("users")
+        users_data = ref.get()
+        
+        if not users_data:
+            return jsonify({
+                "total_users": 0,
+                "pro_users": 0,
+                "free_users": 0,
+                "messages_today": 0,
+                "total_chats": 0
+            })
+        
+        total_users = len(users_data)
+        pro_users = 0
+        free_users = 0
+        messages_today = 0
+        total_chats = 0
+        today_str = date.today().isoformat()
+        
+        for user_id, user_info in users_data.items():
+            plan = user_info.get("plan", "free")
+            if plan == "pro":
+                pro_users += 1
+            else:
+                free_users += 1
+            
+            # Count chats
+            chats = user_info.get("chats", {})
+            if isinstance(chats, dict):
+                total_chats += len(chats)
+            
+            # Count today's messages
+            quota_data = user_info.get("quota", {})
+            if isinstance(quota_data, dict) and today_str in quota_data:
+                today_quota = quota_data[today_str]
+                if isinstance(today_quota, dict):
+                    messages_today += today_quota.get("count", 0)
+        
+        return jsonify({
+            "total_users": total_users,
+            "pro_users": pro_users,
+            "free_users": free_users,
+            "conversion_rate": f"{(pro_users/total_users*100 if total_users > 0 else 0):.2f}%",
+            "messages_today": messages_today,
+            "total_chats": total_chats,
+            "snapshot_date": today_str
+        })
+    
+    except Exception as e:
+        print(f"[ADMIN] Error getting analytics: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+@app.route('/admin/analytics/daily', methods=['GET'])
+@require_admin
+def get_daily_analytics():
+    """Get daily activity breakdown (last 7 days)."""
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        ref = db.reference("users")
+        users_data = ref.get()
+        
+        daily_stats = {}
+        for i in range(7):
+            day = (date.today() - timedelta(days=i)).isoformat()
+            daily_stats[day] = {"messages": 0, "active_users": 0}
+        
+        if users_data:
+            for user_id, user_info in users_data.items():
+                quota_data = user_info.get("quota", {})
+                if isinstance(quota_data, dict):
+                    for day_str in daily_stats.keys():
+                        if day_str in quota_data:
+                            day_quota = quota_data[day_str]
+                            if isinstance(day_quota, dict) and day_quota.get("count", 0) > 0:
+                                daily_stats[day_str]["messages"] += day_quota.get("count", 0)
+                                daily_stats[day_str]["active_users"] += 1
+        
+        return jsonify(daily_stats)
+    
+    except Exception as e:
+        print(f"[ADMIN] Error getting daily analytics: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+# ============================================================================
+# 🗑️ DATA MANAGEMENT
+# ============================================================================
+ 
+@app.route('/admin/user/<user_id>/chats', methods=['GET'])
+@require_admin
+def get_user_chats(user_id):
+    """Get all chats for a user."""
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        ref = db.reference(f"users/{safe_user_id}/chats")
+        chats = ref.get()
+        
+        if not chats:
+            return jsonify({"chats": [], "total": 0})
+        
+        chat_list = []
+        for chat_id, chat_data in chats.items():
+            messages = chat_data.get("messages", {})
+            message_count = len(messages) if isinstance(messages, dict) else 0
+            
+            chat_list.append({
+                "chat_id": chat_id,
+                "title": chat_data.get("title", "Untitled"),
+                "created_at": chat_data.get("created_at"),
+                "updated_at": chat_data.get("updated_at"),
+                "message_count": message_count
+            })
+        
+        chat_list.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+        
+        return jsonify({
+            "chats": chat_list,
+            "total": len(chat_list)
+        })
+    
+    except Exception as e:
+        print(f"[ADMIN] Error fetching user chats: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+@app.route('/admin/user/<user_id>/chat/<chat_id>', methods=['GET'])
+@require_admin
+def get_user_chat_detail(user_id, chat_id):
+    """Get specific chat details with messages."""
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        safe_chat_id = "".join(c for c in chat_id if c.isalnum() or c in ('-', '_')).strip()
+        
+        ref = db.reference(f"users/{safe_user_id}/chats/{safe_chat_id}")
+        chat_data = ref.get()
+        
+        if not chat_data:
+            return jsonify({"error": "Chat not found"}), 404
+        
+        messages = chat_data.get("messages", {})
+        message_list = []
+        
+        for msg_id, msg_data in (messages.items() if isinstance(messages, dict) else []):
+            message_list.append({
+                "id": msg_id,
+                "role": msg_data.get("role"),
+                "content": msg_data.get("content", "")[:200],  # Truncate for preview
+                "timestamp": msg_data.get("timestamp")
+            })
+        
+        message_list.sort(key=lambda x: x.get("timestamp", ""))
+        
+        return jsonify({
+            "chat_id": chat_id,
+            "title": chat_data.get("title", "Untitled"),
+            "created_at": chat_data.get("created_at"),
+            "messages": message_list,
+            "total_messages": len(message_list)
+        })
+    
+    except Exception as e:
+        print(f"[ADMIN] Error fetching chat detail: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+@app.route('/admin/user/<user_id>/chat/<chat_id>/delete', methods=['DELETE'])
+@require_admin
+def delete_user_chat(user_id, chat_id):
+    """Delete a specific chat."""
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        safe_chat_id = "".join(c for c in chat_id if c.isalnum() or c in ('-', '_')).strip()
+        
+        ref = db.reference(f"users/{safe_user_id}/chats/{safe_chat_id}")
+        ref.delete()
+        
+        print(f"[ADMIN] Chat {chat_id} deleted for user {user_id} by {session.get('user_email')}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Chat deleted successfully",
+            "chat_id": chat_id
+        })
+    
+    except Exception as e:
+        print(f"[ADMIN] Error deleting chat: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+@app.route('/admin/user/<user_id>/quota/reset', methods=['POST'])
+@require_admin
+def reset_user_quota(user_id):
+    """Reset user's quota for today."""
+    if not FIREBASE_AVAILABLE:
+        return jsonify({"error": "Firebase not available"}), 503
+    
+    try:
+        safe_user_id = "".join(c for c in user_id if c.isalnum() or c in ('-', '_')).strip()
+        today_str = date.today().isoformat()
+        
+        ref = db.reference(f"users/{safe_user_id}/quota/{today_str}")
+        ref.delete()
+        
+        print(f"[ADMIN] Quota reset for user {user_id} by {session.get('user_email')}")
+        
+        return jsonify({
+            "success": True,
+            "message": "User quota reset",
+            "user_id": user_id,
+            "date": today_str
+        })
+    
+    except Exception as e:
+        print(f"[ADMIN] Error resetting quota: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+# ============================================================================
+# 🏥 SYSTEM HEALTH CHECK
+# ============================================================================
+ 
+@app.route('/admin/health', methods=['GET'])
+@require_admin
+def admin_health_check():
+    """Check system health and dependencies."""
+    health = {
+        "timestamp": datetime.now().isoformat(),
+        "firebase": {
+            "status": "connected" if FIREBASE_AVAILABLE else "disconnected",
+            "error": None if FIREBASE_AVAILABLE else "Not initialized"
+        },
+        "api_providers": {},
+        "storage": {
+            "quota_file": os.path.exists(QUOTA_FILE),
+            "quota_file_path": QUOTA_FILE
+        }
+    }
+    
+    # Check API providers
+    for provider_name in api_provider.PROVIDERS.keys():
+        try:
+            status = api_provider.get_provider_status(provider_name)
+            health["api_providers"][provider_name] = status
+        except Exception as e:
+            health["api_providers"][provider_name] = f"error: {str(e)}"
+    
+    return jsonify(health)
+ 
+@app.route('/admin/logs', methods=['GET'])
+@require_admin
+def get_admin_logs():
+    """Get recent admin action logs."""
+    try:
+        if not FIREBASE_AVAILABLE:
+            return jsonify({"error": "Firebase not available"}), 503
+        
+        ref = db.reference("admin_logs")
+        logs = ref.get()
+        
+        if not logs:
+            return jsonify({"logs": [], "total": 0})
+        
+        log_list = []
+        for log_id, log_data in logs.items():
+            log_list.append({
+                "id": log_id,
+                "action": log_data.get("action"),
+                "admin_email": log_data.get("admin_email"),
+                "target_user": log_data.get("target_user"),
+                "timestamp": log_data.get("timestamp"),
+                "details": log_data.get("details")
+            })
+        
+        log_list.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        
+        return jsonify({
+            "logs": log_list[:100],  # Return last 100 logs
+            "total": len(log_list)
+        })
+    
+    except Exception as e:
+        print(f"[ADMIN] Error fetching logs: {e}")
+        return jsonify({"error": str(e)}), 500
+ 
+# ============================================================================
+# 🔧 UTILITY FUNCTION FOR LOGGING ADMIN ACTIONS
+# ============================================================================
+ 
+def log_admin_action(action, target_user=None, details=None):
+    """Log admin actions for audit trail."""
+    if not FIREBASE_AVAILABLE:
+        return
+    
+    try:
+        log_entry = {
+            "action": action,
+            "admin_email": session.get('user_email'),
+            "target_user": target_user,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        
+        ref = db.reference(f"admin_logs/{uuid.uuid4()}")
+        ref.set(log_entry)
+    except Exception as e:
+        print(f"[ADMIN] Error logging action: {e}")
+ 
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
     print("""
