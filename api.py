@@ -415,7 +415,22 @@ CORS(app, resources={
 
 # Enable gzip compression for all responses - essential for Render 512MB
 Compress(app)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
+_flask_secret_key = os.environ.get("FLASK_SECRET_KEY")
+if not _flask_secret_key:
+    # CRITICAL: never fall back to a random per-process key here. Gunicorn
+    # typically runs multiple worker processes; if each one generates its
+    # own random secret_key, the signed session cookie Flask-Dance sets
+    # before redirecting to Google can be verified by a DIFFERENT worker
+    # than the one that created it. That worker fails to read the session,
+    # google.authorized comes back wrong, and the OAuth callback blows up
+    # with a generic 500 - exactly the "works until the callback" symptom.
+    # A fixed fallback is still safer than a random one (consistent across
+    # workers), but FLASK_SECRET_KEY should really be set in the environment.
+    print("[STARTUP WARNING] FLASK_SECRET_KEY is not set in the environment! "
+          "Falling back to a fixed dev key - sessions/OAuth will break across "
+          "worker restarts and multi-worker deployments. Set FLASK_SECRET_KEY in Render.")
+    _flask_secret_key = "dev-only-insecure-fallback-key-set-FLASK_SECRET_KEY-in-render"
+app.secret_key = _flask_secret_key
 
 # ============================================================================
 # 💾 CACHING CONFIGURATION
@@ -3832,13 +3847,75 @@ class AgentOrchestrator:
 # 🔐 OAUTH CONFIGURATION
 # ============================================================================
 
+_google_client_id_check = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+print(f"[STARTUP CHECK] GOOGLE_OAUTH_CLIENT_ID is {'SET (length ' + str(len(_google_client_id_check)) + ')' if _google_client_id_check else 'MISSING/EMPTY'}")
+
 google_bp = make_google_blueprint(
     client_id=os.environ.get("GOOGLE_OAUTH_CLIENT_ID", ""),
     client_secret=os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", ""),
-    redirect_url="/google_login/authorized",
-    scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
+    scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"],
+    redirect_to="chat"  # endpoint name (not a URL) - where Flask-Dance sends the browser once the real OAuth callback finishes
 )
 app.register_blueprint(google_bp, url_prefix="/google_login")
+
+# IMPORTANT: do NOT also declare a manual @app.route("/google_login/authorized").
+# Flask-Dance's blueprint already owns the real callback route at
+# /google_login/google/authorized, and that's where google.authorized gets
+# set correctly. The old redirect_url="/google_login/authorized" pointed
+# Flask-Dance's post-login redirect at a URL that only your own separate,
+# manually-declared route matched - and in THAT route, "google.authorized"
+# threw AttributeError, because that view never went through the real OAuth
+# callback at all. Using the oauth_authorized signal below runs your
+# session-creation logic at the moment the actual token exchange finishes,
+# in the same request Flask-Dance itself handles - no duplicate route,
+# no redirect_url mismatch.
+from flask_dance.consumer import oauth_authorized
+
+@oauth_authorized.connect_via(google_bp)
+def google_logged_in(blueprint, token):
+    """Runs right after Flask-Dance completes the real Google OAuth exchange."""
+    if not token:
+        print("[AUTH] Google OAuth failed: no token received")
+        return False  # let flask-dance handle the failure/flash normally
+
+    try:
+        resp = blueprint.session.get("/oauth2/v2/userinfo")
+        if not resp.ok:
+            print(f"[AUTH] Google API error: {resp.status_code}")
+            return False
+
+        user_data = resp.json()
+        user_email = user_data.get("email")
+        google_id = user_data.get("id")
+
+        persistent_user_id = user_email.replace("@", "_at_").replace(".", "_")
+
+        session.permanent = True
+        session['user'] = user_email
+        session['user_id'] = persistent_user_id
+        session['auth_provider'] = 'google'
+        session['user_name'] = user_data.get("name")
+        session['google_id'] = google_id
+
+        print(f"[AUTH] Google login successful for {user_email}")
+        print(f"[AUTH] Persistent User ID: {persistent_user_id}")
+        print(f"[QUOTA] Messages today: {get_daily_message_count(persistent_user_id)}/{DAILY_MESSAGE_LIMIT}")
+
+        try:
+            sync_result = FirebaseSyncManager.sync_all_pending(persistent_user_id)
+            if sync_result.get("pending_retries", 0) > 0 or sync_result.get("chat_syncs", 0) > 0:
+                print(f"[SYNC] Login sync: {sync_result}")
+        except Exception as sync_err:
+            print(f"[SYNC] Login sync retry failed: {sync_err}")
+
+    except Exception as e:
+        print(f"[AUTH] Error during Google login: {e}")
+        return False
+
+    # Returning False tells flask-dance not to store its own OAuth token
+    # record (we don't use it - we already pulled what we need above and
+    # built our own session). Prevents an extra, unnecessary storage write.
+    return False
 
 oauth = OAuth(app)
 microsoft = oauth.register(
@@ -6008,7 +6085,7 @@ def is_user_logged_in():
 @app.before_request
 def check_session_persistence():
     """Check and restore persistent sessions on every request."""
-    if request.endpoint not in ['login', 'guest_login', 'google_login_authorized', 'microsoft_login_authorized', 'home', 'static']:
+    if request.endpoint not in ['login', 'guest_login', 'microsoft_login_authorized', 'home', 'static']:
         # Make session permanent for authenticated users
         if is_user_logged_in():
             session.permanent = True
@@ -6079,51 +6156,6 @@ def user_info():
         "welcome": generate_welcome_message(user_id),
         "weak_topics": detect_weak_topics(user_id)
     })
-
-@app.route('/google_login/authorized')
-def google_login_authorized():
-    """Handle Google OAuth callback - creates persistent session with quota tracking."""
-    if not google.authorized:
-        return redirect(url_for("login"))
-    
-    try:
-        user_info = google.get("/oauth2/v2/userinfo")
-        if user_info.ok:
-            user_data = user_info.json()
-            user_email = user_data.get("email")
-            google_id = user_data.get('id')
-            
-            # Create persistent user ID based on EMAIL (easier to track)
-            # Remove @ and . to make it path-safe
-            persistent_user_id = user_email.replace("@", "_at_").replace(".", "_")
-            
-            session.permanent = True
-            session['user'] = user_email
-            session['user_id'] = persistent_user_id
-            session['auth_provider'] = 'google'
-            session['user_name'] = user_data.get("name")
-            session['google_id'] = google_id
-            
-            print(f"[AUTH] Google login successful for {user_email}")
-            print(f"[AUTH] Persistent User ID: {persistent_user_id}")
-            print(f"[QUOTA] Messages today: {get_daily_message_count(persistent_user_id)}/{DAILY_MESSAGE_LIMIT}")
-            
-            # Retry any pending sync operations on login
-            try:
-                sync_result = FirebaseSyncManager.sync_all_pending(persistent_user_id)
-                if sync_result.get("pending_retries", 0) > 0 or sync_result.get("chat_syncs", 0) > 0:
-                    print(f"[SYNC] Login sync: {sync_result}")
-            except Exception as sync_err:
-                print(f"[SYNC] Login sync retry failed: {sync_err}")
-            
-            return redirect(url_for('chat'))
-        else:
-            print(f"[AUTH] Google API error: {user_info.status_code}")
-            return redirect(url_for('login'))
-    
-    except Exception as e:
-        print(f"[AUTH] Error during Google login: {e}")
-        return redirect(url_for('login'))
 
 @app.route('/microsoft_login/authorized')
 def microsoft_login_authorized():
