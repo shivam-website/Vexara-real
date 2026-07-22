@@ -1,19 +1,54 @@
-// Load KaTeX for math rendering
-const katexScript = document.createElement('script');
-katexScript.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js';
-katexScript.onload = () => {
-  const katexCss = document.createElement('link');
-  katexCss.rel = 'stylesheet';
-  katexCss.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css';
-  document.head.appendChild(katexCss);
-};
-document.head.appendChild(katexScript);
-
 // Global variables for chat management
 let currentChatId = null;
 let sidebarHidden = false; // Tracks if sidebar is manually collapsed on desktop
 let isFullScreen = false; // Tracks if full screen chat mode is active
 let abortController = null; // Global AbortController for stopping AI responses
+
+// ── Daily limit UI ──────────────────────────────────────────────────────────
+const LIMIT_KEY = 'vexara_limit_reached';   // localStorage key
+const LIMIT_DATE_KEY = 'vexara_limit_date'; // stored as YYYY-MM-DD
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function showLimitReachedUI() {
+  const today = todayStr();
+  localStorage.setItem(LIMIT_KEY, '1');
+  localStorage.setItem(LIMIT_DATE_KEY, today);
+
+  const banner = document.getElementById('limit-banner');
+  const inputArea = document.querySelector('.input-area');
+
+  if (banner) banner.style.display = 'block';
+  if (inputArea) inputArea.classList.add('input-locked');
+}
+
+function hideLimitUI() {
+  localStorage.removeItem(LIMIT_KEY);
+  localStorage.removeItem(LIMIT_DATE_KEY);
+  const banner = document.getElementById('limit-banner');
+  const inputArea = document.querySelector('.input-area');
+  if (banner) banner.style.display = 'none';
+  if (inputArea) inputArea.classList.remove('input-locked');
+}
+
+function checkPersistedLimitState() {
+  const stored = localStorage.getItem(LIMIT_KEY);
+  const storedDate = localStorage.getItem(LIMIT_DATE_KEY);
+  if (stored === '1' && storedDate === todayStr()) {
+    // Still same day — show the limit UI
+    showLimitReachedUI();
+  } else if (stored === '1' && storedDate !== todayStr()) {
+    // New day — clear and allow messages
+    hideLimitUI();
+  }
+}
+
+window.handleUpgradeClick = function() {
+  window.location.href = '/pricing';
+};
+// ── End daily limit UI ──────────────────────────────────────────────────────
 
 // Voice Talk Globals (Gemini Live)
 let isVoiceTalkActive = false;
@@ -64,6 +99,176 @@ function scrollToBottom() {
     }
   }, 150);
 }
+
+const pendingKatexElements = [];
+let katexFlushPoller = null;
+
+function ensureKatexFlushPoller() {
+  if (katexFlushPoller) return;
+
+  katexFlushPoller = setInterval(() => {
+    if (typeof renderMathInElement === "function" && pendingKatexElements.length) {
+      _flushPendingKatex();
+    }
+
+    if (
+      typeof renderMathInElement === "function" &&
+      pendingKatexElements.length === 0
+    ) {
+      clearInterval(katexFlushPoller);
+      katexFlushPoller = null;
+    }
+  }, 250);
+}
+
+function renderKatexForElement(targetElement) {
+  if (!targetElement) return;
+
+  if (typeof renderMathInElement !== "function") {
+    if (!pendingKatexElements.includes(targetElement)) {
+      pendingKatexElements.push(targetElement);
+      ensureKatexFlushPoller();
+    }
+    return;
+  }
+
+  // Scrub any leftover KaTeX error spans from a previous partial render
+  // so they don't show as red text alongside the clean re-render
+  targetElement.querySelectorAll('.katex-error').forEach(el => {
+    el.replaceWith(document.createTextNode(el.textContent));
+  });
+
+  try {
+    renderMathInElement(targetElement, {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "$", right: "$", display: false },
+        { left: "\\(", right: "\\)", display: false },
+        { left: "\\[", right: "\\]", display: true },
+      ],
+      throwOnError: false,
+    });
+  } catch (error) {
+    console.warn("KaTeX rendering failed:", error);
+  }
+}
+
+function _flushPendingKatex() {
+  while (pendingKatexElements.length > 0) {
+    const element = pendingKatexElements.shift();
+    if (element && element.isConnected) {
+      renderKatexForElement(element);
+    }
+  }
+}
+
+// Parses markdown while keeping LaTeX math safe from marked mangling.
+// Also rescues backtick-wrapped math the model outputs instead of $...$,
+// and converts Unicode math characters (², ⇒, √ …) to LaTeX equivalents.
+function parseMarkdownWithMath(rawText) {
+  if (!rawText) return '';
+
+  const mathStash = [];
+  const codeStash = [];
+
+  // Convert Unicode math symbols to LaTeX inside an expression string
+  function unicodeToLatex(s) {
+    return s
+      .replace(/²/g, '^2').replace(/³/g, '^3').replace(/⁴/g, '^4')
+      .replace(/⁰/g, '^0').replace(/¹/g, '^1').replace(/⁵/g, '^5')
+      .replace(/⁶/g, '^6').replace(/⁷/g, '^7').replace(/⁸/g, '^8').replace(/⁹/g, '^9')
+      .replace(/⇒/g, '\\Rightarrow').replace(/∴/g, '\\therefore')
+      .replace(/×/g, '\\times').replace(/÷/g, '\\div')
+      .replace(/≤/g, '\\leq').replace(/≥/g, '\\geq').replace(/≠/g, '\\neq')
+      .replace(/√/g, '\\sqrt').replace(/π/g, '\\pi').replace(/∞/g, '\\infty')
+      .replace(/°/g, '^\\circ').replace(/θ/g, '\\theta').replace(/α/g, '\\alpha')
+      .replace(/β/g, '\\beta').replace(/γ/g, '\\gamma').replace(/δ/g, '\\delta')
+      .replace(/φ/g, '\\phi').replace(/ω/g, '\\omega').replace(/λ/g, '\\lambda')
+      .replace(/μ/g, '\\mu').replace(/σ/g, '\\sigma').replace(/Σ/g, '\\Sigma')
+      .replace(/∫/g, '\\int').replace(/∑/g, '\\sum').replace(/∏/g, '\\prod');
+  }
+
+  // Heuristic: does this backtick content look like math rather than code?
+  const MATH_SIGNAL = /[²³⁴⁰¹⁵⁶⁷⁸⁹°⇒∴×÷≤≥≠√π∞θαβγδφωλμσΣ∫∑∏]|\b(sin|cos|tan|sec|csc|cot|log|ln|lim|frac|sqrt|sum|int|det)\b|\^/;
+  const CODE_SIGNAL  = /[{};]|\b(function|return|const|let|var|import|class|def|print)\b|=>/;
+
+  const stashMath = (match) => {
+    const safe = match.replace(/(?<!\\)%/g, '\\%');
+    mathStash.push(safe);
+    return '\x02M' + (mathStash.length - 1) + '\x03';
+  };
+
+  let s = String(rawText);
+
+  // 1. Rescue backtick-wrapped math: `sin²A` → $\sin^2 A$
+  //    Triple backticks (code fences) are handled separately below.
+  s = s.replace(/`([^`\n]{1,300})`/g, (match, inner) => {
+    if (MATH_SIGNAL.test(inner) && !CODE_SIGNAL.test(inner)) {
+      return '$' + unicodeToLatex(inner) + '$';
+    }
+    return match;
+  });
+
+  // Mermaid blocks are handled by renderer.code — no pre-conversion needed
+
+  // 2. Protect ONLY single backtick code (inline), NOT triple backticks
+  // Triple backticks (code blocks + mermaid) must reach marked.js for proper rendering
+  s = s.replace(/`[^`\n]+`/g, (m) => {
+    codeStash.push(m);
+    return '\x02C' + (codeStash.length - 1) + '\x03';
+  });
+
+  // 3. Stash real math -- $$ before $ to avoid partial matches
+  s = s
+    .replace(/\$\$([\s\S]*?)\$\$/g, stashMath)
+    .replace(/\\\[([\s\S]*?)\\\]/g, stashMath)
+    .replace(/\$([^\$\n]{1,600}?)\$/g, stashMath)
+    .replace(/\\\(([^)]{1,600}?)\\\)/g, stashMath);
+
+  // 4. Run markdown -- all math and code are opaque placeholders now
+  let html = marked.parse(s);
+
+  // 5. Restore math and code blocks
+  html = html
+    .replace(/\x02M(\d+)\x03/g, (_, i) => mathStash[+i])
+    .replace(/\x02C(\d+)\x03/g, (_, i) => codeStash[+i]);
+
+  return html;
+}
+
+// Shim: any legacy call to normalizeBotMath is a no-op passthrough
+function normalizeBotMath(text) { return text || ''; }
+
+// Strip everything that shouldn't land in a student's exam notebook when
+// they hit "Copy Answer": markdown bold markers, the RAG "Related Chapter"
+// footer, and the internal Topic/Chapter metadata line the model writes
+// for our own curriculum tagging (never meant to be user-facing text).
+function formatExamAnswerForCopy(rawText) {
+  if (!rawText) return "";
+
+  let text = rawText;
+
+  // Drop the "---\n📚 Related Chapter..." footer entirely (and anything after it)
+  const footerIndex = text.indexOf("📚 **Related Chapter:**");
+  if (footerIndex !== -1) {
+    text = text.slice(0, footerIndex);
+  }
+
+  // Drop the internal Topic/Chapter metadata line, e.g. "**Topic: Algebra, Chapter: ...**"
+  text = text.replace(/\*\*Topic:.*Chapter:.*\*\*\n?/gi, "");
+
+  // Strip markdown bold/italic markers but keep the words - "**Given:**" -> "Given:"
+  text = text.replace(/\*\*(.*?)\*\*/g, "$1");
+  text = text.replace(/\*(.*?)\*/g, "$1");
+
+  // Collapse the "---" separator (if any survived) and trim trailing blank lines
+  text = text.replace(/\n?---\n?/g, "\n");
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  return text.trim();
+}
+
+
 // Add this to your main JS
 function copyToClipboard(button) {
   const codeBlock = button.closest('.code-block').querySelector('code');
@@ -104,23 +309,127 @@ function escapeForTemplateLiteral(str) {
   return str.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
 }
 
-// Custom Marked.js Renderer for Code Blocks
-const renderer = new marked.Renderer();
-renderer.code = function (code, lang) {
-  const language = lang || "plaintext";
+// ── Mermaid initialisation ────────────────────────────────────────────────────
+// We use class "vex-diagram-pending" (not "mermaid") so Mermaid v10 never
+// auto-scans the DOM — diagrams render only when we explicitly call runMermaid().
+// Mermaid is loaded as ESM module in index.html → window._mermaid
 
-  // Determine file type based on language for update button
-  let fileType = "txt";
-  if (["html", "javascript", "css"].includes(language.toLowerCase())) {
-    fileType = "index.html";
-  } else if (language.toLowerCase() === "python") {
-    fileType = "test.py";
+async function runMermaid(container) {
+  const m = window._mermaid;
+  if (!m) return;
+  const pending = container.querySelectorAll('pre.vex-diagram-pending');
+  if (!pending.length) return;
+  pending.forEach(el => el.removeAttribute('data-processed'));
+  try {
+    await m.run({ nodes: Array.from(pending) });
+    pending.forEach(el => {
+      el.classList.remove('vex-diagram-pending');
+      const svg = el.querySelector('svg');
+      if (svg) { svg.style.maxWidth = '100%'; svg.style.height = 'auto'; }
+    });
+  } catch (e) { console.warn('[Mermaid]', e); }
+}
+
+// ── Post-processing: solution cards + enhance paragraph structure ─────────────
+function postProcessBotContent(container) {
+  // 1. Solution card: wrap Given / To Find / Solution / Answer / SEE Tip sections
+  const SECTION_NAMES = ['given', 'to find', 'to prove', 'solution', 'answer', 'see tip'];
+  const SECTION_CSS = {
+    'given': 'vex-ss-given',
+    'to find': 'vex-ss-to-find',
+    'to prove': 'vex-ss-to-find',
+    'solution': 'vex-ss-solution',
+    'answer': 'vex-ss-answer',
+    'see tip': 'vex-ss-see-tip',
+  };
+
+  const paras = Array.from(container.querySelectorAll('p'));
+  let sectionEls = [];
+
+  paras.forEach(p => {
+    const firstStrong = p.querySelector('strong:first-child, b:first-child');
+    if (!firstStrong) return;
+    const label = firstStrong.textContent.trim().replace(/:$/, '').toLowerCase();
+    if (SECTION_NAMES.includes(label)) {
+      const cls = SECTION_CSS[label] || '';
+      p.classList.add('vex-solution-section', cls);
+      sectionEls.push(p);
+    }
+  });
+
+  // Group consecutive solution sections into a card
+  if (sectionEls.length >= 2) {
+    const groups = [];
+    let current = [sectionEls[0]];
+    for (let i = 1; i < sectionEls.length; i++) {
+      // Check if this section immediately follows the previous one in the DOM
+      let prev = sectionEls[i - 1];
+      let next = prev.nextElementSibling;
+      // Allow a single hr between sections (exam mode sometimes inserts ---).
+      if (next && next.tagName === 'HR') next = next.nextElementSibling;
+      if (next === sectionEls[i]) {
+        current.push(sectionEls[i]);
+      } else {
+        if (current.length >= 2) groups.push(current);
+        current = [sectionEls[i]];
+      }
+    }
+    if (current.length >= 2) groups.push(current);
+
+    groups.forEach(group => {
+      const card = document.createElement('div');
+      card.className = 'vex-solution-card';
+      group[0].parentNode.insertBefore(card, group[0]);
+      group.forEach(el => card.appendChild(el));
+    });
   }
 
-  // Use highlight.js if language is supported; else escape raw code
-  let highlighted = "";
-  if (hljs.getLanguage(language)) {
-    highlighted = hljs.highlight(code, { language }).value;
+  // 2. Run Mermaid diagrams
+  runMermaid(container);
+}
+
+// Custom Marked.js Renderer
+const renderer = new marked.Renderer();
+
+// ── Table renderer — Vexara styled ───────────────────────────────────────────
+renderer.table = function (header, body) {
+  return `<div class="vex-table-wrap"><table class="vex-table"><thead>${header}</thead><tbody>${body}</tbody></table></div>`;
+};
+
+// ── Blockquote renderer — callout boxes ──────────────────────────────────────
+renderer.blockquote = function (quote) {
+  const text = quote.replace(/<[^>]+>/g, '').trim();
+  let type = 'default';
+  if (/^(💡|hint|tip\b)/i.test(text) || /\*\*(tip|did you know|hint)\*\*/i.test(quote)) {
+    type = 'tip';
+  } else if (/^(⚠|⚠️|warning|watch out|mistake)/i.test(text) || /\*\*(warning|watch out|common mistake|caution)\*\*/i.test(quote)) {
+    type = 'warning';
+  } else if (/^(📌|note|formula|key|remember)/i.test(text) || /\*\*(note|formula|remember|key|recall)\*\*/i.test(quote)) {
+    type = 'note';
+  } else if (/^(✅|important|rule|theorem|must)/i.test(text) || /\*\*(important|rule|theorem|must know)\*\*/i.test(quote)) {
+    type = 'important';
+  }
+  // SEE Tip intentionally excluded — renders as normal default blockquote
+  return `<div class="vex-callout vex-callout-${type}">${quote}</div>`;
+};
+
+// ── Code renderer — Mermaid gets its own div; everything else stays ───────────
+renderer.code = function (code, lang) {
+  const language = (lang || '').trim().toLowerCase();
+
+  if (language === 'mermaid') {
+    // Use <pre class="mermaid"> with textContent — exact official pattern
+    return `<div class="vex-mermaid-wrap"><pre class="mermaid vex-diagram-pending">${code.trim()}</pre></div>`;
+  }
+
+  const displayLang = language || 'plaintext';
+  let fileType = 'txt';
+  if (['html', 'javascript', 'css'].includes(displayLang)) fileType = 'index.html';
+  else if (displayLang === 'python') fileType = 'test.py';
+
+  let highlighted = '';
+  if (hljs.getLanguage(displayLang)) {
+    highlighted = hljs.highlight(code, { language: displayLang }).value;
   } else {
     highlighted = escapeHtml(code);
   }
@@ -128,7 +437,7 @@ renderer.code = function (code, lang) {
   return `
 <div class="code-block">
 <div class="code-header">
-<span class="code-language">${language.toUpperCase()}</span>
+<span class="code-language">${displayLang.toUpperCase()}</span>
 <div>
   <button class="copy-btn" onclick="copyToClipboard(this)" aria-label="Copy code to clipboard">
       <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" class="icon"><path d="M12.668 10.667C12.668 9.95614 12.668 9.46258 12.6367 9.0791C12.6137 8.79732 12.5758 8.60761 12.5244 8.46387L12.4688 8.33399C12.3148 8.03193 12.0803 7.77885 11.793 7.60254L11.666 7.53125C11.508 7.45087 11.2963 7.39395 10.9209 7.36328C10.5374 7.33197 10.0439 7.33203 9.33301 7.33203H6.5C5.78896 7.33203 5.29563 7.33195 4.91211 7.36328C4.63016 7.38632 4.44065 7.42413 4.29688 7.47559L4.16699 7.53125C3.86488 7.68518 3.61186 7.9196 3.43555 8.20703L3.36524 8.33399C3.28478 8.49198 3.22795 8.70352 3.19727 9.0791C3.16595 9.46259 3.16504 9.95611 3.16504 10.667V13.5C3.16504 14.211 3.16593 14.7044 3.19727 15.0879C3.22797 15.4636 3.28473 15.675 3.36524 15.833L3.43555 15.959C3.61186 16.2466 3.86474 16.4807 4.16699 16.6348L4.29688 16.6914C4.44063 16.7428 4.63025 16.7797 4.91211 16.8027C5.29563 16.8341 5.78896 16.835 6.5 16.835H9.33301C10.0439 16.835 10.5374 16.8341 10.9209 16.8027C11.2965 16.772 11.508 16.7152 11.666 16.6348L11.793 16.5645C12.0804 16.3881 12.3148 16.1351 12.4688 15.833L12.5244 15.7031C12.5759 15.5594 12.6137 15.3698 12.6367 15.0879C12.6681 14.7044 12.668 14.211 12.668 13.5V10.667ZM13.998 12.665C14.4528 12.6634 14.8011 12.6602 15.0879 12.6367C15.4635 12.606 15.675 12.5492 15.833 12.4688L15.959 12.3975C16.2466 12.2211 16.4808 11.9682 16.6348 11.666L16.6914 11.5361C16.7428 11.3924 16.7797 11.2026 16.8027 10.9209C16.8341 10.5374 16.835 10.0439 16.835 9.33301V6.5C16.835 5.78896 16.8341 5.29563 16.8027 4.91211C16.7797 4.63025 16.7428 4.44063 16.6914 4.29688L16.6348 4.16699C16.4807 3.86474 16.2466 3.61186 15.959 3.43555L15.833 3.36524C15.675 3.28473 15.4636 3.22797 15.0879 3.19727C14.7044 3.16593 14.211 3.16504 13.5 3.16504H10.667C9.9561 3.16504 9.46259 3.16595 9.0791 3.19727C8.79739 3.22028 8.6076 3.2572 8.46387 3.30859L8.33399 3.36524C8.03176 3.51923 7.77886 3.75343 7.60254 4.04102L7.53125 4.16699C7.4508 4.32498 7.39397 4.53655 7.36328 4.91211C7.33985 5.19893 7.33562 5.54719 7.33399 6.00195H9.33301C10.022 6.00195 10.5791 6.00131 11.0293 6.03809C11.4873 6.07551 11.8937 6.15471 12.2705 6.34668L12.4883 6.46875C12.984 6.7728 13.3878 7.20854 13.6533 7.72949L13.7197 7.87207C13.8642 8.20859 13.9292 8.56974 13.9619 8.9707C13.9987 9.42092 13.998 9.97799 13.998 10.667V12.665ZM18.165 9.33301C18.165 10.022 18.1657 10.5791 18.1289 11.0293C18.0961 11.4302 18.0311 11.7914 17.8867 12.1279L17.8203 12.2705C17.5549 12.7914 17.1509 13.2272 16.6553 13.5313L16.4365 13.6533C16.0599 13.8452 15.6541 13.9245 15.1963 13.9619C14.8593 13.9895 14.4624 13.9935 13.9951 13.9951C13.9935 14.4624 13.9895 14.8593 13.9619 15.1963C13.9292 15.597 13.864 15.9576 13.7197 16.2939L13.6533 16.4365C13.3878 16.9576 12.9841 17.3941 12.4883 17.6982L12.2705 17.8203C11.8937 18.0123 11.4873 18.0915 11.0293 18.1289C10.5791 18.1657 10.022 18.165 9.33301 18.165H6.5C5.81091 18.165 5.25395 18.1657 4.80371 18.1289C4.40306 18.0962 4.04235 18.031 3.70606 17.8867L3.56348 17.8203C3.04244 17.5548 2.60585 17.151 2.30176 16.6553L2.17969 16.4365C1.98788 16.0599 1.90851 15.6541 1.87109 15.1963C1.83431 14.746 1.83496 14.1891 1.83496 13.5V10.667C1.83496 9.978 1.83432 9.42091 1.87109 8.9707C1.90851 8.5127 1.98772 8.10625 2.17969 7.72949L2.30176 7.51172C2.60586 7.0159 3.04236 6.6122 3.56348 6.34668L3.70606 6.28027C4.04237 6.136 4.40303 6.07083 4.80371 6.03809C5.14051 6.01057 5.53708 6.00551 6.00391 6.00391C6.00551 5.53708 6.01057 5.14051 6.03809 4.80371C6.0755 4.34588 6.15483 3.94012 6.34668 3.56348L6.46875 3.34473C6.77282 2.84912 7.20856 2.44514 7.72949 2.17969L7.87207 2.11328C8.20855 1.96886 8.56979 1.90385 8.9707 1.87109C9.42091 1.83432 9.978 1.83496 10.667 1.83496H13.5C14.1891 1.83496 14.746 1.83431 15.1963 1.87109C15.6541 1.90851 16.0599 1.98788 16.4365 2.17969L16.6553 2.30176C17.151 2.60585 17.5548 3.04244 17.8203 3.56351L17.8867 3.70608C18.031 4.04235 18.0962 4.40306 18.1289 4.80371C18.1657 5.25395 18.165 5.81091 18.165 6.5V9.33301Z"></path></svg> Copy
@@ -287,21 +596,12 @@ function addMessage(
     );
     content.innerHTML = "*(No text provided)*"; // Placeholder for empty text
   } else {
-    content.innerHTML = marked.parse(text); // Parse markdown content
+    content.innerHTML = type === "bot" ? parseMarkdownWithMath(text) : marked.parse(text);
+    if (type === "bot") postProcessBotContent(content);
   }
   msg.appendChild(content);
-
-  // Render math with KaTeX if available
-  if (window.katex && type === "bot") {
-    renderMathInElement(content, {
-      delimiters: [
-        {left: '$$', right: '$$', display: true},
-        {left: '$', right: '$', display: false},
-        {left: '\\(', right: '\\)', display: false},
-        {left: '\\[', right: '\\]', display: true}
-      ],
-      throwOnError: false
-    });
+  if (type === "bot") {
+    renderKatexForElement(content);
   }
 
   // Append optional content (e.g., uploaded image or generated images)
@@ -333,21 +633,6 @@ function addMessage(
       block.style.color = "var(--code-text-color)";
     }
   });
-  
-  // Render all math on page
-  if (window.katex) {
-    document.querySelectorAll(".chat-message").forEach((msg) => {
-      renderMathInElement(msg, {
-        delimiters: [
-          {left: '$$', right: '$$', display: true},
-          {left: '$', right: '$', display: false},
-          {left: '\\(', right: '\\)', display: false},
-          {left: '\\[', right: '\\]', display: true}
-        ],
-        throwOnError: false
-      });
-    });
-  }
 }
 
 // Function to simulate typing effect for bot messages
@@ -359,6 +644,273 @@ let currentBotMessageFullText = ""; // Accumulates the full text for saving/acti
 
 // Global/module-level declaration for sentence detector
 const sentenceRegex = /[^.!?]+[.!?]+/g; // Moved to global scope
+
+// Weak topic detection
+async function checkAndShowWeakTopicBanner() {
+  try {
+    // Check if we've already shown the banner in the last 2 hours
+    const lastShown = localStorage.getItem('weakTopicBannerLastShown');
+    const now = Date.now();
+    if (lastShown && (now - parseInt(lastShown)) < 2 * 60 * 60 * 1000) {
+      console.log('[WeakTopic] Banner shown recently, skipping');
+      return; // Don't show if shown in last 2 hours
+    }
+
+    const response = await fetch('/weak_topics');
+    console.log('[WeakTopic] Fetched /weak_topics, status:', response.status);
+
+    if (!response.ok) {
+      console.log('[WeakTopic] Endpoint returned error:', response.status);
+      return; // Silently fail if endpoint unavailable
+    }
+
+    const data = await response.json();
+    console.log('[WeakTopic] Response data:', data);
+
+    if (!data.weak_topics || data.weak_topics.length === 0) {
+      console.log('[WeakTopic] No weak topics detected');
+      return; // No weak topics detected
+    }
+
+    console.log('[WeakTopic] Showing banner for:', data.weak_topics[0]);
+    // Show the weak topic banner
+    showWeakTopicBanner(data);
+  } catch (error) {
+    console.log('[WeakTopic] Error:', error);
+  }
+}
+
+function showWeakTopicBanner(weakTopicData) {
+  // Map chapter keys to display names
+  const chapterNames = {
+    "sets": "Set Theory",
+    "arithmetic": "Arithmetic Progression",
+    "algebra": "Algebra & Quadratic Equations",
+    "geometry": "Geometry",
+    "trigonometry": "Trigonometry",
+    "statistics": "Statistics & Probability",
+    "exam_strategy": "Exam Strategies"
+  };
+
+  const weakTopic = weakTopicData.weak_topics[0]; // First/most repeated weak topic
+  const displayName = chapterNames[weakTopic] || weakTopic;
+  const count = weakTopicData.repetition_count[weakTopic] || 0;
+
+  // Remove existing banner if present
+  const existingBanner = document.getElementById('weak-topic-banner');
+  if (existingBanner) {
+    existingBanner.remove();
+  }
+
+  // Create banner
+  const banner = document.createElement('div');
+  banner.id = 'weak-topic-banner';
+  banner.className = 'weak-topic-banner';
+  banner.innerHTML = `
+    <div class="weak-topic-banner-content">
+      <span id="weak-topic-message">
+        💡 You've practiced <strong>${displayName}</strong> ${count} times. Want a concept explainer instead?
+      </span>
+      <div class="weak-topic-banner-buttons">
+        <button id="weak-topic-accept" class="weak-topic-btn weak-topic-btn--accept">
+          Yes, explain the concept
+        </button>
+        <button id="weak-topic-dismiss" class="weak-topic-btn weak-topic-btn--dismiss">
+          Dismiss
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Insert banner at the top of chatbox
+  const chatbox = document.getElementById('chatbox');
+  if (chatbox && chatbox.firstChild) {
+    chatbox.insertBefore(banner, chatbox.firstChild);
+  } else if (chatbox) {
+    chatbox.appendChild(banner);
+  }
+
+  // Add event listeners
+  const acceptBtn = document.getElementById('weak-topic-accept');
+  const dismissBtn = document.getElementById('weak-topic-dismiss');
+
+  if (acceptBtn) {
+    acceptBtn.onclick = () => {
+      handleWeakTopicAccepted(weakTopic, displayName);
+    };
+  }
+
+  if (dismissBtn) {
+    dismissBtn.onclick = () => {
+      // Remember dismissal for 2 hours
+      localStorage.setItem('weakTopicBannerLastShown', Date.now().toString());
+      banner.remove();
+    };
+  }
+
+  // Auto-dismiss after 8 seconds if not interacted
+  setTimeout(() => {
+    if (banner.parentNode) {
+      localStorage.setItem('weakTopicBannerLastShown', Date.now().toString());
+      banner.remove();
+    }
+  }, 8000);
+}
+
+function handleWeakTopicAccepted(weakTopic, displayName) {
+  // Mark as shown for 2 hours
+  localStorage.setItem('weakTopicBannerLastShown', Date.now().toString());
+
+  // Remove banner
+  const banner = document.getElementById('weak-topic-banner');
+  if (banner) {
+    banner.remove();
+  }
+
+  // Get mode selector and set to deepthink (more suitable for concept explanation)
+  const modelDeepThinkRadio = document.getElementById('modelDeepThink');
+  const modelGeneralRadio = document.getElementById('modelGeneral');
+  if (modelDeepThinkRadio) {
+    modelDeepThinkRadio.checked = true;
+  }
+
+  // Pre-populate input with concept explanation request
+  const textInput = document.getElementById('text-input');
+  if (textInput) {
+    textInput.value = `Explain ${displayName} from basics`;
+    textInput.focus();
+    textInput.style.height = "auto";
+    textInput.style.height = textInput.scrollHeight + "px";
+
+    // Auto-submit after brief delay
+    setTimeout(() => {
+      const sendBtn = document.getElementById('send-btn');
+      if (sendBtn && sendBtn.style.display !== 'none') {
+        sendBtn.click();
+      }
+    }, 300);
+  }
+}
+
+// Update learning progress bar
+async function updateLearningProgress() {
+  try {
+    const response = await fetch('/user_stats');
+    if (!response.ok) return;
+
+    const stats = await response.json();
+    if (!stats) return;
+
+    // Update chapter count
+    const chaptersStudied = stats.chapters_studied ? stats.chapters_studied.length : 0;
+    const totalChapters = 7; // Total chapters in curriculum
+    const chaptersElement = document.getElementById('chapters-studied-count');
+    if (chaptersElement) {
+      chaptersElement.textContent = `${chaptersStudied}/${totalChapters}`;
+    }
+
+    // Calculate questions this week
+    const questionsThisWeek = stats.total_questions_asked || 0; // Simplified for now
+    const questionsElement = document.getElementById('questions-this-week');
+    if (questionsElement) {
+      questionsElement.textContent = questionsThisWeek;
+    }
+
+    // Update progress bar
+    const progressPercent = (chaptersStudied / totalChapters) * 100;
+    const progressBar = document.getElementById('chapter-progress-bar');
+    const progressPercentElement = document.getElementById('chapter-progress-percent');
+
+    if (progressBar) {
+      progressBar.style.width = `${progressPercent}%`;
+    }
+    if (progressPercentElement) {
+      progressPercentElement.textContent = `${Math.round(progressPercent)}%`;
+    }
+  } catch (error) {
+    console.log('[Progress] Could not update learning progress:', error);
+  }
+}
+
+// Update chapter checklist
+async function updateChapterChecklist() {
+  try {
+    const response = await fetch('/user_stats');
+    if (!response.ok) return;
+
+    const stats = await response.json();
+    if (!stats) return;
+
+    const chapterNames = {
+      "sets": "Set Theory",
+      "arithmetic": "Arithmetic Progression",
+      "algebra": "Algebra & Quadratic Equations",
+      "geometry": "Geometry",
+      "trigonometry": "Trigonometry",
+      "statistics": "Statistics & Probability",
+      "exam_strategy": "Exam Strategies"
+    };
+
+    const allChapters = ["sets", "arithmetic", "algebra", "geometry", "trigonometry", "statistics", "exam_strategy"];
+    const studiedChapters = stats.chapters_studied || [];
+    const frequency = stats.chapter_frequency || {};
+
+    const checklist = document.getElementById('chapter-checklist-list');
+    if (!checklist) return;
+
+    checklist.innerHTML = '';
+
+    allChapters.forEach(chapter => {
+      const isStudied = studiedChapters.includes(chapter);
+      const count = frequency[chapter] || 0;
+
+      // Determine icon
+      let icon = '❌'; // Not studied
+      if (count === 0) {
+        icon = '❌';
+      } else if (count === 1) {
+        icon = '⚠️';
+      } else if (count >= 2) {
+        icon = '✅';
+      }
+
+      const item = document.createElement('div');
+      item.className = 'chapter-checklist-item';
+      item.innerHTML = `
+        <span class="chapter-checklist-icon">${icon}</span>
+        <span class="chapter-checklist-name">${chapterNames[chapter] || chapter}</span>
+        ${count > 0 ? `<span class="chapter-checklist-count">${count}</span>` : ''}
+      `;
+
+      item.onclick = () => {
+        // Pre-fill input with chapter topic
+        const textInput = document.getElementById('text-input');
+        if (textInput) {
+          textInput.value = `Help me with ${chapterNames[chapter]}`;
+          textInput.focus();
+          textInput.style.height = "auto";
+          textInput.style.height = textInput.scrollHeight + "px";
+        }
+      };
+
+      checklist.appendChild(item);
+    });
+  } catch (error) {
+    console.log('[Checklist] Could not update chapter checklist:', error);
+  }
+}
+
+function toggleChapterChecklist() {
+  const btn = document.getElementById('toggle-checklist-btn');
+  const list = document.getElementById('chapter-checklist-list');
+
+  if (btn && list) {
+    const isHidden = list.style.display === 'none';
+    list.style.display = isHidden ? 'flex' : 'none';
+    btn.classList.toggle('collapsed', isHidden);
+    localStorage.setItem('chapterChecklistCollapsed', isHidden);
+  }
+}
 
 function createStreamingBotMessage(timestamp = new Date()) {
   const chatbox = document.getElementById("chatbox");
@@ -395,32 +947,23 @@ function createStreamingBotMessage(timestamp = new Date()) {
   sentenceRegex.lastIndex = 0; // Reset regex state for new message
 }
 
+
 async function appendToStreamingBotMessage(chunk) {
   if (!currentBotMessageContentDiv) {
     console.error("No active bot message element to append to.");
     return;
   }
   currentBotMessageFullText += chunk;
-  currentBotMessageContentDiv.innerHTML = marked.parse(currentBotMessageFullText);
+  currentBotMessageContentDiv.innerHTML = parseMarkdownWithMath(currentBotMessageFullText);
   
   // Highlight code blocks
   currentBotMessageContentDiv.querySelectorAll("pre code").forEach((block) => {
     try { hljs.highlightElement(block); }
     catch (e) { block.style.color = "var(--code-text-color)"; }
   });
-  
-  // Render math with KaTeX if available
-  if (window.katex) {
-    renderMathInElement(currentBotMessageContentDiv, {
-      delimiters: [
-        {left: '$$', right: '$$', display: true},
-        {left: '$', right: '$', display: false},
-        {left: '\\(', right: '\\)', display: false},
-        {left: '\\[', right: '\\]', display: true}
-      ],
-      throwOnError: false
-    });
-  }
+  // NOTE: Do NOT call renderKatexForElement here during streaming.
+  // Incomplete LaTeX delimiters mid-stream cause KaTeX parse errors (red text).
+  // KaTeX is called once in finalizeStreamingBotMessage after the full text arrives.
   
   scrollToBottom();
 }
@@ -433,24 +976,16 @@ async function finalizeStreamingBotMessage(image_urls = []) {
   }
 
   if (currentBotMessageContentDiv && currentBotMessageFullText) {
-    currentBotMessageContentDiv.innerHTML = marked.parse(currentBotMessageFullText);
+    // Full clean re-parse from raw text (wipes any partial mid-stream HTML)
+    currentBotMessageContentDiv.innerHTML = parseMarkdownWithMath(currentBotMessageFullText);
     currentBotMessageContentDiv.querySelectorAll("pre code").forEach((block) => {
       try { hljs.highlightElement(block); }
       catch (e) { block.style.color = "var(--code-text-color)"; }
     });
-    
-    // Render math with KaTeX if available
-    if (window.katex) {
-      renderMathInElement(currentBotMessageContentDiv, {
-        delimiters: [
-          {left: '$$', right: '$$', display: true},
-          {left: '$', right: '$', display: false},
-          {left: '\\(', right: '\\)', display: false},
-          {left: '\\[', right: '\\]', display: true}
-        ],
-        throwOnError: false
-      });
-    }
+    // Single KaTeX pass on the fully-complete text — no more red errors
+    renderKatexForElement(currentBotMessageContentDiv);
+    // Rich visuals: solution cards + mermaid diagrams
+    postProcessBotContent(currentBotMessageContentDiv);
   }
 
   if (image_urls && image_urls.length > 0) {
@@ -469,6 +1004,29 @@ async function finalizeStreamingBotMessage(image_urls = []) {
   if (currentBotMessageFullText.length > 100) {
     const messageActionsDiv = document.createElement("div");
     messageActionsDiv.className = "message-actions";
+
+    // ===== COPY ANSWER BUTTON (exam_mode only) =====
+    // Exam mode answers are meant to be copy-pasted straight into a
+    // student's notebook, so give them one clean click instead of making
+    // them manually select text around the ✓ headers.
+    if (window.lastResponseMode === "exam_mode") {
+      const answerTextForCopy = currentBotMessageFullText; // snapshot now - currentBotMessageFullText is reset below, before the user ever clicks
+      const copyAnswerButton = document.createElement("button");
+      copyAnswerButton.className = "message-action-btn";
+      copyAnswerButton.innerHTML = '<i class="fas fa-copy" aria-hidden="true"></i> Copy Answer';
+      copyAnswerButton.onclick = () => {
+        const plainText = formatExamAnswerForCopy(answerTextForCopy);
+        navigator.clipboard.writeText(plainText).then(() => {
+          const original = copyAnswerButton.innerHTML;
+          copyAnswerButton.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Copied!';
+          setTimeout(() => { copyAnswerButton.innerHTML = original; }, 2000);
+        }).catch((err) => {
+          console.error("Copy Answer failed:", err);
+        });
+      };
+      messageActionsDiv.appendChild(copyAnswerButton);
+    }
+
     const summarizeButton = document.createElement("button");
     summarizeButton.className = "message-action-btn";
     summarizeButton.innerHTML = '<i class="fas fa-sparkle" aria-hidden="true"></i> Summarize';
@@ -489,6 +1047,15 @@ async function finalizeStreamingBotMessage(image_urls = []) {
   currentBotMessageFullText   = "";
   sentenceRegex.lastIndex     = 0;
   scrollToBottom();
+
+  // Check for weak topics after message completes
+  await checkAndShowWeakTopicBanner();
+
+  // Update learning progress after message completes
+  await updateLearningProgress();
+
+  // Update chapter checklist after message completes
+  await updateChapterChecklist();
 }
 
 
@@ -524,8 +1091,26 @@ async function askAI(instruction, modelChoice, performSearch = false, isRegenera
       // First check if we're in manual mode (user selected radio button)
       const modelDeepThinkRadio = document.getElementById("modelDeepThink");
       const modelGeneralRadio = document.getElementById("modelGeneral");
+      const modelExamRadio = document.getElementById("modelExam");
+      const modelForumReplyRadio = document.getElementById("modelForumReply");
+      const deepthinkToggle = document.getElementById("deepthink-toggle");
+      const examToggle = document.getElementById("exam-toggle");
+      const forumReplyToggle = document.getElementById("forum-reply-toggle");
+      const isMathMode =
+        (modelDeepThinkRadio && modelDeepThinkRadio.checked) ||
+        (deepthinkToggle && deepthinkToggle.getAttribute("data-active") === "true");
+      const isExamMode =
+        (modelExamRadio && modelExamRadio.checked) ||
+        (examToggle && examToggle.getAttribute("data-active") === "true");
+      const isForumReplyMode =
+        (modelForumReplyRadio && modelForumReplyRadio.checked) ||
+        (forumReplyToggle && forumReplyToggle.getAttribute("data-active") === "true");
       
-      if (modelDeepThinkRadio && modelDeepThinkRadio.checked) {
+      if (isExamMode) {
+          backendMode = 'exam_mode'; // Exam / topper-style mode
+      } else if (isForumReplyMode) {
+          backendMode = 'forum_reply_mode'; // Compact forum-comment style
+      } else if (isMathMode) {
           backendMode = 'deepthink'; // Solve mode
       } else if (modelGeneralRadio && modelGeneralRadio.checked) {
           backendMode = 'normal'; // Normal mode
@@ -537,6 +1122,7 @@ async function askAI(instruction, modelChoice, performSearch = false, isRegenera
           // Auto-detect mode
           backendMode = detectIfNeedsSolveMode(instruction) ? 'deepthink' : 'normal';
       }
+      window.lastResponseMode = backendMode; // used by finalizeStreamingBotMessage to show Copy Answer only for exam_mode
       
       formData.append("model_choice", backendMode);
       formData.append("web_search", performSearch);
@@ -550,6 +1136,12 @@ async function askAI(instruction, modelChoice, performSearch = false, isRegenera
       });
 
       if (!response.ok) {
+          if (response.status === 429) {
+            showLimitReachedUI();
+            loader.style.display = "none";
+            showSendButton();
+            return;
+          }
           const errorText = await response.text();
           throw new Error(
               `Server error: ${response.status} ${response.statusText} - ${errorText}`
@@ -687,6 +1279,8 @@ async function uploadImage(file, caption) {
     // ✅ ADD MODEL CHOICE - CRITICAL FOR PIPELINE
     const modelChoice = document.querySelector('input[name="modelChoice"]:checked').value;
     formData.append("model_choice", modelChoice);
+    window.lastResponseMode = modelChoice; // used by finalizeStreamingBotMessage to show Copy Answer only for exam_mode
+    console.log(`[UPLOAD_IMAGE] Sending model_choice="${modelChoice}" to /upload_image`);
 
     const response = await fetch(`${window.location.origin}/upload_image`, {
       method: "POST",
@@ -695,6 +1289,16 @@ async function uploadImage(file, caption) {
     });
 
     loader.style.display = "none";
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        showLimitReachedUI();
+        showSendButton();
+        return;
+      }
+      const errText = await response.text();
+      throw new Error(`Server error ${response.status}: ${errText}`);
+    }
 
     // ✅ NEW: Show the extraction pipeline clearly
     createStreamingBotMessage(new Date());
@@ -1073,6 +1677,9 @@ window.startNewChat = async function (isInitialLoad = false) {
         <span>How can I help you?</span>
 `;
       chatbox.appendChild(placeholderDiv);
+
+      // Load personalized welcome greeting
+      await loadWelcomeGreeting(placeholderDiv);
 
       // Reset input field
       textInput.value = "";
@@ -1588,8 +2195,9 @@ async function updateChatHistory(options = {}) {
 async function loadChat(id) {
   const chatbox = document.getElementById("chatbox");
   const newChatPlaceholder = document.getElementById("new-chat-placeholder");
+  // Only reset the auto-name flag when switching to a DIFFERENT chat
+  if (id !== currentChatId) chatAutoNamed = false;
   currentChatId = id;
-  chatAutoNamed = false; // Reset auto-name flag when loading different chat
   localStorage.setItem("lastChatId", currentChatId);
   chatbox.innerHTML = ""; // Clear chatbox before loading new chat
 
@@ -1675,65 +2283,58 @@ async function loadChat(id) {
 // Track if current chat has been auto-named to avoid renaming multiple times
 let chatAutoNamed = false;
 
-// Auto-name chat based on first user message (Claude-like)
+// Auto-name chat based on first user message (ChatGPT-like)
 async function autoNameChat(userMessage) {
-  // Only auto-name once per chat
   if (chatAutoNamed || !currentChatId) return;
-  
+
+  // Lock immediately so concurrent calls can't slip through
+  chatAutoNamed = true;
+
   try {
-    // Generate a concise, meaningful title from the first message
-    let title = userMessage.substring(0, 60).trim();
-    
-    // Remove common question words/prefixes
-    title = title.replace(/^(ask|tell|what|how|can|do|is|explain|help|need|make|create|write|generate|solve|find|give|show|describe|analyze|summarize|code|debug|fix|build|design)\s+/i, '').trim();
-    
-    // If too short after cleanup, use original beginning
-    if (title.length < 5) {
-      title = userMessage.substring(0, 40).trim();
-    }
-    
-    // Truncate to reasonable length
-    if (title.length > 50) {
-      title = title.substring(0, 50).trim() + '...';
-    }
-    
-    // Only proceed if we have a meaningful title
-    if (title && title.length > 2) {
-      console.log(`[AUTO-NAME] Attempting to rename chat "${currentChatId}" to: "${title}"`);
-      
-      try {
-        const renameResponse = await fetch(
-          `${window.location.origin}/rename_chat/${encodeURIComponent(currentChatId)}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ new_title: title }),
-          }
-        );
-        
-        const responseData = await renameResponse.json().catch(() => ({}));
-        
-        if (renameResponse.ok && responseData.status === "success") {
-          console.log(`[AUTO-NAME] ✓ Chat renamed successfully to: "${title}"`);
-          chatAutoNamed = true;
-          
-          // Update sidebar immediately with new title
-          setTimeout(() => {
-            updateChatHistory();
-          }, 200);
-        } else {
-          console.log(`[AUTO-NAME] Server responded but title may not have been saved:`, responseData);
-          chatAutoNamed = true; // Mark as attempted even if unclear
-        }
-      } catch (fetchErr) {
-        console.log(`[AUTO-NAME] Fetch error:`, fetchErr.message);
-        // Don't mark as named in case it's a network error and we should retry
+    // Step 1: Generate smart title from backend
+    const genResponse = await fetch(`${window.location.origin}/generate_chat_title`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ first_message: userMessage }),
+    });
+
+    if (!genResponse.ok) return;
+
+    const genData = await genResponse.json();
+    const title = (genData.title || "").trim();
+    if (!title || title === "New Chat") return;
+
+    // Step 2: Save the title to backend
+    const renameResp = await fetch(
+      `${window.location.origin}/rename_chat/${encodeURIComponent(currentChatId)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_title: title }),
       }
+    );
+
+    if (!renameResp.ok) return;
+
+    const renameData = await renameResp.json();
+    if (renameData.status !== "success") return;
+
+    // Step 3: Update sidebar immediately — no full reload, just patch the DOM
+    const chatLink = document.querySelector(
+      `.chat-link[data-chat-id="${currentChatId}"]`
+    );
+    if (chatLink) {
+      const titleSpan = chatLink.querySelector("span");
+      if (titleSpan) titleSpan.textContent = title;
+      chatLink.setAttribute("data-chat-title", title);
     }
+
+    // Step 4: Refresh sidebar list only (skipLoadCurrent avoids resetting chatAutoNamed)
+    await updateChatHistory({ skipLoadCurrent: true });
+
   } catch (err) {
-    console.log(`[AUTO-NAME] Error (non-critical):`, err.message);
+    console.error(`[AUTO-NAME] Error:`, err);
+    // chatAutoNamed stays true so we don't retry on every message
   }
 }
 
@@ -1877,12 +2478,130 @@ async function deleteChat(chatId, chatTitle) {
   if (confirmModal) confirmModal.style.display = "flex";
 }
 
+// Fetch and display personalized welcome greeting with quick suggestion chips
+async function loadWelcomeGreeting(placeholderDiv) {
+  try {
+    const response = await fetch('/user_info');
+    if (!response.ok) return; // Silently fail if not authenticated
+
+    const userInfo = await response.json();
+    const stats = userInfo.stats || {};
+    const welcome = userInfo.welcome || {};
+    const weakTopics = userInfo.weak_topics || {};
+
+    if (!stats || !stats.chapters_studied) return;
+
+    // Map chapter keys to display names
+    const chapterNames = {
+      "sets": "Set Theory",
+      "arithmetic": "Arithmetic Progression",
+      "algebra": "Algebra & Quadratic Equations",
+      "geometry": "Geometry",
+      "trigonometry": "Trigonometry",
+      "statistics": "Statistics & Probability",
+      "exam_strategy": "Exam Strategies"
+    };
+
+    let chipsHTML = '';
+
+    // 1. Continue with last chapter (if exists)
+    if (stats.last_chapter) {
+      const displayName = chapterNames[stats.last_chapter] || stats.last_chapter;
+      chipsHTML += `
+        <button class="welcome-card welcome-card--continue" onclick="submitSuggestionText('Help me with ${displayName}', event)">
+          <span class="welcome-card-icon">📚</span>
+          <div class="welcome-card-text">
+            <div class="welcome-card-label">Continue</div>
+            <div class="welcome-card-topic">${displayName}</div>
+          </div>
+        </button>
+      `;
+    }
+
+    // 2. Study urgent (high-value unstudied) topic (if exists)
+    if (welcome.urgent_topic && welcome.urgent_topic !== stats.last_chapter) {
+      const displayName = chapterNames[welcome.urgent_topic] || welcome.urgent_topic;
+      chipsHTML += `
+        <button class="welcome-card welcome-card--learn" onclick="submitSuggestionText('Explain ${displayName}', event)">
+          <span class="welcome-card-icon">⭐</span>
+          <div class="welcome-card-text">
+            <div class="welcome-card-label">Start Learning</div>
+            <div class="welcome-card-topic">${displayName}</div>
+          </div>
+        </button>
+      `;
+    }
+
+    // 3. Practice weak topic (if 3+ questions on it)
+    if (weakTopics.weak_topics && weakTopics.weak_topics.length > 0) {
+      const weakTopic = weakTopics.weak_topics[0];
+      const displayName = chapterNames[weakTopic] || weakTopic;
+      const count = weakTopics.repetition_count[weakTopic] || 0;
+      chipsHTML += `
+        <button class="welcome-card welcome-card--practice" onclick="submitSuggestionText('Practice ${displayName} problems', event)">
+          <span class="welcome-card-icon">💪</span>
+          <div class="welcome-card-text">
+            <div class="welcome-card-label">Practice More</div>
+            <div class="welcome-card-topic">${displayName} <span class="count">(${count})</span></div>
+          </div>
+        </button>
+      `;
+    }
+
+    // Stats line — only show if user has activity
+    let statsText = '';
+    if (stats.total_questions_asked > 0) {
+      statsText = `<p class="welcome-stats-text">${stats.chapters_studied.length} chapters · ${stats.total_questions_asked} questions</p>`;
+    }
+
+    // Get greeting from welcome message
+    const greeting = welcome.greeting || 'Welcome back!';
+
+    // Replace placeholder content — keep the same visual structure as the default placeholder
+    placeholderDiv.innerHTML = `
+      <img src="/static/images/vexara-new1-removebg-preview.png" alt="V" />
+      <span>${greeting}</span>
+      ${statsText}
+      <div class="welcome-cards-row">
+        ${chipsHTML}
+      </div>
+    `;
+  } catch (error) {
+    console.log('[Welcome] Could not load personalized greeting:', error);
+    // Fall back to default placeholder
+  }
+}
+
+// Helper function to insert suggestion text and optionally submit
+function submitSuggestionText(text, event) {
+  if (event) event.preventDefault();
+
+  const textInput = document.getElementById("text-input");
+  if (textInput) {
+    textInput.value = text;
+    textInput.focus();
+    textInput.style.height = "auto";
+    textInput.style.height = textInput.scrollHeight + "px";
+
+    // Auto-submit after a brief delay for UX (shows the text being filled in)
+    setTimeout(() => {
+      const sendBtn = document.getElementById("send-btn");
+      if (sendBtn && sendBtn.style.display !== "none") {
+        sendBtn.click();
+      }
+    }, 300);
+  }
+}
+
 // Initialize the app on DOMContentLoaded
 document.addEventListener("DOMContentLoaded", async function () {
   // Apply dark mode if previously enabled
   if (localStorage.getItem("darkMode") === "enabled") {
     document.body.classList.add("dark-mode");
   }
+
+  // Restore limit-reached banner if it was active today
+  checkPersistedLimitState();
 
   // Highlight all existing code blocks on load
   hljs.highlightAll();
@@ -2417,15 +3136,15 @@ document.addEventListener("DOMContentLoaded", async function () {
             );
             const codeMessage = document.createElement("div");
             codeMessage.className = `chat-message bot-message pulse`;
-            const codeContentDiv = document.createElement("div");
-            codeContentDiv.className = "message-content";
-            codeContentDiv.innerHTML = marked.parse(
-              `\`\`\`html\n${htmlCode}\n\`\`\``
-            );
-            codeMessage.appendChild(codeContentDiv);
-            document.getElementById("chatbox").appendChild(codeMessage);
-            scrollToBottom();
-            hljs.highlightAll();
+    const codeContentDiv = document.createElement("div");
+    codeContentDiv.className = "message-content";
+    codeContentDiv.innerHTML = marked.parse(
+      `\`\`\`html\n${htmlCode}\n\`\`\``
+    );
+    codeMessage.appendChild(codeContentDiv);
+    document.getElementById("chatbox").appendChild(codeMessage);
+    scrollToBottom();
+    hljs.highlightAll();
 
             if (isVoiceTalkActive)
               speakText(
@@ -2568,7 +3287,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     await updateChatHistory(); // Load existing chat history or start new chat
   }
 
-  // Fetch user info (assuming a /user_info endpoint)
+  // Fetch user info with personalization data
   fetch("/user_info")
     .then((response) => response.json())
     .then((data) => {
@@ -2583,8 +3302,43 @@ document.addEventListener("DOMContentLoaded", async function () {
       } else {
         if (userInfoButton) userInfoButton.style.display = "none";
       }
+
+      // Store personalization data for use in welcome greeting
+      if (data.stats) {
+        window.userStats = data.stats;
+      }
+      if (data.welcome) {
+        window.userWelcome = data.welcome;
+      }
+      if (data.weak_topics) {
+        window.userWeakTopics = data.weak_topics;
+      }
     })
     .catch((error) => console.error("Error fetching user info:", error));
+
+  // Load initial learning progress
+  await updateLearningProgress();
+
+  // Load initial chapter checklist
+  await updateChapterChecklist();
+
+  // Restore checklist collapsed state from localStorage
+  const isCollapsed = localStorage.getItem('chapterChecklistCollapsed') === 'true';
+  const toggleBtn = document.getElementById('toggle-checklist-btn');
+  const checklist = document.getElementById('chapter-checklist-list');
+  if (isCollapsed && toggleBtn && checklist) {
+    checklist.style.display = 'none';
+    toggleBtn.classList.add('collapsed');
+  }
+
+  // Add event listener for checklist toggle
+  const toggleChecklistBtn = document.getElementById('toggle-checklist-btn');
+  if (toggleChecklistBtn) {
+    toggleChecklistBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleChapterChecklist();
+    });
+  }
 
   // Initial desktop sidebar state
   if (window.innerWidth > 768) {
@@ -2952,7 +3706,43 @@ async function askAI(
 
     formData.append("instruction", finalInstruction);
     formData.append("chat_id", currentChatId);
-    formData.append("model_choice", modelChoice);
+
+    let backendMode = "auto";
+    const modelDeepThinkRadio = document.getElementById("modelDeepThink");
+    const modelGeneralRadio = document.getElementById("modelGeneral");
+    const modelExamRadio = document.getElementById("modelExam");
+    const modelForumReplyRadio = document.getElementById("modelForumReply");
+    const deepthinkToggle = document.getElementById("deepthink-toggle");
+    const examToggle = document.getElementById("exam-toggle");
+    const forumReplyToggle = document.getElementById("forum-reply-toggle");
+    const isMathMode =
+      (modelDeepThinkRadio && modelDeepThinkRadio.checked) ||
+      (deepthinkToggle && deepthinkToggle.getAttribute("data-active") === "true");
+    const isExamMode =
+      (modelExamRadio && modelExamRadio.checked) ||
+      (examToggle && examToggle.getAttribute("data-active") === "true");
+    const isForumReplyMode =
+      (modelForumReplyRadio && modelForumReplyRadio.checked) ||
+      (forumReplyToggle && forumReplyToggle.getAttribute("data-active") === "true");
+
+    if (isExamMode) {
+      backendMode = "exam_mode";
+    } else if (isForumReplyMode) {
+      backendMode = "forum_reply_mode";
+    } else if (isMathMode) {
+      backendMode = "deepthink";
+    } else if (modelGeneralRadio && modelGeneralRadio.checked) {
+      backendMode = "normal";
+    } else if (currentMode === "solve") {
+      backendMode = "deepthink";
+    } else if (currentMode === "normal") {
+      backendMode = "normal";
+    } else {
+      backendMode = modelChoice || "auto";
+    }
+    window.lastResponseMode = backendMode; // used by finalizeStreamingBotMessage to show Copy Answer only for exam_mode
+
+    formData.append("model_choice", backendMode);
     formData.append("web_search", performSearch);
 
     const response = await fetch(`${window.location.origin}/ask`, {
@@ -3202,8 +3992,11 @@ function editUserMessage(button) {
 
   saveBtn.onclick = () => {
     const newText = editArea.value.trim();
-    if (newText && newText !== currentText) {
-      if (typeof marked !== "undefined") {
+      if (newText && newText !== currentText) {
+      if (messageWrapper.classList.contains("bot-message")) {
+        contentElement.innerHTML = parseMarkdownWithMath(newText);
+        renderKatexForElement(contentElement);
+      } else if (typeof marked !== "undefined") {
         contentElement.innerHTML = marked.parse(newText);
       } else {
         contentElement.innerText = newText;
@@ -3702,3 +4495,384 @@ if ('serviceWorker' in navigator) {
   });
 }
 // Also update the form submission handler to ensure it works with drag-dropped images+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  AGENT DASHBOARD  — profile, goals, study plan, session memory
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── open / close ────────────────────────────────────────────────────────────
+window.openAgentDashboard = function () {
+  const overlay = document.getElementById('agent-dashboard-overlay');
+  if (!overlay) return;
+  overlay.hidden = false;
+  document.body.style.overflow = 'hidden';
+  // Always refresh overview when opening
+  dashLoadOverview();
+};
+
+window.closeAgentDashboard = function () {
+  const overlay = document.getElementById('agent-dashboard-overlay');
+  if (overlay) overlay.hidden = true;
+  document.body.style.overflow = '';
+};
+
+// Close on overlay backdrop click
+document.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('agent-dashboard-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeAgentDashboard();
+    });
+  }
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAgentDashboard();
+  });
+  // Load streak badge on page load
+  dashLoadStreakBadge();
+});
+
+// ── tab switching ────────────────────────────────────────────────────────────
+window.switchDashTab = function (btn, tabName) {
+  // Deactivate all tabs and panels
+  document.querySelectorAll('.agent-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.agent-panel').forEach(p => { p.classList.remove('active'); p.hidden = true; });
+
+  btn.classList.add('active');
+  const panel = document.getElementById('dash-tab-' + tabName);
+  if (panel) { panel.classList.add('active'); panel.hidden = false; }
+
+  // Lazy-load per tab
+  if (tabName === 'goals')     dashLoadGoals();
+  if (tabName === 'session')   dashLoadSession();
+};
+
+// ── streak badge in sidebar ──────────────────────────────────────────────────
+async function dashLoadStreakBadge () {
+  try {
+    const res = await fetch('/agent/profile');
+    if (!res.ok) return;
+    const data = await res.json();
+    const streak = data.profile?.study_streak || 0;
+    const pill = document.getElementById('streak-pill');
+    if (pill && streak > 0) {
+      pill.textContent = '🔥 ' + streak;
+      pill.style.display = '';
+    }
+  } catch (_) {}
+}
+
+// ── Overview tab ─────────────────────────────────────────────────────────────
+async function dashLoadOverview () {
+  const loading = document.getElementById('dash-loading');
+  const content = document.getElementById('dash-overview-content');
+  if (loading) loading.style.display = 'flex';
+  if (content) content.style.display = 'none';
+
+  try {
+    const [profRes, memRes] = await Promise.all([
+      fetch('/agent/profile'),
+      fetch('/agent/memory')
+    ]);
+    const profData = profRes.ok ? await profRes.json() : {};
+    const memData  = memRes.ok  ? await memRes.json()  : {};
+
+    const profile = profData.profile || {};
+    const weakT   = profile.weak_topics   || {};
+    const strongT = profile.strong_topics || {};
+    const goals   = profile.goals         || [];
+
+    // Stats
+    setText('dash-streak',       profile.study_streak   || 0);
+    setText('dash-solved',       profile.total_solved   || 0);
+    const chapCount = Object.keys(profile.chapter_accuracy || {}).length;
+    setText('dash-chapters',     chapCount);
+    setText('dash-goals-count',  goals.length);
+
+    // Weak topics chips
+    renderChips('dash-weak-topics', Object.keys(weakT), 'dash-chip-weak', '⚠ ', 'No weak topics yet — keep studying!');
+
+    // Strong topics chips
+    renderChips('dash-strong-topics', Object.keys(strongT), 'dash-chip-strong', '✓ ', 'No strong topics yet — keep going!');
+
+    // Goals summary chips
+    renderChips('dash-goals-summary', goals, 'dash-chip-goal', '🎯 ', 'No goals set yet — add one in the Goals tab!');
+
+    if (loading) loading.style.display = 'none';
+    if (content) content.style.display = '';
+  } catch (err) {
+    if (loading) loading.innerHTML = '<span style="color:#ef4444">Failed to load profile. Are you logged in?</span>';
+    console.error('[DASH]', err);
+  }
+}
+
+// ── Goals tab ─────────────────────────────────────────────────────────────────
+async function dashLoadGoals () {
+  try {
+    const res = await fetch('/agent/profile');
+    if (!res.ok) return;
+    const data = await res.json();
+    const goals = data.profile?.goals || [];
+    const container = document.getElementById('dash-goals-list');
+    if (!container) return;
+    if (goals.length === 0) {
+      container.innerHTML = '<p class="dash-hint" style="padding:8px 0">No goals yet. Add one below!</p>';
+      return;
+    }
+    container.innerHTML = goals.map(g =>
+      `<div class="dash-goal-item">
+        <span>🎯 ${escapeHtml(g)}</span>
+      </div>`
+    ).join('');
+  } catch (err) { console.error('[DASH goals]', err); }
+}
+
+window.dashAddGoal = async function () {
+  const input = document.getElementById('dash-goal-input');
+  const goal = (input?.value || '').trim();
+  if (!goal) return;
+  try {
+    const res = await fetch('/agent/set_goal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal })
+    });
+    if (res.ok) {
+      input.value = '';
+      await dashLoadGoals();
+      // Refresh streak badge in case profile updated
+      dashLoadStreakBadge();
+    }
+  } catch (err) { console.error('[DASH addGoal]', err); }
+};
+
+// Allow Enter key in goal input
+document.addEventListener('DOMContentLoaded', () => {
+  const gi = document.getElementById('dash-goal-input');
+  if (gi) gi.addEventListener('keydown', e => { if (e.key === 'Enter') dashAddGoal(); });
+});
+
+// ── Study Plan tab ───────────────────────────────────────────────────────────
+window.dashGeneratePlan = async function () {
+  const btn    = document.getElementById('dash-gen-btn');
+  const output = document.getElementById('dash-plan-output');
+  const hint   = document.getElementById('dash-plan-hint');
+  if (!btn || !output) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fi fi-tr-calendar-lines"></i> Generating…';
+  output.textContent = '';
+  if (hint) hint.textContent = 'Analysing your profile…';
+
+  try {
+    const res = await fetch('/study_plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (!res.ok) throw new Error('Server error ' + res.status);
+    const data = await res.json();
+    const planText = data.plan || 'Could not generate plan. Please try again.';
+
+    // Render markdown table and bold headers
+    output.innerHTML = dashRenderMarkdown(planText);
+    if (hint) hint.textContent = 'Your plan is ready! It updates automatically as you study.';
+  } catch (err) {
+    output.textContent = 'Failed to generate plan: ' + err.message;
+    console.error('[DASH plan]', err);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fi fi-tr-calendar-lines"></i> Regenerate Plan';
+  }
+};
+
+// ── Session tab ───────────────────────────────────────────────────────────────
+async function dashLoadSession () {
+  try {
+    const [memRes, toolRes] = await Promise.all([
+      fetch('/agent/memory'),
+      fetch('/agent/tools')
+    ]);
+    const memData  = memRes.ok  ? await memRes.json()  : {};
+    const toolData = toolRes.ok ? await toolRes.json() : {};
+
+    // Session rows
+    setText('dash-sess-image',
+      memData.has_recent_image
+        ? '✅ Yes — "' + (memData.recent_image_caption || '') + '"'
+        : '❌ No recent image');
+    setText('dash-sess-mode',   memData.recent_mode  || '—');
+    setText('dash-sess-topic',  memData.recent_topic || '—');
+    setText('dash-sess-qcount', memData.recent_questions_count || 0);
+    setText('dash-sess-ctx',    memData.context_summary || '—');
+
+    // Tools chips
+    const tools = Object.keys(toolData.tools || {});
+    renderChips('dash-tools-list', tools, 'dash-chip-tool', '', 'No tools registered');
+  } catch (err) { console.error('[DASH session]', err); }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setText (id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function escapeHtml (str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderChips (containerId, items, chipClass, prefix, emptyMsg) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!items || items.length === 0) {
+    el.innerHTML = `<span class="dash-chip-empty">${emptyMsg}</span>`;
+    return;
+  }
+  el.innerHTML = items.map(item =>
+    `<span class="dash-chip ${chipClass}">${prefix}${escapeHtml(item)}</span>`
+  ).join('');
+}
+
+function dashRenderMarkdown (text) {
+  // Basic markdown: bold, table rows, line breaks
+  let html = escapeHtml(text)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^## (.+)$/gm, '<h3 style="margin:12px 0 6px;font-size:14px;color:var(--accent-color)">$1</h3>')
+    .replace(/^### (.+)$/gm, '<h4 style="margin:10px 0 4px;font-size:13px">$1</h4>')
+    .replace(/^\| (.+) \|$/gm, (_, row) => {
+      const cells = row.split(' | ').map(c => `<td style="padding:5px 10px;border:1px solid rgba(128,128,128,0.2)">${c.trim()}</td>`).join('');
+      return `<tr>${cells}</tr>`;
+    })
+    .replace(/(<tr>[\s\S]*?<\/tr>)/g, '<table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px">$1</table>')
+    .replace(/^(- |\* )(.+)$/gm, '<li style="margin:3px 0 3px 16px">$2</li>')
+    .replace(/\n/g, '<br>');
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PERSONAL MEMORY  — open/close/save/extract/clear
+// ═══════════════════════════════════════════════════════════════════════════
+
+window.openPersonalMemory = async function () {
+  // Close user menu dropdown first
+  const dropdown = document.getElementById('user-menu-dropdown');
+  if (dropdown) dropdown.hidden = true;
+
+  const overlay = document.getElementById('personal-memory-overlay');
+  if (!overlay) return;
+  overlay.hidden = false;
+  document.body.style.overflow = 'hidden';
+  await pmemLoad();
+};
+
+window.closePersonalMemory = function () {
+  const overlay = document.getElementById('personal-memory-overlay');
+  if (overlay) overlay.hidden = true;
+  document.body.style.overflow = '';
+};
+
+// Close on backdrop click / Escape (handled by existing dashboard listener)
+document.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('personal-memory-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', e => { if (e.target === overlay) closePersonalMemory(); });
+  }
+
+  // Character count
+  const ta = document.getElementById('pmem-textarea');
+  if (ta) {
+    ta.addEventListener('input', () => {
+      const cc = document.getElementById('pmem-char-count');
+      if (cc) cc.textContent = `${ta.value.length} / 3000`;
+    });
+  }
+});
+
+async function pmemLoad () {
+  try {
+    const res = await fetch('/personal_memory');
+    if (!res.ok) return;
+    const data = await res.json();
+    const ta = document.getElementById('pmem-textarea');
+    const cc = document.getElementById('pmem-char-count');
+    const ts = document.getElementById('pmem-last-updated');
+
+    if (ta) ta.value = data.notes || '';
+    if (cc) cc.textContent = `${(data.notes || '').length} / 3000`;
+    if (ts && data.last_updated) {
+      const d = new Date(data.last_updated * 1000);
+      ts.textContent = 'Last saved: ' + d.toLocaleDateString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+  } catch (err) { console.error('[PMEM]', err); }
+}
+
+window.pmemSave = async function () {
+  const ta  = document.getElementById('pmem-textarea');
+  const btn = document.getElementById('pmem-save-btn');
+  if (!ta || !btn) return;
+
+  const notes = ta.value.trim();
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fi fi-tr-disk"></i> Saving…';
+
+  try {
+    const res = await fetch('/personal_memory/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    });
+    if (res.ok) {
+      btn.innerHTML = '<i class="fi fi-tr-check"></i> Saved!';
+      const ts = document.getElementById('pmem-last-updated');
+      if (ts) ts.textContent = 'Last saved: just now';
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fi fi-tr-disk"></i> Save memory';
+      }, 1800);
+    }
+  } catch (err) {
+    console.error('[PMEM save]', err);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fi fi-tr-disk"></i> Save memory';
+  }
+};
+
+window.pmemExtract = async function () {
+  const btn = document.getElementById('pmem-extract-btn');
+  const ta  = document.getElementById('pmem-textarea');
+  if (!btn) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fi fi-tr-magic-wand"></i> Extracting…';
+
+  try {
+    const res = await fetch('/personal_memory/extract', { method: 'POST' });
+    const data = res.ok ? await res.json() : null;
+
+    if (data?.limit_reached) {
+      alert('Daily limit reached. Please try again tomorrow.');
+    } else if (data?.notes !== undefined) {
+      if (ta) {
+        ta.value = data.notes;
+        const cc = document.getElementById('pmem-char-count');
+        if (cc) cc.textContent = `${data.notes.length} / 3000`;
+      }
+      const ts = document.getElementById('pmem-last-updated');
+      if (ts) ts.textContent = 'Extracted: just now';
+    }
+  } catch (err) {
+    console.error('[PMEM extract]', err);
+    alert('Extraction failed. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fi fi-tr-magic-wand"></i> Extract from chats';
+  }
+};
+
+window.pmemClear = function () {
+  const ta = document.getElementById('pmem-textarea');
+  if (!ta) return;
+  if (!confirm('Clear all personal memory? This cannot be undone.')) return;
+  ta.value = '';
+  const cc = document.getElementById('pmem-char-count');
+  if (cc) cc.textContent = '0 / 3000';
+  // Auto-save the empty state
+  pmemSave();
+};
