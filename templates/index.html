@@ -35,8 +35,10 @@
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-thin-rounded/css/uicons-thin-rounded.css'>
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-straight/css/uicons-regular-straight.css'>
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="
+  if (typeof _flushPendingKatex === 'function') _flushPendingKatex();
+"></script>
 
     <link
       rel="stylesheet"
@@ -83,6 +85,54 @@
       href="https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css"
     />
     <link rel="stylesheet" href="/static/style.css">
+
+    <style>
+      /* ── KaTeX Math Rendering: Clean Display Style ── */
+
+      /* Display-mode equations: centered, large, with breathing room */
+      .message-content .katex-display {
+        display: block;
+        text-align: center;
+        margin: 1.2em 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+
+      /* Scale up display math slightly for readability */
+      .message-content .katex-display > .katex {
+        font-size: 1.15em;
+      }
+
+      /* Inline math: sits naturally in text, no extra spacing */
+      .message-content .katex:not(.katex-display .katex) {
+        font-size: 1.05em;
+      }
+
+      /* Fractions: ensure numerator/denominator are legible */
+      .message-content .katex .mfrac .frac-line {
+        border-bottom-width: 1.5px;
+      }
+
+      /* Boxed answers (\boxed{}) — match the screenshot style */
+      .message-content .katex .boxed,
+      .message-content .katex .fbox {
+        border: 1.5px solid currentColor;
+        padding: 2px 8px;
+        border-radius: 2px;
+      }
+
+      /* Prevent math from overflowing narrow screens */
+      .message-content .katex-html {
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+
+      /* Subtle separator line above display-mode blocks for clarity */
+      .message-content p + .katex-display,
+      .message-content .katex-display + p {
+        margin-top: 0.8em;
+      }
+    </style>
 
   </head>
   <body>
@@ -162,7 +212,14 @@
           <div id="chat-search-results" class="chat-search-results"></div>
         </div>
       </div>
-      
+
+
+      <!-- Agent Dashboard button -->
+      <button id="open-dashboard-btn" class="dashboard-sidebar-btn sidebar-action-btn" type="button" onclick="openAgentDashboard()">
+        <i class="fi fi-tr-user-graduate"></i>
+        <span>My Progress</span>
+        <span id="streak-pill" class="streak-pill" style="display:none"></span>
+      </button>
 
       <div
         id="chat-history-list"
@@ -196,6 +253,19 @@
               <i class="fi fi-tr-feedback" aria-hidden="true"></i>
               <span>Send Feedback</span>
             </a>
+
+            <button
+              class="sidebar-btn user-menu-item"
+              onclick="openPersonalMemory()"
+              title="Personal Memory"
+              aria-label="Personal Memory"
+              type="button"
+              role="menuitem"
+            >
+              <i class="fi fi-tr-brain" aria-hidden="true"></i>
+              <span>Personal Memory</span>
+            </button>
+
             <button
               class="sidebar-btn user-menu-item"
               onclick="toggleDarkMode()"
@@ -249,8 +319,15 @@
         style="display: flex; align-items: center; justify-content: left"
       >
         <h2 style="font-weight: 450; font-style: 'Baskerville'"></h2>
-        <div class="top-bar-title">
-          <i class="fi fi-rr-comment-medical new-chat-btn" onclick="startNewChat()"></i>
+        <!-- Right-side actions: Upgrade (hidden until limit) + New Chat -->
+        <div style="margin-left:auto; display:flex; align-items:center; gap:6px;">
+          <button id="upgrade-btn" class="upgrade-btn" onclick="handleUpgradeClick()" title="Upgrade to Pro">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            Upgrade
+          </button>
+          <div class="top-bar-title">
+            <i class="fi fi-rr-comment-medical new-chat-btn" onclick="startNewChat()"></i>
+          </div>
         </div>
       </div>
 
@@ -291,6 +368,16 @@
           <span>How can I help you?</span>
         </div>
 
+        <!-- Welcome greeting container (populated by loadWelcomeGreeting) -->
+        <div id="welcome-greeting-container" style="display: none;">
+          <!-- Will be populated by JS with greeting and stats -->
+        </div>
+
+        <!-- Welcome suggestion chips container (populated by loadWelcomeGreeting) -->
+        <div id="welcome-suggestion-chips" style="display: none;">
+          <!-- Chips will be inserted here -->
+        </div>
+
         <div
           class="loader"
           id="loader"
@@ -308,6 +395,23 @@
 
       <!-- Input Area at the bottom -->
       <div class="input-area">
+
+        <!-- Limit reached banner — sits right above the input box -->
+        <div id="limit-banner" class="limit-banner" style="display:none;">
+          <div class="limit-banner-inner">
+            <div class="limit-banner-left">
+              <span class="limit-icon">🔒</span>
+              <div>
+                <div class="limit-banner-title">Daily limit reached</div>
+                <div class="limit-banner-sub">Free messages reset at midnight · Come back tomorrow</div>
+              </div>
+            </div>
+            <button class="limit-upgrade-cta" onclick="handleUpgradeClick()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              Upgrade to Pro
+            </button>
+          </div>
+        </div>
         <!-- Image Preview Container -->
         <div
           id="image-preview-container"
@@ -393,7 +497,7 @@
                     style="display: none"
                   />
 
-                  <!-- Visible DeepThink Toggle -->
+                  <!-- Visible DeepThink Toggle (Math Mode) -->
                   <div
                     class="model-option"
                     id="deepthink-toggle"
@@ -413,6 +517,49 @@
                       ></path>
                     </svg>
                     <span >Math</span>
+                  </div>
+
+                  <!-- Exam Mode Toggle -->
+                  <div
+                    class="model-option"
+                    id="exam-toggle"
+                    data-active="false"
+                  >
+                    <svg
+                      width="20"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="icon"
+                    >
+                      <path
+                        d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"
+                      ></path>
+                    </svg>
+                    <span>Exam</span>
+                  </div>
+
+                  <!-- Forum Reply Mode Toggle -->
+                  <div
+                    class="model-option"
+                    id="forum-reply-toggle"
+                    data-active="false"
+                    title="Compact answer formatted for posting as a forum/community reply"
+                  >
+                    <svg
+                      width="20"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="icon"
+                    >
+                      <path
+                        d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"
+                      ></path>
+                    </svg>
+                    <span>Forum</span>
                   </div>
                 </div>
                 <!-- ===== Web Search Toggle (replace your old button with this) ===== -->
@@ -933,8 +1080,17 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.0/marked.min.js"></script>  
-    <script src="/static/bott.js"></script>                  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.0/marked.min.js"></script>
+    <script src="/static/bott.js"></script>
+    
+    <!-- Mermaid DISABLED: Using ASCII flowcharts instead for better stability -->
+    <!-- Mermaid syntax errors were too common with math content. ASCII flowcharts work perfectly. -->
+    <!-- If you need mermaid in the future, uncomment below: -->
+    <!-- <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+      window._mermaid = mermaid;
+    </script> -->
+    
     <script src="/static/local-voice-module.js?v=3"></script>
 <!-- SECOND -->
     <script>
@@ -1136,6 +1292,17 @@ document.addEventListener("DOMContentLoaded", async function () {
       const deepthinkToggle = document.getElementById("deepthink-toggle");
       const generalInput = document.getElementById("modelGeneral");
 
+      // All mode toggles, so activating one can properly deactivate the rest.
+      // Without this, clicking Exam after Math was already on left both
+      // buttons visually "active" while only one radio was actually checked.
+      function deactivateOtherToggles(exceptId) {
+        ["deepthink-toggle", "exam-toggle", "forum-reply-toggle"].forEach((id) => {
+          if (id === exceptId) return;
+          const el = document.getElementById(id);
+          if (el) el.setAttribute("data-active", "false");
+        });
+      }
+
       deepthinkToggle.addEventListener("click", () => {
         const isActive = deepthinkToggle.getAttribute("data-active") === "true";
 
@@ -1146,6 +1313,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           console.log("🔄 Switched back to General Mode");
         } else {
           // Switch ON DeepThink -> create & check a hidden input dynamically
+          deactivateOtherToggles("deepthink-toggle");
           deepthinkToggle.setAttribute("data-active", "true");
 
           // remove old hidden deepthink if exists
@@ -1154,7 +1322,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             deepthinkInput = document.createElement("input");
             deepthinkInput.type = "radio";
             deepthinkInput.name = "modelChoice";
-            deepthinkInput.value = "deep_think";
+            deepthinkInput.value = "deepthink"; // was "deep_think" - backend only recognizes "deepthink"
             deepthinkInput.id = "modelDeepThink";
             deepthinkInput.style.display = "none";
             deepthinkToggle.parentElement.appendChild(deepthinkInput);
@@ -1164,104 +1332,69 @@ document.addEventListener("DOMContentLoaded", async function () {
           console.log("🧠 DeepThink Mode Activated");
         }
       });
-    </script>
-<script>
-  // ═══════════════════════════════════════════════════════════════════
-  //  UPDATED askAI FUNCTION - With Mode Mapping
-  // ═══════════════════════════════════════════════════════════════════
-  
-  async function askAI(instruction, modelChoice, performSearch = false) {
-    const textInput = document.getElementById("text-input");
-    const loader = document.getElementById("loader");
 
-    loader.style.display = "block";
-    showStopButton();
-    stopSpeaking();
+      // ===== EXAM MODE TOGGLE HANDLER =====
+      const examToggle = document.getElementById("exam-toggle");
+      examToggle.addEventListener("click", () => {
+        const isActive = examToggle.getAttribute("data-active") === "true";
 
-    abortController = new AbortController();
-    const signal = abortController.signal;
+        if (isActive) {
+          // Switch OFF Exam
+          examToggle.setAttribute("data-active", "false");
+          generalInput.checked = true;
+          console.log("📝 Exam Mode Disabled");
+        } else {
+          // Switch ON Exam
+          deactivateOtherToggles("exam-toggle");
+          examToggle.setAttribute("data-active", "true");
 
-    try {
-      // ===== MAP FRONTEND MODE TO BACKEND MODE =====
-      let backendMode = 'auto';
-      
-      // Check which mode is active
-      const deepthinkToggle = document.getElementById("deepthink-toggle");
-      const isSolveMode = deepthinkToggle && deepthinkToggle.getAttribute("data-active") === "true";
-      
-      if (isSolveMode) {
-        backendMode = 'deepthink';  // → llama-3.3-70b-versatile on Groq
-        console.log("🧠 Using SOLVE mode (llama-3.3-70b)");
-      } else {
-        backendMode = 'normal';     // → llama-3.1-8b-instant on Groq
-        console.log("💬 Using NORMAL mode (llama-3.1-8b)");
-      }
+          let examInput = document.getElementById("modelExam");
+          if (!examInput) {
+            examInput = document.createElement("input");
+            examInput.type = "radio";
+            examInput.name = "modelChoice";
+            examInput.value = "exam_mode";
+            examInput.id = "modelExam";
+            examInput.style.display = "none";
+            examToggle.parentElement.appendChild(examInput);
+          }
+          examInput.checked = true;
 
-      const formData = new FormData();
-      formData.append("instruction", instruction);
-      formData.append("chat_id", currentChatId);
-      formData.append("model_choice", backendMode);  // Send 'normal' or 'deepthink'
-      formData.append("web_search", performSearch);
-
-      const response = await fetch(`${window.location.origin}/ask`, {
-        method: "POST",
-        body: formData,
-        signal: signal
+          console.log("✍️ Exam Mode Activated");
+        }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Server error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
+      // ===== FORUM REPLY MODE TOGGLE HANDLER =====
+      const forumReplyToggle = document.getElementById("forum-reply-toggle");
+      forumReplyToggle.addEventListener("click", () => {
+        const isActive = forumReplyToggle.getAttribute("data-active") === "true";
 
-      loader.style.display = "none";
-      createStreamingBotMessage(new Date());
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-
-      while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        done = readerDone;
-        const chunk = decoder.decode(value, { stream: true });
-        if (chunk) {
-          await appendToStreamingBotMessage(chunk);
-        }
-      }
-
-      finalizeStreamingBotMessage();
-    } catch (error) {
-      loader.style.display = "none";
-      if (error.name === "AbortError") {
-        console.log("Fetch aborted by user.");
-        if (currentBotMessageContentDiv) {
-          currentBotMessageContentDiv.innerHTML += `<p>*(Response stopped by user)*</p>`;
+        if (isActive) {
+          // Switch OFF Forum Reply
+          forumReplyToggle.setAttribute("data-active", "false");
+          generalInput.checked = true;
+          console.log("💬 Forum Reply Mode Disabled");
         } else {
-          addMessage(`Response stopped by user.`, "bot", null, new Date());
-        }
-      } else {
-        console.error("Error asking AI:", error);
-        if (currentBotMessageContentDiv) {
-          currentBotMessageContentDiv.innerHTML += `<p>Error: ${error.message}</p>`;
-        } else {
-          addMessage(
-            `Sorry, there was an error processing your request: ${error.message}. Please try again.`,
-            "bot", null, new Date()
-          );
-        }
-      }
-      finalizeStreamingBotMessage();
-    } finally {
-      textInput.value = "";
-      textInput.style.height = "auto";
-      textInput.focus();
-      showSendButton();
-      abortController = null;
-    }
-  }
-</script>
+          // Switch ON Forum Reply
+          deactivateOtherToggles("forum-reply-toggle");
+          forumReplyToggle.setAttribute("data-active", "true");
 
+          let forumReplyInput = document.getElementById("modelForumReply");
+          if (!forumReplyInput) {
+            forumReplyInput = document.createElement("input");
+            forumReplyInput.type = "radio";
+            forumReplyInput.name = "modelChoice";
+            forumReplyInput.value = "forum_reply_mode";
+            forumReplyInput.id = "modelForumReply";
+            forumReplyInput.style.display = "none";
+            forumReplyToggle.parentElement.appendChild(forumReplyInput);
+          }
+          forumReplyInput.checked = true;
+
+          console.log("💬 Forum Reply Mode Activated");
+        }
+      });
+    </script>
     <style>
       /* ✅ Web Search Button Active State */
       #web-search-btn.selected {
@@ -1303,14 +1436,30 @@ document.addEventListener("DOMContentLoaded", async function () {
         // Main AI answer
         const answerDiv = document.createElement("div");
         answerDiv.classList.add("answer");
-        answerDiv.innerHTML = content;
+        answerDiv.innerHTML = typeof marked !== "undefined" ? marked.parse(content) : content;
         messageDiv.appendChild(answerDiv);
+
+        if (typeof renderMathInElement === "function") {
+          try {
+            renderMathInElement(answerDiv, {
+              delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true },
+              ],
+              throwOnError: false,
+            });
+          } catch (error) {
+            console.warn("KaTeX rendering failed:", error);
+          }
+        }
 
         // Optional reasoning trace
         if (thinking) {
           const thinkingDiv = document.createElement("div");
           thinkingDiv.classList.add("thinking");
-          thinkingDiv.innerHTML = thinking;
+          thinkingDiv.innerHTML = typeof marked !== "undefined" ? marked.parse(thinking) : thinking;
 
           const toggleBtn = document.createElement("button");
           toggleBtn.classList.add("toggle-thinking");
@@ -1331,7 +1480,200 @@ document.addEventListener("DOMContentLoaded", async function () {
           document.querySelector("#chat-container").scrollHeight;
       }
     </script>
-    
-    
+
+    <!-- ═══════════════════════════════════════════════════════
+         PERSONAL MEMORY MODAL
+    ═══════════════════════════════════════════════════════ -->
+    <div id="personal-memory-overlay" class="agent-overlay" hidden aria-modal="true" role="dialog" aria-label="Personal Memory">
+      <div class="agent-modal pmem-modal">
+
+        <div class="agent-modal-header">
+          <div class="agent-modal-title">
+            <i class="fi fi-tr-brain"></i>
+            <span>Personal Memory</span>
+          </div>
+          <button class="agent-modal-close" onclick="closePersonalMemory()" aria-label="Close">
+            <i class="fi fi-br-cross-small"></i>
+          </button>
+        </div>
+
+        <!-- Info bar -->
+        <div class="pmem-info-bar">
+          <span class="pmem-info-text">
+            Vexara uses this to personalise answers when you ask personal questions.
+            You can paste notes from ChatGPT, Gemini, or any other AI here.
+          </span>
+          <span id="pmem-last-updated" class="pmem-timestamp"></span>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="pmem-toolbar">
+          <button class="pmem-btn pmem-btn-extract" id="pmem-extract-btn" onclick="pmemExtract()">
+            <i class="fi fi-tr-magic-wand"></i>
+            Extract from chats
+          </button>
+          <div style="flex:1"></div>
+          <span id="pmem-char-count" class="pmem-char-count">0 / 3000</span>
+        </div>
+
+        <!-- Editor -->
+        <div class="pmem-editor-wrap">
+          <textarea
+            id="pmem-textarea"
+            class="pmem-textarea"
+            placeholder="Nothing saved yet. Click 'Extract from chats' to auto-fill, or type/paste anything here:&#10;&#10;• My name is Shivam&#10;• Class 10, Kathmandu&#10;• Next test: Science on 20 Jan&#10;• Got 78 in last math term exam&#10;• Goal: SEE A+"
+            maxlength="3000"
+            spellcheck="true"
+          ></textarea>
+        </div>
+
+        <!-- Footer actions -->
+        <div class="pmem-footer">
+          <button class="pmem-btn pmem-btn-clear" onclick="pmemClear()">
+            <i class="fi fi-tr-trash"></i> Clear all
+          </button>
+          <div style="flex:1"></div>
+          <button class="pmem-btn pmem-btn-save" id="pmem-save-btn" onclick="pmemSave()">
+            <i class="fi fi-tr-disk"></i> Save memory
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         AGENT DASHBOARD MODAL
+    ═══════════════════════════════════════════════════════ -->
+    <div id="agent-dashboard-overlay" class="agent-overlay" hidden aria-modal="true" role="dialog" aria-label="My Learning Dashboard">
+      <div class="agent-modal">
+
+        <!-- Header -->
+        <div class="agent-modal-header">
+          <div class="agent-modal-title">
+            <i class="fi fi-tr-user-graduate"></i>
+            <span>My Learning Dashboard</span>
+          </div>
+          <button class="agent-modal-close" onclick="closeAgentDashboard()" aria-label="Close dashboard">
+            <i class="fi fi-br-cross-small"></i>
+          </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="agent-tabs" role="tablist">
+          <button class="agent-tab active" data-tab="overview"   onclick="switchDashTab(this,'overview')"   role="tab">Overview</button>
+          <button class="agent-tab"        data-tab="goals"      onclick="switchDashTab(this,'goals')"      role="tab">Goals</button>
+          <button class="agent-tab"        data-tab="studyplan"  onclick="switchDashTab(this,'studyplan')"  role="tab">Study Plan</button>
+          <button class="agent-tab"        data-tab="session"    onclick="switchDashTab(this,'session')"    role="tab">Session</button>
+        </div>
+
+        <!-- Tab panels -->
+        <div class="agent-modal-body">
+
+          <!-- ── OVERVIEW ── -->
+          <div id="dash-tab-overview" class="agent-panel active">
+            <div id="dash-loading" class="dash-loading">
+              <div class="dash-spinner"></div>
+              <span>Loading your profile…</span>
+            </div>
+            <div id="dash-overview-content" style="display:none">
+              <div class="dash-stats-grid">
+                <div class="dash-stat-card">
+                  <span class="dash-stat-icon">🔥</span>
+                  <span class="dash-stat-val" id="dash-streak">0</span>
+                  <span class="dash-stat-lbl">Day Streak</span>
+                </div>
+                <div class="dash-stat-card">
+                  <span class="dash-stat-icon">✅</span>
+                  <span class="dash-stat-val" id="dash-solved">0</span>
+                  <span class="dash-stat-lbl">Problems Solved</span>
+                </div>
+                <div class="dash-stat-card">
+                  <span class="dash-stat-icon">📚</span>
+                  <span class="dash-stat-val" id="dash-chapters">0</span>
+                  <span class="dash-stat-lbl">Chapters Studied</span>
+                </div>
+                <div class="dash-stat-card">
+                  <span class="dash-stat-icon">🎯</span>
+                  <span class="dash-stat-val" id="dash-goals-count">0</span>
+                  <span class="dash-stat-lbl">Active Goals</span>
+                </div>
+              </div>
+
+              <div class="dash-section">
+                <h4 class="dash-section-title">Needs Focus</h4>
+                <div id="dash-weak-topics" class="dash-chips"></div>
+              </div>
+
+              <div class="dash-section">
+                <h4 class="dash-section-title">Strong Areas</h4>
+                <div id="dash-strong-topics" class="dash-chips"></div>
+              </div>
+
+              <div class="dash-section" id="dash-goals-summary-section">
+                <h4 class="dash-section-title">Your Goals</h4>
+                <div id="dash-goals-summary" class="dash-chips"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── GOALS ── -->
+          <div id="dash-tab-goals" class="agent-panel" hidden>
+            <div class="dash-section">
+              <h4 class="dash-section-title">Active Goals</h4>
+              <div id="dash-goals-list" class="dash-goals-list"></div>
+            </div>
+            <div class="dash-add-goal">
+              <input id="dash-goal-input" class="dash-goal-input" type="text" maxlength="80"
+                     placeholder="e.g. Improve Algebra, SEE A+" />
+              <button class="dash-goal-add-btn" onclick="dashAddGoal()">Add Goal</button>
+            </div>
+            <p class="dash-hint">Goals are remembered across all sessions and used to personalise your study plan.</p>
+          </div>
+
+          <!-- ── STUDY PLAN ── -->
+          <div id="dash-tab-studyplan" class="agent-panel" hidden>
+            <div class="dash-plan-controls">
+              <button class="dash-gen-btn" id="dash-gen-btn" onclick="dashGeneratePlan()">
+                <i class="fi fi-tr-calendar-lines"></i> Generate My 7-Day Plan
+              </button>
+              <span class="dash-hint" id="dash-plan-hint">Based on your weak topics and goals.</span>
+            </div>
+            <div id="dash-plan-output" class="dash-plan-output"></div>
+          </div>
+
+          <!-- ── SESSION ── -->
+          <div id="dash-tab-session" class="agent-panel" hidden>
+            <div id="dash-session-content" class="dash-session-grid">
+              <div class="dash-session-row">
+                <span class="dash-session-lbl">Recent Image</span>
+                <span id="dash-sess-image" class="dash-session-val">—</span>
+              </div>
+              <div class="dash-session-row">
+                <span class="dash-session-lbl">Last Mode</span>
+                <span id="dash-sess-mode" class="dash-session-val">—</span>
+              </div>
+              <div class="dash-session-row">
+                <span class="dash-session-lbl">Last Topic</span>
+                <span id="dash-sess-topic" class="dash-session-val">—</span>
+              </div>
+              <div class="dash-session-row">
+                <span class="dash-session-lbl">Questions in Memory</span>
+                <span id="dash-sess-qcount" class="dash-session-val">0</span>
+              </div>
+              <div class="dash-session-row">
+                <span class="dash-session-lbl">Context Summary</span>
+                <span id="dash-sess-ctx" class="dash-session-val dash-session-ctx"></span>
+              </div>
+            </div>
+            <div class="dash-section" style="margin-top:12px">
+              <h4 class="dash-section-title">Available Agent Tools</h4>
+              <div id="dash-tools-list" class="dash-chips"></div>
+            </div>
+          </div>
+
+        </div><!-- /body -->
+      </div><!-- /modal -->
+    </div><!-- /overlay -->
+
   </body>
 </html>
