@@ -82,6 +82,7 @@ from authlib.integrations.flask_client import OAuth
 from flask import send_from_directory, send_file
 from datetime import datetime, date, timedelta
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_compress import Compress
 from flask_caching import Cache
 from collections import defaultdict
@@ -400,6 +401,10 @@ app_name = '__main__'
 if '__app_id__' in globals():
     app_name = globals()['__app_id__']
 app = Flask(app_name, template_folder=template_path, static_folder=static_path)
+
+# Trust proxy headers from Render's reverse proxy so Flask knows the original request was HTTPS.
+# Without this, SESSION_COOKIE_SECURE blocks the session cookie silently.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 CORS(app, resources={
     r"/*": {
@@ -5991,10 +5996,13 @@ def user_info():
 @app.route('/google_login/authorized')
 def google_login_authorized():
     """Handle Google OAuth callback - creates persistent session with quota tracking."""
+    print(f"[AUTH] Google callback hit. Session keys: {list(session.keys())}")
     try:
         if not google.authorized:
+            print(f"[AUTH] google.authorized=False — token not in session. Session: {dict(session)}")
             return redirect(url_for("login"))
         
+        print(f"[AUTH] google.authorized=True, fetching user info...")
         user_info = google.get("/oauth2/v2/userinfo")
         if user_info.ok:
             user_data = user_info.json()
