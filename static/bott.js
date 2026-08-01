@@ -767,11 +767,11 @@ function handleWeakTopicAccepted(weakTopic, displayName) {
     banner.remove();
   }
 
-  // Get mode selector and set to deepthink (more suitable for concept explanation)
-  const modelDeepThinkRadio = document.getElementById('modelDeepThink');
+  // Get mode selector and set to tutor_mode (solves + explains)
+  const modelTutorRadio = document.getElementById('modelTutor');
   const modelGeneralRadio = document.getElementById('modelGeneral');
-  if (modelDeepThinkRadio) {
-    modelDeepThinkRadio.checked = true;
+  if (modelTutorRadio) {
+    modelTutorRadio.checked = true;
   }
 
   // Pre-populate input with concept explanation request
@@ -1005,11 +1005,9 @@ async function finalizeStreamingBotMessage(image_urls = []) {
     const messageActionsDiv = document.createElement("div");
     messageActionsDiv.className = "message-actions";
 
-    // ===== COPY ANSWER BUTTON (exam_mode only) =====
-    // Exam mode answers are meant to be copy-pasted straight into a
-    // student's notebook, so give them one clean click instead of making
-    // them manually select text around the ✓ headers.
-    if (window.lastResponseMode === "exam_mode") {
+    // ===== COPY ANSWER BUTTON (solve_mode only) =====
+    // Solve mode answers are clean and concise — give one click to copy.
+    if (window.lastResponseMode === "solve_mode") {
       const answerTextForCopy = currentBotMessageFullText; // snapshot now - currentBotMessageFullText is reset below, before the user ever clicks
       const copyAnswerButton = document.createElement("button");
       copyAnswerButton.className = "message-action-btn";
@@ -1089,40 +1087,33 @@ async function askAI(instruction, modelChoice, performSearch = false, isRegenera
       let backendMode = 'auto';
       
       // First check if we're in manual mode (user selected radio button)
-      const modelDeepThinkRadio = document.getElementById("modelDeepThink");
+      const modelTutorRadio = document.getElementById("modelTutor");
       const modelGeneralRadio = document.getElementById("modelGeneral");
-      const modelExamRadio = document.getElementById("modelExam");
-      const modelForumReplyRadio = document.getElementById("modelForumReply");
-      const deepthinkToggle = document.getElementById("deepthink-toggle");
-      const examToggle = document.getElementById("exam-toggle");
-      const forumReplyToggle = document.getElementById("forum-reply-toggle");
-      const isMathMode =
-        (modelDeepThinkRadio && modelDeepThinkRadio.checked) ||
-        (deepthinkToggle && deepthinkToggle.getAttribute("data-active") === "true");
-      const isExamMode =
-        (modelExamRadio && modelExamRadio.checked) ||
-        (examToggle && examToggle.getAttribute("data-active") === "true");
-      const isForumReplyMode =
-        (modelForumReplyRadio && modelForumReplyRadio.checked) ||
-        (forumReplyToggle && forumReplyToggle.getAttribute("data-active") === "true");
+      const modelSolveRadio = document.getElementById("modelSolve");
+      const tutorToggle = document.getElementById("tutor-toggle");
+      const solveToggle = document.getElementById("solve-toggle");
+      const isTutorMode =
+        (modelTutorRadio && modelTutorRadio.checked) ||
+        (tutorToggle && tutorToggle.getAttribute("data-active") === "true");
+      const isSolveMode =
+        (modelSolveRadio && modelSolveRadio.checked) ||
+        (solveToggle && solveToggle.getAttribute("data-active") === "true");
       
-      if (isExamMode) {
-          backendMode = 'exam_mode'; // Exam / topper-style mode
-      } else if (isForumReplyMode) {
-          backendMode = 'forum_reply_mode'; // Compact forum-comment style
-      } else if (isMathMode) {
-          backendMode = 'deepthink'; // Solve mode
+      if (isSolveMode) {
+          backendMode = 'solve_mode'; // Quick solve, no explanation
+      } else if (isTutorMode) {
+          backendMode = 'tutor_mode'; // Solve + explain
       } else if (modelGeneralRadio && modelGeneralRadio.checked) {
           backendMode = 'normal'; // Normal mode
       } else if (currentMode === 'solve') {
-          backendMode = 'deepthink';
+          backendMode = 'solve_mode';
       } else if (currentMode === 'normal') {
           backendMode = 'normal';
       } else {
           // Auto-detect mode
-          backendMode = detectIfNeedsSolveMode(instruction) ? 'deepthink' : 'normal';
+          backendMode = detectIfNeedsSolveMode(instruction) ? 'tutor_mode' : 'normal';
       }
-      window.lastResponseMode = backendMode; // used by finalizeStreamingBotMessage to show Copy Answer only for exam_mode
+      window.lastResponseMode = backendMode;
       
       formData.append("model_choice", backendMode);
       formData.append("web_search", performSearch);
@@ -1279,7 +1270,7 @@ async function uploadImage(file, caption) {
     // ✅ ADD MODEL CHOICE - CRITICAL FOR PIPELINE
     const modelChoice = document.querySelector('input[name="modelChoice"]:checked').value;
     formData.append("model_choice", modelChoice);
-    window.lastResponseMode = modelChoice; // used by finalizeStreamingBotMessage to show Copy Answer only for exam_mode
+    window.lastResponseMode = modelChoice; // used by finalizeStreamingBotMessage to show Copy Answer only for solve_mode
     console.log(`[UPLOAD_IMAGE] Sending model_choice="${modelChoice}" to /upload_image`);
 
     const response = await fetch(`${window.location.origin}/upload_image`, {
@@ -2641,7 +2632,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   // New: Get radio buttons for model selection
   const modelGeneralRadio = document.getElementById("modelGeneral");
-  const modelDeepThinkRadio = document.getElementById("modelDeepThink");
+  const modelTutorRadio = document.getElementById("modelTutor");
   // Removed fileInputLabel as it's now attachFileBtn
 
   // Event Listeners for UI interaction
@@ -3388,14 +3379,12 @@ if (webSearchBtn) {
   });
 }
 
-// Deep Think radio
-const deepThinkRadio = document.getElementById("modelDeepThink");
-if (deepThinkRadio) {
-  deepThinkRadio.addEventListener("change", () => {
-    if (deepThinkRadio.checked) {
-      console.log("Deep Think mode selected");
-      // 🔧 Call your existing model switch logic:
-      // setModel("deep_think");
+// Tutor radio
+const tutorRadio = document.getElementById("modelTutor");
+if (tutorRadio) {
+  tutorRadio.addEventListener("change", () => {
+    if (tutorRadio.checked) {
+      console.log("Tutor mode selected");
     }
   });
 }
@@ -3708,39 +3697,32 @@ async function askAI(
     formData.append("chat_id", currentChatId);
 
     let backendMode = "auto";
-    const modelDeepThinkRadio = document.getElementById("modelDeepThink");
+    const modelTutorRadio = document.getElementById("modelTutor");
     const modelGeneralRadio = document.getElementById("modelGeneral");
-    const modelExamRadio = document.getElementById("modelExam");
-    const modelForumReplyRadio = document.getElementById("modelForumReply");
-    const deepthinkToggle = document.getElementById("deepthink-toggle");
-    const examToggle = document.getElementById("exam-toggle");
-    const forumReplyToggle = document.getElementById("forum-reply-toggle");
-    const isMathMode =
-      (modelDeepThinkRadio && modelDeepThinkRadio.checked) ||
-      (deepthinkToggle && deepthinkToggle.getAttribute("data-active") === "true");
-    const isExamMode =
-      (modelExamRadio && modelExamRadio.checked) ||
-      (examToggle && examToggle.getAttribute("data-active") === "true");
-    const isForumReplyMode =
-      (modelForumReplyRadio && modelForumReplyRadio.checked) ||
-      (forumReplyToggle && forumReplyToggle.getAttribute("data-active") === "true");
+    const modelSolveRadio = document.getElementById("modelSolve");
+    const tutorToggle = document.getElementById("tutor-toggle");
+    const solveToggle = document.getElementById("solve-toggle");
+    const isTutorMode =
+      (modelTutorRadio && modelTutorRadio.checked) ||
+      (tutorToggle && tutorToggle.getAttribute("data-active") === "true");
+    const isSolveMode =
+      (modelSolveRadio && modelSolveRadio.checked) ||
+      (solveToggle && solveToggle.getAttribute("data-active") === "true");
 
-    if (isExamMode) {
-      backendMode = "exam_mode";
-    } else if (isForumReplyMode) {
-      backendMode = "forum_reply_mode";
-    } else if (isMathMode) {
-      backendMode = "deepthink";
+    if (isSolveMode) {
+      backendMode = "solve_mode";
+    } else if (isTutorMode) {
+      backendMode = "tutor_mode";
     } else if (modelGeneralRadio && modelGeneralRadio.checked) {
       backendMode = "normal";
     } else if (currentMode === "solve") {
-      backendMode = "deepthink";
+      backendMode = "solve_mode";
     } else if (currentMode === "normal") {
       backendMode = "normal";
     } else {
       backendMode = modelChoice || "auto";
     }
-    window.lastResponseMode = backendMode; // used by finalizeStreamingBotMessage to show Copy Answer only for exam_mode
+    window.lastResponseMode = backendMode;
 
     formData.append("model_choice", backendMode);
     formData.append("web_search", performSearch);
