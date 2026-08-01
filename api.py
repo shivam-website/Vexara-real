@@ -415,22 +415,7 @@ CORS(app, resources={
 
 # Enable gzip compression for all responses - essential for Render 512MB
 Compress(app)
-_flask_secret_key = os.environ.get("FLASK_SECRET_KEY")
-if not _flask_secret_key:
-    # CRITICAL: never fall back to a random per-process key here. Gunicorn
-    # typically runs multiple worker processes; if each one generates its
-    # own random secret_key, the signed session cookie Flask-Dance sets
-    # before redirecting to Google can be verified by a DIFFERENT worker
-    # than the one that created it. That worker fails to read the session,
-    # google.authorized comes back wrong, and the OAuth callback blows up
-    # with a generic 500 - exactly the "works until the callback" symptom.
-    # A fixed fallback is still safer than a random one (consistent across
-    # workers), but FLASK_SECRET_KEY should really be set in the environment.
-    print("[STARTUP WARNING] FLASK_SECRET_KEY is not set in the environment! "
-          "Falling back to a fixed dev key - sessions/OAuth will break across "
-          "worker restarts and multi-worker deployments. Set FLASK_SECRET_KEY in Render.")
-    _flask_secret_key = "dev-only-insecure-fallback-key-set-FLASK_SECRET_KEY-in-render"
-app.secret_key = _flask_secret_key
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
 
 # ============================================================================
 # 💾 CACHING CONFIGURATION
@@ -728,16 +713,16 @@ class ImageAnalyzer:
     Analyzes images to determine optimal solving strategy:
     
     STRATEGY:
-    - Text-only images → Extract text + Deepthink (CHEAP: 2 API calls, both text-based)
+    - Text-only images → Extract text + Tutor mode (CHEAP: 2 API calls, both text-based)
     - Geometric/Diagrams → Direct vision solve (QUALITY: 1 API call, keeps visual context)
     - Mixed content → Direct vision solve (SAFE: preserves all information)
     
     COST ANALYSIS:
     - Text extraction (fast model): ~0.0001 per image
-    - Deepthink (Llama-70B): ~0.0005 per response = Total ~0.0006
+    - Tutor mode (Llama-70B): ~0.0005 per response = Total ~0.0006
     - Direct vision solve (Gemini): ~0.0025 per image
     
-    For text-only: Extract+Deepthink saves 75% vs direct solve
+    For text-only: Extract+Tutor saves 75% vs direct solve
     For geometric: Direct solve prevents hallucination from missing diagrams
     """
     
@@ -922,7 +907,7 @@ Analyze the image carefully and solve the problem step-by-step."""
         try:
             print(f"[SOLVE_VISION] Solving directly with vision model (image included)...")
             response, provider, success = call_api_with_intelligent_fallback(
-                "deepthink", system_msg, solving_messages, 
+                "tutor_mode", system_msg, solving_messages, 
                 image_data=image_data
             )
             
@@ -971,9 +956,9 @@ Analyze the image carefully and solve the problem step-by-step."""
             return None, None
     
     @staticmethod
-    def solve_with_deepthink(extracted_text, chat_history, rag_context=None, rag_subject=None, rag_chapter=None, rag_confidence=None):
+    def solve_with_tutor(extracted_text, chat_history, rag_context=None, rag_subject=None, rag_chapter=None, rag_confidence=None):
         """
-        Solve extracted text problem using deepthink model.
+        Solve extracted text problem with tutor-style explanations.
         For text-only content (strategy: cheaper + better quality).
         
         Now includes RAG context for any chapter (not just geometry).
@@ -1015,10 +1000,10 @@ Provide:
         solving_system = system_msg
         
         try:
-            print(f"[SOLVE_TEXT] Solving with deepthink model (text only)...")
+            print(f"[SOLVE_TEXT] Solving with tutor model (text only)...")
             print(f"[SOLVE_TEXT] RAG Context: {rag_subject}/{rag_chapter if rag_context else 'None'}")
             response, provider, success = call_api_with_intelligent_fallback(
-                "deepthink", solving_system, solving_messages, 
+                "tutor_mode", solving_system, solving_messages, 
                 image_data=None
             )
             
@@ -1059,7 +1044,7 @@ Provide:
                 yield "❌ No response generated. Please try again."
                 return None, None
             
-            return full_response, "deepthink"
+            return full_response, "tutor_mode"
         
         except Exception as e:
             print(f"[SOLVE_TEXT] Error: {e}")
@@ -1079,8 +1064,8 @@ class APIProvider:
             'type': 'openai_compatible',
             'models': {
                 'normal': 'llama-3.1-8b-instant',
-                'deepthink': 'llama-3.3-70b-versatile',
-                'exam_mode': 'llama-3.3-70b-versatile',
+                'tutor_mode': 'llama-3.3-70b-versatile',
+                'solve_mode': 'llama-3.3-70b-versatile',
                 'vision': 'llama-3.3-70b-versatile'  # Groq's dedicated vision model
             },
             'supports_vision': True,
@@ -1092,8 +1077,8 @@ class APIProvider:
             'type': 'openai_compatible',
             'models': {
                 'normal': 'gpt-oss-120b',
-                'deepthink': 'zai-glm-4.7',
-                'exam_mode': 'zai-glm-4.7',
+                'tutor_mode': 'zai-glm-4.7',
+                'solve_mode': 'zai-glm-4.7',
                 'vision': None
             },
             'supports_vision': False,
@@ -1105,8 +1090,8 @@ class APIProvider:
             'type': 'vertex_ai',
             'models': {
                 'normal': 'gemini-2.5-flash-lite',
-                'deepthink': 'gemini-2.5-flash-lite',
-                'exam_mode': 'gemini-2.5-flash-lite',
+                'tutor_mode': 'gemini-2.5-flash-lite',
+                'solve_mode': 'gemini-2.5-flash-lite',
                 'vision': 'gemini-2.5-flash'
             },
             'supports_vision': True,
@@ -1118,8 +1103,8 @@ class APIProvider:
             'type': 'openai_compatible',
             'models': {
                 'normal': 'google/gemma-4-26b-a4b-it:free',
-                'deepthink': 'deepseek/deepseek-v4-flash:free',
-                'exam_mode': 'deepseek/deepseek-v4-flash:free',
+                'tutor_mode': 'deepseek/deepseek-v4-flash:free',
+                'solve_mode': 'deepseek/deepseek-v4-flash:free',
                 'vision': 'google/gemma-4-31b-it:free'
             },
             'supports_vision': True,
@@ -1130,8 +1115,8 @@ class APIProvider:
     # Fallback chain: [primary, secondary, tertiary]
     FALLBACK_CHAIN = {
         'normal': ['groq', 'cerebras', 'openrouter', 'gemini'],
-        'deepthink': ['groq', 'gemini', 'cerebras', 'openrouter'],
-        'exam_mode': ['groq', 'gemini', 'cerebras', 'openrouter'],
+        'tutor_mode': ['groq', 'gemini', 'cerebras', 'openrouter'],
+        'solve_mode': ['groq', 'gemini', 'cerebras', 'openrouter'],
         'vision': ['gemini', 'groq', 'openrouter'],  # Gemini FIRST - best vision model
         'explanation': ['groq', 'gemini', 'openrouter'],  # Conceptual questions
         'greeting': ['groq', 'openrouter'],  # Simple responses
@@ -1967,27 +1952,27 @@ class VexaraAgent:
             "models_used": ["Gemini 2.5 Flash (primary)", "Groq vision (fallback)"],
             "how_to_use": "Click the 📎 image button beside the input box and upload your photo.",
         },
-        "deepthink": {
-            "name": "Math / DeepThink Solver",
-            "trigger": "Select 'Math' mode OR type a solve / calculate / find question",
+        "tutor_mode": {
+            "name": "Tutor Mode (Solve + Explain)",
+            "trigger": "Select 'Tutor' mode OR type a solve / calculate / find question",
             "description": (
-                "High-accuracy, step-by-step solving using the SEE exam format: "
-                "Given → To Find → Solution → Answer. Every step is shown with LaTeX "
-                "notation so you can copy it straight into your notebook."
+                "Solves your math problem AND explains the concepts so you learn. "
+                "Each step includes a brief explanation of why it's taken, helping "
+                "you understand the reasoning — not just memorize the solution."
             ),
             "models_used": ["Groq Llama 3.3-70B", "Gemini 2.5 Flash", "DeepSeek (fallback)"],
-            "how_to_use": "Select the 'Math' radio button above the input box, then type your problem.",
+            "how_to_use": "Select the 'Tutor' radio button above the input box, then type your problem.",
         },
-        "exam_mode": {
-            "name": "Exam / Topper Mode",
-            "trigger": "Select 'Exam' mode",
+        "solve_mode": {
+            "name": "Solve Mode (Quick & Concise)",
+            "trigger": "Select 'Solve' mode",
             "description": (
-                "Generates perfectly formatted answers exactly as they should appear "
-                "on your SEE answer sheet — copy-paste ready, zero filler text, "
-                "boxed final answer. Ideal for last-minute revision."
+                "Quick, clean solutions with minimal explanation. Shows the key steps "
+                "and the answer — no teaching, no tips, just the math. Perfect when "
+                "you just need the answer fast."
             ),
             "models_used": ["Groq Llama 3.3-70B", "Gemini 2.5 Flash", "OpenRouter (fallback)"],
-            "how_to_use": "Select the 'Exam' radio button above the input box, then type your problem.",
+            "how_to_use": "Select the 'Solve' radio button above the input box, then type your problem.",
         },
         "rag_curriculum": {
             "name": "SEE Curriculum Knowledge Base",
@@ -2111,7 +2096,7 @@ class VexaraAgent:
         Intents:
           SKILL_INQUIRY     — user is asking what Vexara can do (free, no quota)
           VISION_RECALL     — user wants to re-process their recent image
-          MATH_IN_WRONG_MODE — math problem sent in 'normal' mode without deepthink/exam
+          MATH_IN_WRONG_MODE — math problem sent in 'normal' mode without tutor/solve
           GREETING          — casual greeting or acknowledgment (lightweight response)
           EXPLANATION       — conceptual question needing explanation
           PERSONAL_QUERY    — asking about themselves / personal memory
@@ -2127,7 +2112,7 @@ class VexaraAgent:
 
         if current_mode == "normal" and cls._MATH_PROBLEM_PATTERNS.search(message):
             # Only flag if the auto-detector also agrees it's a math problem
-            if should_use_deepthink(message):
+            if should_use_tutor(message):
                 return "MATH_IN_WRONG_MODE"
 
         # Check for personal memory queries (before greeting, as personal queries are more specific)
@@ -2261,7 +2246,7 @@ mention that you are working from the stored context and may need the image re-u
 
         try:
             response, provider_used, success = call_api_with_intelligent_fallback(
-                "deepthink", system_msg, solving_messages, image_data=image_data
+                "tutor_mode", system_msg, solving_messages, image_data=image_data
             )
 
             if not response or not success:
@@ -2307,14 +2292,14 @@ mention that you are working from the stored context and may need the image re-u
     @classmethod
     def handle_mode_switch_and_solve(cls, message: str, current_mode: str) -> tuple:
         """
-        If the user says 'switch to math' / 'switch to exam', detect it and
+        If the user says 'switch to tutor' / 'switch to solve', detect it and
         return (True, new_mode).  Otherwise return (False, current_mode).
         """
         lower = message.lower()
-        if re.search(r"\bswitch\s+to\s+(math|deepthink|solve)\b", lower):
-            return True, "deepthink"
-        if re.search(r"\bswitch\s+to\s+exam\b", lower):
-            return True, "exam_mode"
+        if re.search(r"\bswitch\s+to\s+(tutor|math|deepthink|solve)\b", lower):
+            return True, "tutor_mode"
+        if re.search(r"\bswitch\s+to\s+solve\b", lower):
+            return True, "solve_mode"
         return False, current_mode
 
 
@@ -3252,7 +3237,7 @@ Output ONLY valid JSON, no markdown fences:
 {{
   "intent": "one of: math_solve | vision_analyze | study_plan | skill_inquiry | general_qa | goal_set | personal_query",
   "tools": ["tool1", "tool2"],
-  "mode": "one of: normal | deepthink | exam_mode",
+  "mode": "one of: normal | tutor_mode | solve_mode",
   "reasoning": "one sentence"
 }}
 
@@ -3307,7 +3292,7 @@ Rules:
 
         if has_image or VexaraAgent._VISION_RECALL_PATTERNS.search(message):
             return {"intent": "vision_analyze", "tools": ["student_profile", "vision"],
-                    "mode": "deepthink", "reasoning": "image detected"}
+                    "mode": "tutor_mode", "reasoning": "image detected"}
 
         if StudyPlannerTool.detect_study_plan_intent(message):
             return {"intent": "study_plan", "tools": ["student_profile", "study_planner"],
@@ -3325,8 +3310,8 @@ Rules:
             return {"intent": "personal_query", "tools": ["personal_memory"],
                     "mode": "normal", "reasoning": "personal memory query"}
 
-        if should_use_deepthink(message) or mode in ("deepthink", "exam_mode"):
-            tools = ["curriculum", "math" if mode != "exam_mode" else "exam", "student_profile"]
+        if should_use_tutor(message) or mode in ("tutor_mode", "solve_mode"):
+            tools = ["curriculum", "math" if mode != "solve_mode" else "exam", "student_profile"]
             return {"intent": "math_solve", "tools": tools, "mode": mode, "reasoning": "math problem"}
 
         return {"intent": "general_qa", "tools": ["curriculum", "student_profile"],
@@ -3391,7 +3376,7 @@ Be strict — students depend on this for their exams."""
         Returns either the original draft (if approved) or a corrected version.
         Skips reflection for normal/conversational mode to save quota.
         """
-        if mode not in ("deepthink", "exam_mode"):
+        if mode not in ("tutor_mode", "solve_mode"):
             return draft
         if len(draft) < 100:
             return draft
@@ -3692,7 +3677,7 @@ class AgentOrchestrator:
         # 2. Build plan
         plan = Planner.create_plan(user_id, message, mode, has_image=has_image)
         resolved_mode = plan.get("mode", mode)
-        if resolved_mode not in ("normal", "deepthink", "exam_mode"):
+        if resolved_mode not in ("normal", "tutor_mode", "solve_mode"):
             resolved_mode = mode
 
         # 3. Execute tools, collect context strings
@@ -3845,7 +3830,7 @@ class AgentOrchestrator:
 
 # ============================================================================
 # 🔐 OAUTH CONFIGURATION
-# ============================================================================
+# ==============================    ==============================================
 
 _google_client_id_check = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
 print(f"[STARTUP CHECK] GOOGLE_OAUTH_CLIENT_ID is {'SET (length ' + str(len(_google_client_id_check)) + ')' if _google_client_id_check else 'MISSING/EMPTY'}")
@@ -3853,69 +3838,10 @@ print(f"[STARTUP CHECK] GOOGLE_OAUTH_CLIENT_ID is {'SET (length ' + str(len(_goo
 google_bp = make_google_blueprint(
     client_id=os.environ.get("GOOGLE_OAUTH_CLIENT_ID", ""),
     client_secret=os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", ""),
-    scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"],
-    redirect_to="chat"  # endpoint name (not a URL) - where Flask-Dance sends the browser once the real OAuth callback finishes
+    redirect_url="/google_login/authorized",
+    scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
 )
 app.register_blueprint(google_bp, url_prefix="/google_login")
-
-# IMPORTANT: do NOT also declare a manual @app.route("/google_login/authorized").
-# Flask-Dance's blueprint already owns the real callback route at
-# /google_login/google/authorized, and that's where google.authorized gets
-# set correctly. The old redirect_url="/google_login/authorized" pointed
-# Flask-Dance's post-login redirect at a URL that only your own separate,
-# manually-declared route matched - and in THAT route, "google.authorized"
-# threw AttributeError, because that view never went through the real OAuth
-# callback at all. Using the oauth_authorized signal below runs your
-# session-creation logic at the moment the actual token exchange finishes,
-# in the same request Flask-Dance itself handles - no duplicate route,
-# no redirect_url mismatch.
-from flask_dance.consumer import oauth_authorized
-
-@oauth_authorized.connect_via(google_bp)
-def google_logged_in(blueprint, token):
-    """Runs right after Flask-Dance completes the real Google OAuth exchange."""
-    if not token:
-        print("[AUTH] Google OAuth failed: no token received")
-        return False  # let flask-dance handle the failure/flash normally
-
-    try:
-        resp = blueprint.session.get("/oauth2/v2/userinfo")
-        if not resp.ok:
-            print(f"[AUTH] Google API error: {resp.status_code}")
-            return False
-
-        user_data = resp.json()
-        user_email = user_data.get("email")
-        google_id = user_data.get("id")
-
-        persistent_user_id = user_email.replace("@", "_at_").replace(".", "_")
-
-        session.permanent = True
-        session['user'] = user_email
-        session['user_id'] = persistent_user_id
-        session['auth_provider'] = 'google'
-        session['user_name'] = user_data.get("name")
-        session['google_id'] = google_id
-
-        print(f"[AUTH] Google login successful for {user_email}")
-        print(f"[AUTH] Persistent User ID: {persistent_user_id}")
-        print(f"[QUOTA] Messages today: {get_daily_message_count(persistent_user_id)}/{DAILY_MESSAGE_LIMIT}")
-
-        try:
-            sync_result = FirebaseSyncManager.sync_all_pending(persistent_user_id)
-            if sync_result.get("pending_retries", 0) > 0 or sync_result.get("chat_syncs", 0) > 0:
-                print(f"[SYNC] Login sync: {sync_result}")
-        except Exception as sync_err:
-            print(f"[SYNC] Login sync retry failed: {sync_err}")
-
-    except Exception as e:
-        print(f"[AUTH] Error during Google login: {e}")
-        return False
-
-    # Returning False tells flask-dance not to store its own OAuth token
-    # record (we don't use it - we already pulled what we need above and
-    # built our own session). Prevents an extra, unnecessary storage write.
-    return False
 
 oauth = OAuth(app)
 microsoft = oauth.register(
@@ -4078,9 +4004,9 @@ AUTO-TRIGGER flowcharts for:
 - Classification: Show criteria and outcomes for each path
 """
 
-DEEPTHINK_BASE_PROMPT = """You are an expert SEE Mathematics tutor who excels at problem solving.
+TUTOR_MODE_BASE_PROMPT = """You are an expert SEE Mathematics tutor who excels at problem solving AND teaching.
 
-**YOUR ROLE:** Solve problems step-by-step using the NEB SEE curriculum method.
+**YOUR ROLE:** Solve problems step-by-step AND explain the concepts so the student learns.
 
 **MANDATORY FORMAT FOR ALL PROBLEMS:**
 
@@ -4091,13 +4017,15 @@ DEEPTHINK_BASE_PROMPT = """You are an expert SEE Mathematics tutor who excels at
 [State exactly what needs to be calculated or proven]
 
 **Solution:**
-[Show EVERY step with proper reasoning]
-Step 1: [First action with brief reason]
-Step 2: [Second action]
+[Show EVERY step with brief explanations of WHY each step is taken]
+Step 1: [First action] — [Brief reason why]
+Step 2: [Second action] — [Brief reason why]
 ... [Continue with all steps]
 Step N: [Final calculation]
 
 **Answer:** [Write final answer clearly with units]
+
+**Key Concept:** [One sentence explaining the main concept/formula used]
 
 ---
 
@@ -4150,6 +4078,12 @@ Step N: [Final calculation]
    - Label all intermediate calculations
    - Round appropriately in final answer
 
+**TEACHING APPROACH (KEY DIFFERENCE FROM SOLVE MODE):**
+- For each step, briefly explain WHY — not just WHAT
+- Help the student understand the concept, not just memorize the solution
+- Keep explanations concise but insightful (1 short phrase per step)
+- Mention common mistakes to avoid
+
 **MATHEMATICAL NOTATION (CRITICAL):**
 - ALL math expressions MUST be in LaTeX — every single one, including steps
 - Inline: $expression$ (e.g., $x = 5$, $a^2 + b^2 = c^2$)
@@ -4176,15 +4110,14 @@ Step N: [Final calculation]
 ✗ Write decimal when exact form is needed
 ✗ Forget units (marks deducted)
 ✗ Jump between steps
-✗ Include teaching explanations ("Let me solve...", "As you can see...")
-✗ Add unnecessary commentary
+✗ Add unnecessary commentary or filler
 ✗ Use informal language
 
 **FINAL ANSWER PRESENTATION:**
 $$\\boxed{\\text{Answer: [value with units]}}$$
 
 **AFTER THE BOXED ANSWER (MANDATORY, every response):**
-On a new line below the boxed answer, in plain text (no LaTeX, no box), add ONE short personalized follow-up — never a generic "let me know if you need anything else." If a chapter/topic was provided in the retrieved knowledge, reference it by name. Offer something concrete: 2-3 more practice problems on this exact topic, a harder SEE-style variation, or a quick check question. Rotate the phrasing each time so it feels like a real tutor checking in, not a bot. Example: "Want 3 more practice problems on Quadratic Equations like this one?"
+On a new line below the boxed answer, add a separator "---" and then, in plain text, ONE short personalized follow-up referencing the topic/chapter. Offer more practice, a harder variation, or to upload the next question. Rotate the phrasing each time.
 
 Use retrieved knowledge (formulas, solving methods, examples) as your authoritative source.
 
@@ -4196,82 +4129,53 @@ Use retrieved knowledge (formulas, solving methods, examples) as your authoritat
 - Classification or process → ```mermaid graph TD with plain labels, max 8 nodes
 """
 
-EXAM_MODE_BASE_PROMPT = """
-You are a SEE Mathematics topper.
+SOLVE_MODE_BASE_PROMPT = """
+You are a fast, efficient math solver. Give clean solutions with minimal words.
 
-Write answers exactly as they should appear in an exam copy.
+**YOUR ROLE:** Solve the problem quickly and show the answer. No teaching, no tips, no extra filler.
 
 Format:
-
-**Given:**
-[Given information]
-
-**To Find/Prove:**
-[Required result]
 
 **Solution:**
-
-[Step-by-step mathematical working]
-
-Rules:
-
-- Show all necessary steps required to obtain full marks.
-- One mathematical transformation per line.
-- Use $\Rightarrow$ between algebraic transformations (never the raw ⇒ Unicode character).
-- Use LaTeX for ALL mathematical expressions — no backticks, no plain Unicode math.
-- NEVER use backticks (`...`) for math — backticks are only for programming code.
-- WRONG: `dy/dx = 2x`   RIGHT: $\frac{dy}{dx} = 2x$
-- No teaching, explanations, introductions, or conversational text.
-- No "We know", "Using formula", "First", "Next", "Therefore we get", etc.
-- Keep the solution clean, compact, and easy to copy into an exam answer sheet.
-- Do not skip important intermediate steps.
-- For proofs, show each transformation on a separate line until the result is reached.
-- For simplification, show clear substitutions and reductions.
-- For geometry, mensuration, statistics, probability, coordinate geometry, trigonometry, functions, and algebra, use the same exam-style structure.
-- Include units wherever applicable.
-- Use display equations ($$ $$) for important mathematical steps.
-- Keep non-mathematical text minimal.
-
-Final Answer Rules:
-
-- End every solution with a separate Answer section.
-- The answer must contain only the final result.
-- Do not write explanations inside the answer box.
-- Use a boxed mathematical result.
-
-Format:
+[Show the key steps and calculations clearly]
 
 **Answer:**
-
 $$
 \boxed{actual\\ final\\ answer}
 $$
 
+Rules:
+
+- Keep it short and focused — show working, skip commentary
+- Show the key formula/theorem used, then apply it
+- One mathematical transformation per line where helpful
+- Use $\Rightarrow$ between algebraic transformations (never the raw ⇒ Unicode character)
+- Use LaTeX for ALL mathematical expressions — no backticks, no plain Unicode math
+- NEVER use backticks (`...`) for math — backticks are only for programming code
+- WRONG: `dy/dx = 2x`   RIGHT: $\frac{dy}{dx} = 2x$
+- No teaching, explanations, introductions, or conversational text
+- No "We know", "Using formula", "First", "Next", "Therefore we get", etc.
+- Exact values (fractions/surds) unless decimals are needed
+- Always include units: cm, m², kg, Rs., etc.
+- Stop after **Answer:** — no tips, no follow-up, no extra text
+
 Examples:
 
 $$
-\\boxed{x = 5}
+\boxed{x = 5}
 $$
 
 $$
-\\boxed{(3x+2)(x+1)}
+\boxed{(3x+2)(x+1)}
 $$
 
 $$
-\\boxed{\\sin\\theta = \\frac{3}{5}}
+\boxed{\\sin\\theta = \\frac{3}{5}}
 $$
 
 $$
-\\boxed{\\text{Area} = 84\\ \\text{cm}^2}
+\boxed{\\text{Area} = 84\\ \\text{cm}^2}
 $$
-
-$$
-\\boxed{P(E)=\\frac{3}{8}}
-$$
-
-**AFTER THE EXAM ANSWER (MANDATORY, every response):**
-Everything above this point must stay exactly as specified — clean, copy-paste-ready, zero conversational text, because the student needs to be able to copy it straight into their exam notebook.
-Below it, add a visual separator line "---" and then, in plain text, ONE short personalized follow-up offering more practice on this exact topic/chapter, a harder variant, or a quick check question. Never a generic "let me know if you need help." Rotate the phrasing each time. Example: "---\nWant 3 more exam-style problems on this chapter?"
 """
 
 def build_enhanced_prompt(question, chat_history, mode="normal"):
@@ -4283,10 +4187,10 @@ def build_enhanced_prompt(question, chat_history, mode="normal"):
     subject, chapter, context, confidence, num_chunks = KNOWLEDGE_BASE.retrieve(question)
 
     # Build base prompt
-    if mode == "exam_mode":
-        base_prompt = EXAM_MODE_BASE_PROMPT
-    elif mode == "deepthink":
-        base_prompt = DEEPTHINK_BASE_PROMPT
+    if mode == "solve_mode":
+        base_prompt = SOLVE_MODE_BASE_PROMPT
+    elif mode == "tutor_mode":
+        base_prompt = TUTOR_MODE_BASE_PROMPT
     else:
         base_prompt = BASE_SYSTEM_PROMPT
 
@@ -4320,8 +4224,8 @@ Confidence: {int(confidence * 100)}%
 # 🧠 MODE DETECTION
 # ============================================================================
 
-def should_use_deepthink(question):
-    """Determine if question needs deepthink/solve mode."""
+def should_use_tutor(question):
+    """Determine if question needs tutor/solve mode."""
     question_lower = question.lower()
     
     # Equation detection
@@ -4679,11 +4583,14 @@ def upload_image_endpoint():
         return jsonify({"error": "Invalid chat ID format."}), 400
     if len(caption) > 500:
         return jsonify({"error": "Caption too long. Maximum 500 characters."}), 400
-    if mode not in ('normal', 'deepthink', 'exam_mode', 'general', 'forum_reply_mode'):
+    if mode not in ('normal', 'tutor_mode', 'solve_mode', 'general'):
         return jsonify({"error": "Invalid mode."}), 400
     # Normalize "general" to "normal" for backend consistency
     if mode == 'general':
         mode = 'normal'
+    # Default image uploads to solve_mode (concise, no explanation)
+    if mode == 'normal':
+        mode = 'solve_mode'
     
     # ── SECURITY: Per-user rate limiting ────────────────────────────────────
     rate_check = SecurityGuard.check_rate_limit(user_id)
@@ -4741,133 +4648,60 @@ def upload_image_endpoint():
             # IMPORTANT: Include caption in the messages so AI uses the user's specific question
             user_question_line = f"User's specific question: {caption}" if caption else "Please solve the math problem shown in the image."
             
-            # Determine if exam mode and adjust solving prompt
-            if mode == "exam_mode":
+            # Determine mode and adjust solving prompt
+            if mode == "solve_mode":
                 solving_prompt = f"""SOLVE THIS MATH PROBLEM FROM THE IMAGE:
 
 {user_question_line}
 
-Write your answer EXACTLY as you would write it on an SEE exam sheet.
- 
-FORMAT YOUR ANSWER LIKE THIS:
-**Given:** [List the given information]
- 
-**To Find:** [State what to calculate]
- 
-**Solution:**
-[Write your solution with proper steps and calculations. Use flowing text but break lines logically between major steps. Show all working.]
- 
-**Answer:** [State the final answer clearly with units]
- 
-FORMATTING RULES (CRITICAL):
-✓ Keep the four main sections: Given, To Find, Solution, Answer
-✓ Put each section on its own lines - don't run them together
-✓ In Solution section, write in flowing text but break between logical steps
-✓ Show every calculation step clearly
-✓ Use mathematical symbols: ⇒, ∴, ∠, °, √, Δ, ∫
-✓ State formulas: "Using Pythagoras theorem:" before applying it
-✓ For geometry: mention the theorem name when using it
-✓ Keep answers as exact values (fractions/surds, not decimals)
-✓ Include units always: cm, m², kg, Rs., etc.
- 
-CURRICULUM METADATA (IMPORTANT FOR CONTEXT):
-- What is the **main topic/concept** in this problem? (e.g., "Algebra", "Geometry", "Trigonometry", "Quadratic Equations")
-- What **chapter** would this be under in the SEE curriculum? (e.g., "Chapter 2: Sets", "Chapter 5: Trigonometry")
-- Write this on a NEW line as: **Topic: [topic name], Chapter: [chapter name]**
- 
-IMPORTANT: 
-- If the image contains text, extract it accurately
-- If there are diagrams, analyze them carefully
-- Use the user's question to understand exactly what they're asking
-- For geometric problems, preserve all angle/measurement information
-- Write the answer like a brilliant student on an exam: organized, clear steps, ready to copy into notebook"""
-                
-                system_msg = """You are a brilliant SEE Mathematics topper student writing answers on the exam sheet.
- 
-OUTPUT FORMAT (CRITICAL - MUST FOLLOW EXACTLY):
-Write your answer with clear section breaks and proper formatting. Use this structure:
- 
-**Given:** [Information from the problem]
- 
-**To Find:** [What needs to be calculated]
- 
-**Solution:**
-[Write solution steps as flowing text with calculations shown clearly. Use proper symbols and formulas. Break into logical paragraphs when needed.]
- 
-**Answer:** [Final answer - box or highlight it clearly]
- 
-CRITICAL INSTRUCTIONS:
-✓ Keep section headers (**Given:**, **To Find:**, **Solution:**, **Answer:**) - they organize the answer
-✓ Under Solution, write in flowing paragraphs BUT break lines logically between major steps
-✓ Show ALL calculations inline with proper notation
-✓ Use mathematical symbols: ⇒, ∴, ∠, °, √, Δ
-✓ State formula names clearly: "Using Pythagoras theorem" or "Using compound interest formula"
-✓ For geometry: mention theorems and properties used
-✓ Keep exact answers as fractions/surds (not decimals)
-✓ Always include units: cm, m², kg, Rs., etc.
-✓ NO numbered steps (Step 1:, Step 2:) - write in sentences
-✓ NO code-block formatting
-✓ Write confidently like a topper student
-✓ Make it copy-paste ready for exam notebook
- 
-Format like a textbook solution - structured but readable.
- 
-AFTER THE ANSWER (MANDATORY, every response):
-Everything above must stay clean and copy-paste-ready for the student's exam notebook. Below it, add a separator line "---" and then, in plain text, ONE short personalized follow-up referencing the topic/chapter from this problem — offer more practice on it, a harder variant, or to upload the next question. Never a generic "let me know if you need help." Rotate the phrasing each time.
-
-STRICT COMPLIANCE (this answer gets copy-pasted directly into a notebook - no room for drift):
-✗ NEVER start with a greeting or filler like "Hey there!", "Sure!", "This is a classic problem" - go straight to **Given:**
-✗ NEVER change the section labels or their casing - it must be exactly **Given:**, **To Find:**, **Solution:**, **Answer:** with the double-asterisk markdown, not "GIVEN:" or plain text headers
-✗ NEVER add commentary, encouragement, or asides inside the Given/To Find/Solution/Answer sections themselves
-✓ The only place personality is allowed is the single follow-up line after the "---" separator"""
-                
-                print(f"[EXAM_MODE_IMAGE] Using exam topper format with vision model...")
-            elif mode == "forum_reply_mode":
-                # Used when the answer will be POSTED AS A COMMENT on an
-                # external forum/community thread (e.g. a "Discuss" tab on
-                # another app), not shown inside our own chat UI. A stranger
-                # scrolling a feed is reading this — tone, length, and the
-                # CTA all need to be different from exam_mode.
-                solving_prompt = f"""SOLVE THIS MATH PROBLEM FROM THE IMAGE:
-
-{user_question_line}
-
-This solution will be posted as a REPLY on a public student forum thread,
-under the original poster's question. Write it so it reads like a helpful,
-knowledgeable senior student replying - not a bot dumping a wall of exam
-formatting.
+Provide a clean, concise solution. No lengthy explanations — just the math.
 
 FORMAT:
-**Given:** [one line]
-**Solution:** [concise steps, show key working only - skip restating obvious arithmetic]
-**Answer:** [final result with units]
+**Solution:**
+[Show the key steps and calculations clearly]
+
+**Answer:** [Final result with units]
 
 RULES:
-✓ Keep it short enough to read comfortably as a forum comment (roughly 100-180 words in the solution body)
-✓ Still show the key formula/theorem used, and the final answer clearly
-✓ Use symbols: ⇒, ∴, ∠, °, √, Δ where natural
-✓ Exact values (fractions/surds) unless the problem calls for decimals
-✓ Do NOT use exam-sheet section headers like "To Find" - just Given / Solution / Answer
-✓ Stop completely after **Answer:** - do not write a Topic/Chapter line, do not add any metadata, nothing after the answer"""
+✓ Keep it short and focused — show working, skip commentary
+✓ Use mathematical symbols: ⇒, ∴, ∠, °, √, Δ
+✓ State the formula/theorem used, then apply it
+✓ Exact values (fractions/surds) unless decimals are needed
+✓ Always include units: cm, m², kg, Rs., etc.
+✓ Stop after **Answer:** — no tips, no follow-up, no extra text"""
 
-                system_msg = """You are a sharp, friendly senior student who's good at SEE Math, replying
-to another student's photo'd question on a public discussion forum (not your own app).
+                system_msg = """You are a fast, efficient math solver. Give clean solutions with minimal words.
+Show the key formula, the steps, and the answer. No teaching, no tips, no extra filler."""
 
-TONE:
-- Write like a peer helping a peer, not a company or a bot
-- Confident, warm, brief - forum readers skim, they don't want a lecture
-- No "Vexara" branding language, no app-pitch tone in the main solution
+                print(f"[SOLVE_MODE_IMAGE] Using concise solve format...")
+            elif mode == "tutor_mode":
+                solving_prompt = f"""SOLVE THIS MATH PROBLEM FROM THE IMAGE:
 
-CRITICAL INSTRUCTIONS:
-✓ Given / Solution / Answer only - no "To Find", no "SEE Tip" section
-✓ Solution should be tight: show the key formula/theorem and the necessary steps, skip restating what's obvious
-✓ Always include units (cm, m², kg, Rs., etc.)
-✓ Exact values (fractions/surds), not decimals, unless the source problem uses decimals
-✓ No code blocks, no numbered "Step 1/Step 2" labels - flowing sentences broken at logical points
-✓ Keep total visible reply under ~180 words so it doesn't dominate the thread
-✓ End cleanly after **Answer:** - no sign-off, no "let me know if you need help", no app mention. This gets posted as-is to a forum comment, so nothing after the answer belongs in the output; any attribution is added manually afterward, outside this response."""
+{user_question_line}
 
-                print(f"[FORUM_REPLY_MODE] Using compact forum-reply format with vision model...")
+Solve this problem AND explain the concepts so the student learns.
+
+FORMAT:
+**Solution:**
+[Step-by-step solution with brief explanations of WHY each step is taken]
+
+**Answer:** [Final result with units]
+
+**Key Concept:** [One sentence explaining the main concept/formula used]
+
+RULES:
+✓ Show each step AND briefly explain the reasoning behind it
+✓ Mention the formula/theorem name and why it applies
+✓ Use mathematical symbols: ⇒, ∴, ∠, °, √, Δ
+✓ Exact values (fractions/surds) unless decimals are needed
+✓ Always include units: cm, m², kg, Rs., etc.
+✓ End with a short personalized follow-up offering more practice or a harder variation"""
+                
+                system_msg = """You are Vexara, a warm SEE Math tutor. You solve problems AND teach the student.
+For each step, briefly explain WHY — not just WHAT. Help them understand the concept, not just memorize the solution.
+Keep explanations concise but insightful. End with a personalized follow-up."""
+                
+                print(f"[TUTOR_MODE_IMAGE] Using tutor (solve + explain) format...")
             else:
                 solving_prompt = f"""Analyze this image and solve the problem.
 
@@ -4918,10 +4752,10 @@ After the Answer and SEE Tip, add ONE short personalized follow-up referencing t
             
             print(f"[GEMINI_FIRST] Step 1: Solving with vision model (PRIMARY via intelligent fallback)...")
             # Use appropriate mode based on user selection
-            if mode == "exam_mode":
-                api_mode = "vision_exam"
-            elif mode == "forum_reply_mode":
-                api_mode = "vision_forum"
+            if mode == "solve_mode":
+                api_mode = "vision_exam"  # Use exam model for concise solving
+            elif mode == "tutor_mode":
+                api_mode = "vision"  # Use vision model for tutor explanations
             else:
                 api_mode = "vision"
             response, provider_used, success = call_api_with_intelligent_fallback(
@@ -5022,16 +4856,13 @@ After the Answer and SEE Tip, add ONE short personalized follow-up referencing t
             try:
                 rag_subject, rag_chapter, rag_context, rag_confidence, num_chunks = KNOWLEDGE_BASE.retrieve(question_text)
                 
-                if (rag_context and rag_confidence >= KNOWLEDGE_BASE.config.get('min_confidence_threshold', 0.15)
-                        and mode != "forum_reply_mode"):
+                if rag_context and rag_confidence >= KNOWLEDGE_BASE.config.get('min_confidence_threshold', 0.15):
                     print(f"[RAG] Retrieved {num_chunks} chunks (confidence: {rag_confidence:.2f})")
                     print(f"[RAG] Subject/Chapter: {rag_subject} / {rag_chapter}")
                     # Append RAG context to response
                     rag_addendum = f"\n\n---\n📚 **Related Chapter:** {rag_subject} - {rag_chapter}\n*Note: This chapter covers the formulas and concepts used above.*"
                     full_response += rag_addendum
                     yield rag_addendum
-                elif mode == "forum_reply_mode":
-                    print(f"[RAG] Skipping chapter footer - forum_reply_mode keeps the visible reply clean")
                 else:
                     print(f"[RAG] No relevant context found (not critical)")
             except Exception as e:
@@ -5438,7 +5269,7 @@ def ask_endpoint():
     Intent routing (evaluated before any LLM call):
       SKILL_INQUIRY      → Return skill registry description instantly (no quota cost)
       VISION_RECALL      → Re-run vision solver on stored recent image
-      MATH_IN_WRONG_MODE → Auto-switch to deepthink and solve
+      MATH_IN_WRONG_MODE → Auto-switch to tutor_mode and solve
       NORMAL             → Standard RAG + LLM pipeline
     """
     user_id = get_user_id()
@@ -5478,7 +5309,7 @@ def ask_endpoint():
 
     # ── Resolve initial mode ──────────────────────────────────────────────────
     if model_choice == 'auto':
-        mode = "deepthink" if should_use_deepthink(instruction) else "normal"
+        mode = "tutor_mode" if should_use_tutor(instruction) else "normal"
         print(f"[MODE] Auto-detected: {mode}")
     else:
         mode = model_choice
@@ -5593,14 +5424,14 @@ def ask_endpoint():
 
     # ── INTENT: MATH_IN_WRONG_MODE ────────────────────────────────────────────
     if intent == "MATH_IN_WRONG_MODE":
-        # Check if this message is itself a mode-switch command (e.g. "switch to math and solve")
+        # Check if this message is itself a mode-switch command (e.g. "switch to tutor and solve")
         switched, new_mode = VexaraAgent.handle_mode_switch_and_solve(instruction, mode)
 
         if not switched:
             # Not an explicit switch command, but it's a math question in wrong mode.
-            # Automatically switch to 'deepthink' mode and proceed.
-            mode = "deepthink"
-            print(f"[AGENT] Auto-switched to 'deepthink' mode for math problem.")
+            # Automatically switch to 'tutor_mode' mode and proceed.
+            mode = "tutor_mode"
+            print(f"[AGENT] Auto-switched to 'tutor_mode' mode for math problem.")
         else:
             # User sent an explicit switch command, use the mode from that.
             mode = new_mode
@@ -6085,7 +5916,7 @@ def is_user_logged_in():
 @app.before_request
 def check_session_persistence():
     """Check and restore persistent sessions on every request."""
-    if request.endpoint not in ['login', 'guest_login', 'microsoft_login_authorized', 'home', 'static']:
+    if request.endpoint not in ['login', 'guest_login', 'google_login_authorized', 'microsoft_login_authorized', 'home', 'static']:
         # Make session permanent for authenticated users
         if is_user_logged_in():
             session.permanent = True
@@ -6156,6 +5987,51 @@ def user_info():
         "welcome": generate_welcome_message(user_id),
         "weak_topics": detect_weak_topics(user_id)
     })
+
+@app.route('/google_login/authorized')
+def google_login_authorized():
+    """Handle Google OAuth callback - creates persistent session with quota tracking."""
+    if not google.authorized:
+        return redirect(url_for("login"))
+    
+    try:
+        user_info = google.get("/oauth2/v2/userinfo")
+        if user_info.ok:
+            user_data = user_info.json()
+            user_email = user_data.get("email")
+            google_id = user_data.get('id')
+            
+            # Create persistent user ID based on EMAIL (easier to track)
+            # Remove @ and . to make it path-safe
+            persistent_user_id = user_email.replace("@", "_at_").replace(".", "_")
+            
+            session.permanent = True
+            session['user'] = user_email
+            session['user_id'] = persistent_user_id
+            session['auth_provider'] = 'google'
+            session['user_name'] = user_data.get("name")
+            session['google_id'] = google_id
+            
+            print(f"[AUTH] Google login successful for {user_email}")
+            print(f"[AUTH] Persistent User ID: {persistent_user_id}")
+            print(f"[QUOTA] Messages today: {get_daily_message_count(persistent_user_id)}/{DAILY_MESSAGE_LIMIT}")
+            
+            # Retry any pending sync operations on login
+            try:
+                sync_result = FirebaseSyncManager.sync_all_pending(persistent_user_id)
+                if sync_result.get("pending_retries", 0) > 0 or sync_result.get("chat_syncs", 0) > 0:
+                    print(f"[SYNC] Login sync: {sync_result}")
+            except Exception as sync_err:
+                print(f"[SYNC] Login sync retry failed: {sync_err}")
+            
+            return redirect(url_for('chat'))
+        else:
+            print(f"[AUTH] Google API error: {user_info.status_code}")
+            return redirect(url_for('login'))
+    
+    except Exception as e:
+        print(f"[AUTH] Error during Google login: {e}")
+        return redirect(url_for('login'))
 
 @app.route('/microsoft_login/authorized')
 def microsoft_login_authorized():
