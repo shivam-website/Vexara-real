@@ -5991,10 +5991,10 @@ def user_info():
 @app.route('/google_login/authorized')
 def google_login_authorized():
     """Handle Google OAuth callback - creates persistent session with quota tracking."""
-    if not google.authorized:
-        return redirect(url_for("login"))
-    
     try:
+        if not google.authorized:
+            return redirect(url_for("login"))
+        
         user_info = google.get("/oauth2/v2/userinfo")
         if user_info.ok:
             user_data = user_info.json()
