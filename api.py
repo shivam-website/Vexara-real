@@ -384,9 +384,9 @@ except ImportError:
 
 # 🔐 GOOGLE AUTH IMPORTS (for Vertex AI Service Account)
 try:
-    import google.auth
-    from google.oauth2 import service_account
-    from google.auth.transport.requests import Request
+    import google.auth as google_auth
+    from google.oauth2 import service_account as google_service_account
+    from google.auth.transport.requests import Request as GoogleAuthRequest
     GOOGLE_AUTH_AVAILABLE = True
     print("[GOOGLE_AUTH] Google Auth libraries imported successfully")
 except ImportError:
@@ -581,19 +581,19 @@ def get_vertex_ai_access_token():
         return None
     
     try:
-        import google.auth
-        from google.oauth2 import service_account
-        from google.auth.transport.requests import Request
+        import google.auth as google_auth
+        from google.oauth2 import service_account as google_service_account
+        from google.auth.transport.requests import Request as GoogleAuthRequest
         
         # Parse credentials from JSON
         creds_dict = json.loads(VERTEX_AI_CREDENTIALS_JSON)
-        credentials = service_account.Credentials.from_service_account_info(
+        credentials = google_service_account.Credentials.from_service_account_info(
             creds_dict,
             scopes=['https://www.googleapis.com/auth/cloud-platform']
         )
         
         # Refresh to get access token
-        credentials.refresh(Request())
+        credentials.refresh(GoogleAuthRequest())
         access_token = credentials.token
         
         print(f"[VERTEX_AI] ✓ Generated access token (expires in ~1 hour)")
