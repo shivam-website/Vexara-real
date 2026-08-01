@@ -77,7 +77,7 @@ import logging
 from io import BytesIO
 from PIL import Image
 from flask import Flask, render_template, request, jsonify, redirect, session, url_for, make_response
-from flask_dance.contrib.google import make_google_blueprint, google
+from flask_dance.contrib.google import make_google_blueprint, google as google_signin
 from authlib.integrations.flask_client import OAuth
 from flask import send_from_directory, send_file
 from datetime import datetime, date, timedelta
@@ -384,9 +384,9 @@ except ImportError:
 
 # 🔐 GOOGLE AUTH IMPORTS (for Vertex AI Service Account)
 try:
-    import google.auth as google_auth
-    from google.oauth2 import service_account as google_service_account
-    from google.auth.transport.requests import Request as GoogleAuthRequest
+    import google.auth
+    from google.oauth2 import service_account
+    from google.auth.transport.requests import Request
     GOOGLE_AUTH_AVAILABLE = True
     print("[GOOGLE_AUTH] Google Auth libraries imported successfully")
 except ImportError:
@@ -581,19 +581,19 @@ def get_vertex_ai_access_token():
         return None
     
     try:
-        import google.auth as google_auth
-        from google.oauth2 import service_account as google_service_account
-        from google.auth.transport.requests import Request as GoogleAuthRequest
+        import google.auth
+        from google.oauth2 import service_account
+        from google.auth.transport.requests import Request
         
         # Parse credentials from JSON
         creds_dict = json.loads(VERTEX_AI_CREDENTIALS_JSON)
-        credentials = google_service_account.Credentials.from_service_account_info(
+        credentials = service_account.Credentials.from_service_account_info(
             creds_dict,
             scopes=['https://www.googleapis.com/auth/cloud-platform']
         )
         
         # Refresh to get access token
-        credentials.refresh(GoogleAuthRequest())
+        credentials.refresh(Request())
         access_token = credentials.token
         
         print(f"[VERTEX_AI] ✓ Generated access token (expires in ~1 hour)")
@@ -5998,12 +5998,12 @@ def google_login_authorized():
     """Handle Google OAuth callback - creates persistent session with quota tracking."""
     print(f"[AUTH] Google callback hit. Session keys: {list(session.keys())}")
     try:
-        if not google.authorized:
+        if not google_signin.authorized:
             print(f"[AUTH] google.authorized=False — token not in session. Session: {dict(session)}")
             return redirect(url_for("login"))
         
         print(f"[AUTH] google.authorized=True, fetching user info...")
-        user_info = google.get("/oauth2/v2/userinfo")
+        user_info = google_signin.get("/oauth2/v2/userinfo")
         if user_info.ok:
             user_data = user_info.json()
             user_email = user_data.get("email")
