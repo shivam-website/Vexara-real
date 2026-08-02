@@ -535,9 +535,9 @@ def add_security_headers(response):
     # Content Security Policy: allow only self and needed CDNs
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://accounts.google.com https://js.monitor.azure.com; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
-        "font-src 'self' https://fonts.gstatic.com; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://accounts.google.com https://js.monitor.azure.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn-uicons.flaticon.com; "
+        "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn-uicons.flaticon.com; "
         "img-src 'self' data: blob: https:; "
         "connect-src 'self' https://accounts.google.com https://graph.microsoft.com https://www.googleapis.com https://oauth2.googleapis.com https://login.microsoftonline.com; "
         "frame-src 'self' https://accounts.google.com https://login.microsoftonline.com;"
